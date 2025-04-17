@@ -1,0 +1,13 @@
+# metadata related files
+jv_run_sample_metadata_file: '/Users/zalmanek/Development/brynn/faire_mapping/dy2012/faire_mapping_and_output/experiment_metadata_files/Run3_OSUArctic_WCOA21_DataSharedJV.xlsx - Sample Data Sheet Long.csv'
+jv_run_sample_name_column: SampleName
+short_cruise_name: DY2012
+marker_assay_column: Metabarcoding Marker
+
+# mapping files
+jv_experiment_mapping_file: '/Users/zalmanek/Development/brynn/faire_mapping/dy2012/faire_mapping_and_output/experiment_metadata_files/DY2012_Mapping - ExperimentRunMetadataMappingRun3.csv'
+
+# FAIRe related files
+faire_template_file: /Users/zalmanek/Development/FAIRe-ator/template_noaa-ome-ecofoci2023/noaa-ome-ecofoci2023.xlsx
+final_faire_template_path: /Users/zalmanek/Development/brynn/faire_mapping/dy2012/faire_mapping_and_output/experiment_metadata_files/dy2012_faire_metadata.xlsx
+# update final_faire_template_path when we get it working
