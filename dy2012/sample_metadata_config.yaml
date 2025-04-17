@@ -1,5 +1,5 @@
 # Metadata file related 
-sample_metadata_file: /Users/zalmanek/Development/OME-EcoFOCI/EcoFOCI/data/1_SampleCollection/2020_DY20-12_CruiseData/2020_Dyson_CruiseData/FinalOME_Merge_DY20-12.csv
+sample_metadata_file: /home/poseidon/zalmanek/OME-EcoFOCI/EcoFOCI/data/1_SampleCollection/2020_DY20-12_CruiseData/2020_Dyson_CruiseData/FinalOME_Merge_DY20-12.csv
 sample_metadata_sample_name_column: Sample_Name # The name of the column in the metadata spreadsheet that lists the sample names
 sample_metadata_file_neg_control_col_name: 'Negative_control' # Name of the column in the metadata spreadsheet for the boolean Negative Control
 sample_metadata_cast_no_col_name: 'Cast_No.'
@@ -7,17 +7,17 @@ sample_metadata_bottle_no_col_name: 'btl_nb'
 sample_metadata_depth_col_name: 'Depth_m_notes' # only needed if using depth-1 to calculate minimum depth
 
 # Extraction sheet related
-extraction_metadata_file: '/Users/zalmanek/Development/brynn/faire_mapping/dy2012/faire_mapping_and_output/sample_metadata_files/SeanMcAllister_NOAA_finalConcentrations_June2021.xlsx - Info_ByPlate.csv'
-extraction_mapping_file: '/Users/zalmanek/Development/brynn/faire_mapping/dy2012/faire_mapping_and_output/sample_metadata_files/DY2012_Mapping - extractionMetadata.csv'
+extraction_metadata_file: '/home/poseidon/zalmanek/FAIRe-Mapping/dy2012/faire_mapping_and_output/sample_metadata_files/SeanMcAllister_NOAA_finalConcentrations_June2021.xlsx - Info_ByPlate.csv'
+extraction_mapping_file: '/home/poseidon/zalmanek/FAIRe-Mapping/dy2012/faire_mapping_and_output/sample_metadata_files/DY2012_Mapping - extractionMetadata.csv'
 extraction_cruise_key: .DY20 #the name in the SampleName column of the extractions sheet to filter for the specific cruise
 extraction_sample_name_col: Sample
 extraction_conc_col_name: ng/uL #to calculate average of extraction concentration
 extraction_date_col_name: Date
 
 # mapping file related
-sample_mapping_file: '/Users/zalmanek/Development/brynn/faire_mapping/dy2012/faire_mapping_and_output/sample_metadata_files/DY2012_Mapping - SampleMetadataMapping.csv'
+sample_mapping_file: '/home/poseidon/zalmanek/FAIRe-Mapping/dy2012/faire_mapping_and_output/sample_metadata_files/DY2012_Mapping - SampleMetadataMapping.csv'
 nc_samp_mat_process:  'Water samples were filtered through a 0.22 µm swinnex filter using a vacuum pump.' # mapping for negative controls for nc_samp_mapt_process
 
 # FAIRe template related
-faire_template_file: /Users/zalmanek/Development/FAIRe-ator/template_noaa-ome-ecofoci2023/noaa-ome-ecofoci2023.xlsx
-final_faire_template_path: /Users/zalmanek/Development/brynn/faire_mapping/dy2012/faire_mapping_and_output/sample_metadata_files/dy2012_faire_metadata.xlsx
+faire_template_file: /home/poseidon/zalmanek/FAIRe-Mapping/faire_template.xlsx
+final_faire_template_path: /home/poseidon/zalmanek/FAIRe-Mapping/dy2012/faire_mapping_and_output/sample_metadata_files/dy2012_faire_metadata.xlsx
