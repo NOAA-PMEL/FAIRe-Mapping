@@ -15,9 +15,12 @@ extraction_conc_col_name: ng/uL #to calculate average of extraction concentratio
 extraction_date_col_name: Date
 
 # mapping file related
-sample_mapping_file: '/home/poseidon/zalmanek/FAIRe-Mapping/dy2012/faire_mapping_and_output/sample_metadata_files/DY2012_Mapping - SampleMetadataMapping.csv'
+sample_mapping_file: 1PKYStbZN3ygUvjXi9SmaXGwmwt-eJCZyDCZ8xzlQq0E #'/home/poseidon/zalmanek/FAIRe-Mapping/dy2012/faire_mapping_and_output/sample_metadata_files/DY2012_Mapping - SampleMetadataMapping.csv'
 nc_samp_mat_process:  'Water samples were filtered through a 0.22 µm swinnex filter using a vacuum pump.' # mapping for negative controls for nc_samp_mapt_process
 
 # FAIRe template related
 faire_template_file: /home/poseidon/zalmanek/FAIRe-Mapping/faire_template.xlsx
 final_faire_template_path: /home/poseidon/zalmanek/FAIRe-Mapping/dy2012/faire_mapping_and_output/sample_metadata_files/dy2012_faire_metadata.xlsx
+
+# path to json creds file for google sheets
+json_creds: /home/poseidon/zalmanek/FAIRe-Mapping/credentials.json

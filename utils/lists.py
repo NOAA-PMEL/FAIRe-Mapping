@@ -55,7 +55,7 @@ nc_faire_field_cols = ['samp_name',
                     ]
 
 
-assay_names = ['AmaralZettler_phytoplankton_18S_V9',
+assay_names = {'AmaralZettler_phytoplankton_18S_V9',
                'Baker_marmam_dLoop',
                'Kelly_metazoan_mt16S',
                'LerayFolmer_metazoan_COI',
@@ -64,4 +64,4 @@ assay_names = ['AmaralZettler_phytoplankton_18S_V9',
                'Parada_universal_SSU16S_V4',
                'Stoeck_phytoplankton_18S_V4',
                'WhiteSterling_phytoplankton_ITS1',
-              ]
+}

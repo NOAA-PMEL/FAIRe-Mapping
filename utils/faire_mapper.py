@@ -5,6 +5,8 @@ import pandas as pd
 # import difflib
 import yaml
 from .custom_exception import ControlledVocabDoesNotExistError
+import gspread #library that makes it easy for us to interact with the sheet
+from google.oauth2.service_account import Credentials
 # import requests
 # from bs4 import BeautifulSoup
 
@@ -26,6 +28,7 @@ class OmeFaireMapper:
     def __init__(self, config_yaml: str):
 
         self.config_file = self.load_config(config_yaml)
+        self.google_sheet_json_cred = self.config_file['json_creds']
 
         self.mapping_file_FAIRe_column = 'faire_field'
         self.mapping_file_metadata_column = 'source_name_or_constant'
@@ -57,8 +60,7 @@ class OmeFaireMapper:
     
         with open(config_path, 'r') as f:
             return yaml.safe_load(f)
-        
-        
+            
     def load_faire_template_as_df(self, file_path: Path, sheet_name: str, header: int) -> pd.DataFrame:
         # Load FAIRe excel template as a data frame based on the specified template sheet name
         
@@ -68,6 +70,24 @@ class OmeFaireMapper:
          # Load csv files as a data frame
          
          return pd.read_csv(file_path, header=header)
+    
+    def load_google_sheet_as_df(self, sheet_id: str, sheet_name: str, header: int) -> pd.DataFrame:
+
+        scopes = ['https://www.googleapis.com/auth/spreadsheets.readonly']
+
+        creds = Credentials.from_service_account_file(self.google_sheet_json_cred, scopes=scopes)
+        client = gspread.authorize(creds)
+
+        sheet_id = '1PKYStbZN3ygUvjXi9SmaXGwmwt-eJCZyDCZ8xzlQq0E'
+        sheet = client.open_by_key(sheet_id)
+
+        worksheet = sheet.worksheet(sheet_name)
+        data = worksheet.get_all_records()
+        headers = data.pop(header)
+        
+        df = pd.DataFrame(data, columns=headers)
+        
+        return df
     
     def str_replace_dy2012_cruise(self, samp_name: pd.Series) -> str:
         # if sample is part of the DY2012 cruise, will replace any str of DY20 with DY2012

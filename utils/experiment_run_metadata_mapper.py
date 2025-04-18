@@ -16,9 +16,10 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         super().__init__(config_yaml)
 
         self.jv_run_sample_name_column = self.config_file['jv_run_sample_name_column']
+        self.jv_index_name_col = self.config_file['jv_index_name_col']
         self.short_cruise_name = self.config_file['short_cruise_name'] # The short cruise name (in the sample name)
         self.faire_sample_samp_name_col = 'samp_name' # The name of the column for sample name in the 
-        self.marker_assay_column = self.config_file['marker_assay_column'] # The column with the name of the marker/assay
+        self.jv_raw_data_path = self.config_file['jv_raw_data_path']
 
         self.mapping_dict = self.create_experiment_run_mapping_dict()
         self.jv_run_metadata_df = self.create_experiment_metadata_df()
@@ -65,3 +66,14 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             return matches[0]
         else:
             raise NoAcceptableAssayMatch(f'The marker/assay {marker_assay} does not match any of the {assay_names}. Try changing cutoff or normalizing.')
+
+    def jv_create_seq_id(self, metadata_row: pd.Series) -> str:
+        # create lib_id by concatenating index and sample name together
+
+        index_name = metadata_row[self.jv_index_name_col]
+        sample_name = metadata_row[self.jv_run_sample_name_column]
+
+        lib_id = sample_name + "_" + index_name
+
+        return lib_id
+        

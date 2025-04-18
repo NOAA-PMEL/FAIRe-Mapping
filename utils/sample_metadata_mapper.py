@@ -52,7 +52,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             # creates a mapping dictionary and saves as self.mapping_dict
 
             # First concat sample_mapping_df with extractions_mapping_df
-            sample_mapping_df = self.load_csv_as_df(file_path=Path(self.config_file['sample_mapping_file']))
+            # sample_mapping_df = self.load_csv_as_df(file_path=Path(self.config_file['sample_mapping_file']))
+            sample_mapping_df = self.load_google_sheet_as_df(sheet_id=self.config_file['json_creds'], sheet_name=self.sheet_name, header=0)
             extractions_mapping_df = self.load_csv_as_df(file_path=Path(self.config_file['extraction_mapping_file']), header=1)
             mapping_df = pd.concat([sample_mapping_df, extractions_mapping_df])
 
@@ -83,14 +84,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         
         return nc_mapping_dict
 
-    
-    # def str_replace_dy2012_cruise(self, samp_name: pd.Series) -> str:
-    #     # if sample is part of the DY2012 cruise, will replace any str of DY20 with DY2012
-    #     if '.DY20' in samp_name:
-    #        samp_name = samp_name.replace('.DY20', '.DY2012')
-    
-    #     return samp_name
-    
     def convert_mdy_date_to_iso8061(self, date_string: str) -> str:
         # converts from m/d/y to iso8061
 
@@ -141,7 +134,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         metadata_df = pd.merge(
             left = extract_df,
-            right =  self.load_csv_as_df(file_path=Path(self.config_file['sample_metadata_file'])),
+            # right = self.load_csv_as_df(file_path=Path(self.config_file['sample_metadata_file'])),
+            right = self.load_csv_as_df(file_path=Path(self.config_file['sample_metadata_file'])),
             left_on = self.extraction_sample_name_col,
             right_on = self.sample_metadata_sample_name_column,
             how='left'
@@ -269,6 +263,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         
     def format_geo_loc(self, metadata_row: str, geo_loc_metadata_col: str) -> dict:
+        # TODO: add if statement for Arctic OCean? SKQ21-12S?
      
         # For use cases that have the sea in the 
         if 'sea' in metadata_row[geo_loc_metadata_col].lower():
