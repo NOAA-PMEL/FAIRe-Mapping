@@ -3,7 +3,7 @@ sample_metadata_file: /home/poseidon/zalmanek/FAIRe-Mapping/skq21_12S/data/Final
 sample_metadata_sample_name_column: Sample_Name # The name of the column in the metadata spreadsheet that lists the sample names
 sample_metadata_file_neg_control_col_name: 'Negative_control' # Name of the column in the metadata spreadsheet for the boolean Negative Control
 sample_metadata_cast_no_col_name: 'Cast_No.'
-sample_metadata_bottle_no_col_name: 'btl_bottle'
+sample_metadata_bottle_no_col_name: 'Rosette_position'
 sample_metadata_depth_col_name: 'ctd_pressure' # only needed if using depth-1 to calculate minimum depth
 
 # Extraction sheet related
