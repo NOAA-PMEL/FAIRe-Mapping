@@ -30,6 +30,7 @@ class OmeFaireMapper:
         self.config_file = self.load_config(config_yaml)
         self.google_sheet_json_cred = self.config_file['json_creds']
 
+        self.google_sheet_mapping_file_id = self.config_file['google_sheet_mapping_file_id']
         self.mapping_file_FAIRe_column = 'faire_field'
         self.mapping_file_metadata_column = 'source_name_or_constant'
         self.mapping_file_mapped_type_column = 'mapping'
@@ -37,8 +38,7 @@ class OmeFaireMapper:
         self.drop_down_value_df = self.load_faire_template_as_df(file_path=self.config_file['faire_template_file'], sheet_name='Drop-down values', header=0)
         # self.faire_unit_column_dict = {term: term.replace('_unit', '') for term in self.mapping_df[self.mapping_file_FAIRe_column].values if '_unit' in term}
         self.final_faire_template_path = self.config_file['final_faire_template_path']
-        self.sheet_header = 2
-
+        self.faire_sheet_header = 2
         self.exact_mapping = 'exact'
         self.related_mapping = 'related'
         self.constant_mapping = 'constant'
@@ -71,21 +71,21 @@ class OmeFaireMapper:
          
          return pd.read_csv(file_path, header=header)
     
-    def load_google_sheet_as_df(self, sheet_id: str, sheet_name: str, header: int) -> pd.DataFrame:
+    def load_google_sheet_as_df(self, google_sheet_id: str, sheet_name: str, header: int) -> pd.DataFrame:
 
         scopes = ['https://www.googleapis.com/auth/spreadsheets.readonly']
 
         creds = Credentials.from_service_account_file(self.google_sheet_json_cred, scopes=scopes)
         client = gspread.authorize(creds)
 
-        sheet_id = '1PKYStbZN3ygUvjXi9SmaXGwmwt-eJCZyDCZ8xzlQq0E'
-        sheet = client.open_by_key(sheet_id)
-
+        sheet = client.open_by_key(google_sheet_id)
         worksheet = sheet.worksheet(sheet_name)
-        data = worksheet.get_all_records()
-        headers = data.pop(header)
         
-        df = pd.DataFrame(data, columns=headers)
+        # Get all values
+        values = worksheet.get_all_values()
+        headers = values[header]
+        data_rows = values[header+1:]
+        df = pd.DataFrame(data_rows, columns=headers)
         
         return df
     
@@ -95,6 +95,15 @@ class OmeFaireMapper:
         if '.DY20' in samp_name:
            samp_name = samp_name.replace('.DY20', '.DY2012')
     
+        return samp_name
+    
+
+    def str_replace_nc_samps_with_E(self, samp_name: pd.Series) -> str:
+        # If an E was put in front of an NC sample (this happends in some of the extractions e.g. the SKQ21 extractions), will remove the E
+        samp_name = str(samp_name)
+        if '.NC' in samp_name:
+            samp_name = samp_name.replace('E.', '')
+
         return samp_name
     
     def extract_controlled_vocab(self, faire_attribute: str) -> list:
@@ -148,53 +157,6 @@ class OmeFaireMapper:
         #     self.check_and_add_geo_loc(formatted_geo_loc=static_value, new_row=new_row, faire_col=faire_col)
         return static_value
 
-    # def normalize_unit_col_names(self, column_name: str) -> str:
-    #     # preprocessing to column names with units in them. 
-
-    #     # map u's to µ's
-    #     mu_map = {
-    #         'u': 'µ'
-    #     }
-    #     # split column name by underscores
-    #     if '_' in column_name:
-    #         column_split = column_name.split('_', -1)
-    #     # replace any u's with µ's and use in last word of split
-    #     normalized_unit_word = ''.join(mu_map.get(u, u) for u in column_split[-1]).lower()
-
-    #     return normalized_unit_word
-
-    # def add_units_to_unit_row_based_on_column_name(self, new_row: dict):
-    #     # Adds units to new FAIRe unit attributes if the metadata column name specifies the unit (should be "derived")
-    #     # Assumes that all unit related values have already been mapped over; probably should do last step of mapping
-    #     #TODO Add Error statements
-    #     cutoff = 0.6
-
-    #     for faire_col, metadata_col in self.mapping_dict['derived'].items():
-
-    #         if  'unit' in faire_col:
-            
-    #              # if the corressponding value column to the unit column is not NA, then proceed to get units
-    #              # checks the new row, because this assumes that the corresponding unit column values have already been mapped over
-    #             if pd.notna(new_row[self.faire_unit_column_dict.get(faire_col)]):
-
-                   
-    #                 allowed_units = self.extract_controlled_vocab(faire_col)
-
-    #                 # need to conver allowed_units to lowercase for better match. This will allow us to map back
-    #                 lower_to_original = {u.lower(): u for u in allowed_units}
-
-    #                 # allowed_units will be empty for user_defined unit fields. Can only use matching with existing FAIRe attributes
-    #                 if allowed_units:
-    #                     normalized_col_name = self.normalize_unit_col_names(metadata_col)
-    #                     matches = difflib.get_close_matches(normalized_col_name, [unit.lower() for unit in allowed_units], n=1, cutoff=cutoff)
-    #                     new_row[faire_col] = [lower_to_original[u] for u in matches][0]
-    #                 # if allowed_units is empty, probably means its a user defined unit attribute - will add through specified static column
-    #                 else:
-
-    #                     self.add_static_values(new_row=new_row, faire_col=faire_col)    
-                                            
-    #     return new_row
-    
 
     def add_final_df_to_FAIRe_excel(self, sheet_name: str, faire_template_df: pd.DataFrame):
 

@@ -16,7 +16,8 @@ from .lists import nc_faire_field_cols
 
 class FaireSampleMetadataMapper(OmeFaireMapper):
 
-    sheet_name = "sampleMetadata"
+    sample_mapping_sheet_name = "sampleMetadata"
+    extraction_mapping_sheet_name = "extractionMetadata"
     replicate_parent_sample_metadata_col = "replicate_parent"
     faire_lat_col_name = "decimalLatitude"
     faire_lon_col_name = "verbatimLongitude"
@@ -37,24 +38,25 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.extraction_conc_col_name = self.config_file['extraction_conc_col_name']
         self.extraction_date_col_name = self.config_file['extraction_date_col_name']
         self.nc_samp_mat_process = self.config_file['nc_samp_mat_process']
+        self.extraction_metadata_sheet_name = self.config_file['extraction_metadata_sheet_name']
+        self.extraction_metadata_google_sheet_id = self.config_file['extraction_metadata_google_sheet_id']
+
+    
 
         self.sample_metadata_df = self.split_out_nc_df()[0]
         self.nc_df = self.split_out_nc_df()[1]
-        self.sample_faire_template_df = self.load_faire_template_as_df(file_path=self.config_file['faire_template_file'], sheet_name=self.sheet_name, header=self.sheet_header).dropna()
+        self.sample_faire_template_df = self.load_faire_template_as_df(file_path=self.config_file['faire_template_file'], sheet_name=self.sample_mapping_sheet_name, header=self.faire_sheet_header).dropna()
         self.replicates_dict = self.create_biological_replicates_dict()
         self.insdc_locations = self.extract_insdc_geographic_locations()
         self.mapping_dict = self.create_sample_mapping_dict()
         self.nc_mapping_dict = self.create_nc_mapping_dict()
 
-        # self.metadata_df = self.calculate_avg_extraction_conc()
-
     def create_sample_mapping_dict(self) -> dict:
             # creates a mapping dictionary and saves as self.mapping_dict
 
             # First concat sample_mapping_df with extractions_mapping_df
-            # sample_mapping_df = self.load_csv_as_df(file_path=Path(self.config_file['sample_mapping_file']))
-            sample_mapping_df = self.load_google_sheet_as_df(sheet_id=self.config_file['json_creds'], sheet_name=self.sheet_name, header=0)
-            extractions_mapping_df = self.load_csv_as_df(file_path=Path(self.config_file['extraction_mapping_file']), header=1)
+            sample_mapping_df = self.load_google_sheet_as_df(google_sheet_id=self.google_sheet_mapping_file_id, sheet_name=self.sample_mapping_sheet_name, header=0)
+            extractions_mapping_df = self.load_google_sheet_as_df(google_sheet_id=self.google_sheet_mapping_file_id, sheet_name=self.extraction_mapping_sheet_name, header=1)
             mapping_df = pd.concat([sample_mapping_df, extractions_mapping_df])
 
             # Group by the mapping type
@@ -87,27 +89,54 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     def convert_mdy_date_to_iso8061(self, date_string: str) -> str:
         # converts from m/d/y to iso8061
 
-        # parse date string
-        date_obj = datetime.strptime(date_string, "%m/%d/%Y")
-        
-        # convert to iso 8601 format
-        iso_date = date_obj.strftime('%Y-%m-%d')
+        date_string = str(date_string).strip()
 
-        return iso_date
+        # Handle both single and double digit formats
+        try:
+            parts = date_string.split('/')
+            if len(parts) == 3:
+                month, day, year = parts
+
+                formatted_date = f"{int(month):02d}/{int(day):02}/{year}"
+
+                # parse date string
+                date_obj = datetime.strptime(formatted_date, "%m/%d/%Y")
+
+                # convert to iso 8601 format
+                return date_obj.strftime('%Y-%m-%d')
+
+            else:
+                raise ValueError(f"Date doesnt have three parts: {date_string}")
+        
+        except Exception as e:
+            print(f"Error converting {date_string}: {str(e)}")
+
+    
+    def extraction_avg_aggregation(self, extractions_df: pd.DataFrame):
+        # For extractions, calculates the mean if more than one concentration per sample name.
+
+        # Keep Below Range
+        if all(isinstance(conc, str) and ("below range" in conc.lower() or "br" == conc.lower()) for conc in extractions_df):
+            return "BR"
+        
+        # For everything else, convert to numeric and calculate mean
+        numeric_series = pd.to_numeric(extractions_df, errors='coerce') #Non numeric becomes NaN
+
+        return numeric_series.mean()
     
     def filter_cruise_avg_extraction_conc(self) -> pd.DataFrame:
         # If extractions have multiple measurements for extraction concentrations, calculates the avg.
         # and creates a column called pool_num to show the number of samples pooled
 
-        extractions_df = self.load_csv_as_df(file_path=Path(self.config_file['extraction_metadata_file']))
+        extractions_df = self.load_google_sheet_as_df(google_sheet_id=self.extraction_metadata_google_sheet_id, sheet_name=self.extraction_metadata_sheet_name, header=0)
 
         # Filter extractions df by cruise and calculate avg concentration
         extract_avg_df = extractions_df[extractions_df[self.extraction_sample_name_col].str.contains(self.extraction_cruise_key)].groupby(
             self.extraction_sample_name_col).agg({
-                self.extraction_conc_col_name: 'mean',
+                self.extraction_conc_col_name:self.extraction_avg_aggregation,
                 **{col: 'first' for col in extractions_df.columns if col != self.extraction_sample_name_col and col != self.extraction_conc_col_name}
             }).reset_index()
-        
+            
         # Add pool_num column that shows how many samples were averaged for each group
         sample_counts = extractions_df[extractions_df[self.extraction_sample_name_col].str.contains(self.extraction_cruise_key)].groupby(
             self.extraction_sample_name_col).size().reset_index(name='pool_num')
@@ -119,8 +148,9 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         extract_avg_df['extraction_method_additional'] = extract_avg_df['pool_num'].apply(
             lambda x: "One sample, but two filters were used because sample clogged. Two extractions were pooled together and average concentration calculated." if x>1 else "missing: not provided")
         
-        # update samp name for DY2012 cruises (from DY20)
+        # update samp name for DY2012 cruises (from DY20) and remove E numbers from any NC samples
         extract_avg_df[self.extraction_sample_name_col] = extract_avg_df[self.extraction_sample_name_col].apply(self.str_replace_dy2012_cruise)
+        extract_avg_df[self.extraction_sample_name_col] = extract_avg_df[self.extraction_sample_name_col].apply(self.str_replace_nc_samps_with_E)
 
         #update dates to iso8601 TODO: may need to adjust this for ones that are already in this format
         extract_avg_df[self.extraction_date_col_name] = extract_avg_df[self.extraction_date_col_name].apply(self.convert_mdy_date_to_iso8061)
@@ -134,7 +164,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         metadata_df = pd.merge(
             left = extract_df,
-            # right = self.load_csv_as_df(file_path=Path(self.config_file['sample_metadata_file'])),
             right = self.load_csv_as_df(file_path=Path(self.config_file['sample_metadata_file'])),
             left_on = self.extraction_sample_name_col,
             right_on = self.sample_metadata_sample_name_column,
