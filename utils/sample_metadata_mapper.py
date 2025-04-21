@@ -297,12 +297,17 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # For use cases that have the sea in the 
         if 'sea' in metadata_row[geo_loc_metadata_col].lower():
             geo_loc = 'USA: ' + metadata_row[geo_loc_metadata_col]
-
+        else: geo_loc = metadata_row[geo_loc_metadata_col]
+    
         # check that geo_loc_name (first string before first :) is an acceptes insdc word
-        geo_loc_name = geo_loc.split(':')[0]
+        if ':' in geo_loc:
+            geo_loc_name = geo_loc.split(':')[0]
+        # accounts for ones that did not have 'sea' in their name, thus no USA in front - e.g. Arctic Ocean
+        else:
+            geo_loc_name = metadata_row[geo_loc_metadata_col]
         if geo_loc_name not in self.insdc_locations:
             raise NoInsdcGeoLocError(f'There is no geographic location in INSDC that matches {metadata_row[geo_loc_metadata_col]}, check sea_name and try again')
-        
+    
         return geo_loc
     
     def calculate_env_local_scale(self, depth: float) -> str:

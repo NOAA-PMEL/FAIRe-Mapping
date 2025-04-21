@@ -1,6 +1,7 @@
 from pathlib import Path
 import openpyxl
 from openpyxl.utils import get_column_letter
+from datetime import datetime
 import pandas as pd
 # import difflib
 import yaml
@@ -156,7 +157,25 @@ class OmeFaireMapper:
         # elif faire_col == 'geo_loc_name':
         #     self.check_and_add_geo_loc(formatted_geo_loc=static_value, new_row=new_row, faire_col=faire_col)
         return static_value
-
+    
+    def map_using_two_cols_if_one_is_na_use_other(self, metadata_row: pd.Series, desired_col_name: str, use_if_na_col_name: str, transform_use_col_to_date_format=False):
+        # If a faire column maps to two columns because there is data missing from the desired column,
+        # and will need to use data from another column in that case, then return the other columns data
+        # only works if mapping is exact for columns
+        # Make date = true if use_if_na_col_name needs to be transformed from 
+        if pd.notna(metadata_row[desired_col_name]):
+            return metadata_row[desired_col_name]
+        else:
+            if transform_use_col_to_date_format == False:
+                return metadata_row[use_if_na_col_name]
+            else:
+                return self.convert_date_to_iso8601(date=metadata_row[use_if_na_col_name])
+        
+    def convert_date_to_iso8601(self, date: str) -> datetime:
+        # converts strings from 2021/11/08 00:00:00 to iso8601 format  to 2021-11-08T00:00:00Z
+        dt_obj = datetime.strptime(date, "%Y/%m/%d %H:%M:%S")
+        dt_obj = dt_obj.strftime("%Y-%m-%dT%H:%M:%SZ")
+        return dt_obj
 
     def add_final_df_to_FAIRe_excel(self, sheet_name: str, faire_template_df: pd.DataFrame):
 

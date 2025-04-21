@@ -43,6 +43,29 @@ def main() -> None:
                 axis=1
             )
 
+        elif faire_col == 'decimalLongitude' or faire_col == 'decimalLatitude':
+            coord_metadata_cols = metadata_col.split(' | ')
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.map_using_two_cols_if_one_is_na_use_other(metadata_row=row, desired_col_name=coord_metadata_cols[0], use_if_na_col_name=coord_metadata_cols[1]),
+                axis=1
+            )
+
+        elif faire_col == 'geo_loc_name':
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.format_geo_loc(metadata_row=row, geo_loc_metadata_col=metadata_col),
+                axis=1
+            )
+
+        elif faire_col == 'eventDate':
+            coord_metadata_cols = metadata_col.split(' | ')
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.map_using_two_cols_if_one_is_na_use_other(metadata_row=row, desired_col_name=coord_metadata_cols[0], use_if_na_col_name=coord_metadata_cols[1], transform_use_col_to_date_format=True),
+                axis=1
+            )
+
+    sample_df = pd.DataFrame(sample_metadata_results)
+    print(sample_df[['samp_name', 'eventDate']])
+
     # # Step 4: fill in NA with missing not collected or not applicable because they are samples
     # sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))
 
