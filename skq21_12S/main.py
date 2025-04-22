@@ -58,13 +58,47 @@ def main() -> None:
 
         elif faire_col == 'eventDate':
             coord_metadata_cols = metadata_col.split(' | ')
-            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+            sample_collection_date = sample_mapper.sample_metadata_df.apply(
                 lambda row: sample_mapper.map_using_two_cols_if_one_is_na_use_other(metadata_row=row, desired_col_name=coord_metadata_cols[0], use_if_na_col_name=coord_metadata_cols[1], transform_use_col_to_date_format=True),
                 axis=1
             )
+            # add the date to the faire metadata and save in metadata_df to use for the prepped_sample_dr
+            sample_metadata_results[faire_col] = sample_collection_date
+            sample_mapper.sample_metadata_df['eventDate'] = sample_collection_date
 
-    sample_df = pd.DataFrame(sample_metadata_results)
-    print(sample_df[['samp_name', 'eventDate']])
+        # A bit different than others because the start date = eventDate in faire, which was taken from two columns for SKQ21
+        elif faire_col == 'prepped_samp_store_dur':
+            date_col_names = metadata_col.split(' | ')
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.calculate_date_duration(metadata_row=row, start_date_col='eventDate', end_date_col=date_col_names[1]),
+                axis=1
+            )
+
+        elif faire_col == 'env_local_scale':
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(sample_mapper.calculate_env_local_scale)
+
+        # Depth uses two colums, save in one col called Depth in metadata_df
+        elif faire_col == 'maximumDepthInMeters':
+            depth_col_names = metadata_col.split(' | ')
+            max_depth = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.map_using_two_cols_if_one_is_na_use_other(metadata_row=row, desired_col_name=depth_col_names[0], use_if_na_col_name=depth_col_names[1]),
+                axis=1
+            )
+            sample_metadata_results[faire_col] = max_depth
+            sample_mapper.sample_metadata_df['Depth'] = max_depth
+            print(sample_mapper.sample_metadata_df.columns)
+        # first need to get the mix of the two depth cols, since some data is missing from the desired depth col
+        # then use that col to convert_min_depth_from_minus_one_meter
+        # elif faire_col == 'minimumDepthInMeters':
+        #     sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+        #         lambda row: sample_mapper.convert_min_depth_from_minus_one_meter(metadata_row=row, max_depth_col_name='Depth'),
+        #         axis=1
+        #     )
+
+    
+
+    # sample_df = pd.DataFrame(sample_metadata_results)
+    # print(sample_df[['samp_name', 'minimumDepthInMeters', 'maximumDepthInMeters']])
 
     # # Step 4: fill in NA with missing not collected or not applicable because they are samples
     # sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))

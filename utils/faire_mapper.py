@@ -158,7 +158,7 @@ class OmeFaireMapper:
         #     self.check_and_add_geo_loc(formatted_geo_loc=static_value, new_row=new_row, faire_col=faire_col)
         return static_value
     
-    def map_using_two_cols_if_one_is_na_use_other(self, metadata_row: pd.Series, desired_col_name: str, use_if_na_col_name: str, transform_use_col_to_date_format=False):
+    def map_using_two_cols_if_one_is_na_use_other(self, metadata_row: pd.Series, desired_col_name: str, use_if_na_col_name: str, transform_use_col_to_date_format=False) -> datetime:
         # If a faire column maps to two columns because there is data missing from the desired column,
         # and will need to use data from another column in that case, then return the other columns data
         # only works if mapping is exact for columns
