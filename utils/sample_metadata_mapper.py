@@ -71,7 +71,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             return mapping_dict
     
     def create_nc_mapping_dict(self) -> dict:
-        # TODO: maybe pull out  'prepped_samp_store_dur' mapping into config? If its going to be different across cruises for NC samples
         
         nc_mapping_dict = {}
         for mapping_type, col_dict in self.mapping_dict.items():
@@ -82,8 +81,9 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # change values that will be differenct for NC's
         nc_mapping_dict[self.constant_mapping]['habitat_natural_artificial_0_1'] = '1'
         nc_mapping_dict[self.constant_mapping]['samp_mat_process'] = self.nc_samp_mat_process
-        nc_mapping_dict[self.related_mapping]['prepped_samp_store_dur'] = 'verbatimEventDate | Date'
-        
+        nc_mapping_dict[self.related_mapping]['prepped_samp_store_dur'] = self.config_file['nc_prepped_samp_store_dur']
+        nc_mapping_dict[self.constant_mapping]['samp_store_dur'] = "not applicable: control sample"
+
         return nc_mapping_dict
 
     def convert_mdy_date_to_iso8061(self, date_string: str) -> str:
@@ -376,7 +376,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         return df
     
-    def fill_nc_metadata(self) -> pd.DataFrame:
+    def fill_nc_metadata(self, final_sample_df: pd.DataFrame) -> pd.DataFrame:
         # Fills the negative control data frame
         
         nc_results = {}
@@ -391,7 +391,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             nc_results[faire_col] = self.apply_static_mappings(faire_col=faire_col, static_value=static_value)
 
         # Step 3. Add related mappings
-         # Step 3: Add related mappings
+        # Step 3: Add related mappings
         for faire_col, metadata_col in self.nc_mapping_dict[self.related_mapping].items():
             # Add samp_category
             if faire_col == 'samp_category' and metadata_col == self.sample_metadata_sample_name_column:
@@ -408,9 +408,14 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             elif faire_col == 'neg_cont_type':
                 nc_results[faire_col] = self.nc_df[metadata_col].apply(self.add_neg_cont_type)
     
-        # First concat with sample_faire_template to get rest of columns, then
+        # First concat with sample_faire_template to get rest of columns, 
+        # # and add user_defined columnsthen
         # Fill na and empty values with not applicable: control sample
         nc_df = pd.concat([self.sample_faire_template_df, pd.DataFrame(nc_results)])
+
+        new_cols = [col for col in final_sample_df.columns if col not in nc_df.columns]
+        for col in new_cols: 
+            nc_df[col] = 'not applicable: control sample'
         nc_df = self.fill_empty_sample_values(df = nc_df, default_message='not applicable: control sample')
 
         return nc_df

@@ -76,12 +76,11 @@ def main() -> None:
     sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(all_results))
 
     # Step 5: fill NC data frame
-    nc_df = sample_mapper.fill_nc_metadata()
+    nc_df = sample_mapper.fill_nc_metadata(final_sample_df = sample_df)
 
     # Combine all mappings at once 
     faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df, nc_df])
    
-    # # sample_mapper.sample_faire_template_df = sample_mapper.sample_faire_template_df.assign(**all_results)
     sample_mapper.add_final_df_to_FAIRe_excel(sheet_name=sample_mapper.sample_mapping_sheet_name, faire_template_df=faire_sample_df)
   
 # ####################### JV Experiment Run3 ##########################################################

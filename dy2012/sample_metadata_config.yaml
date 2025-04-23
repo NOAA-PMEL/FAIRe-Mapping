@@ -17,6 +17,7 @@ extraction_metadata_sheet_name: 'Info_ByPlate'
 # mapping file related
 google_sheet_mapping_file_id: 1PKYStbZN3ygUvjXi9SmaXGwmwt-eJCZyDCZ8xzlQq0E #'/home/poseidon/zalmanek/FAIRe-Mapping/dy2012/faire_mapping_and_output/sample_metadata_files/DY2012_Mapping - SampleMetadataMapping.csv'
 nc_samp_mat_process:  'Water samples were filtered through a 0.22 µm swinnex filter using a vacuum pump.' # mapping for negative controls for nc_samp_mapt_process
+nc_prepped_samp_store_dur: 'verbatimEventDate | Date' # which columns the NC prepped samp_store_dur map to (will most likely be different than rest of samples because no ctd or bottle dates for NC)
 
 # FAIRe template related
 faire_template_file: /home/poseidon/zalmanek/FAIRe-Mapping/faire_template.xlsx

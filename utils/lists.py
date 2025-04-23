@@ -13,7 +13,6 @@ nc_faire_field_cols = ['samp_name',
                     'samp_size_unit',
                     'samp_store_temp',
                     'samp_store_sol',
-                    'samp_store_dur',
                     'samp_store_loc',
                     'samp_store_method_additional',
                     'samp_mat_process', # remove niskin info from it

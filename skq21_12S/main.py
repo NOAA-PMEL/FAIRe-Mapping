@@ -86,30 +86,23 @@ def main() -> None:
                 axis=1
             )
             sample_mapper.sample_metadata_df['FinalDepth'] = max_depth
-            sample_metadata_results[faire_col] = max_depth
+            sample_metadata_results['maximumDepthInMeters'] = max_depth
 
-            min_depth_faire_col = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('minimumDepthInMeters')
-            sample_metadata_results[min_depth_faire_col] = sample_mapper.sample_metadata_df.apply(
+            sample_metadata_results['minimumDepthInMeters'] = sample_mapper.sample_metadata_df.apply(
                 lambda row: sample_mapper.convert_min_depth_from_minus_one_meter(metadata_row=row, max_depth_col_name='FinalDepth'),
                 axis=1
             )
-
-    sample_df = pd.DataFrame(sample_metadata_results)
-    print(sample_df[['samp_name', 'eventDate', 'prepped_samp_store_dur']])
-
-
-
     # # Step 4: fill in NA with missing not collected or not applicable because they are samples
-    # sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))
+    sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))
+    
+    # Step 5: fill NC data frame
+    nc_df = sample_mapper.fill_nc_metadata(final_sample_df = sample_df)
 
-    # # Step 5: fill NC data frame
-    # nc_df = sample_mapper.fill_nc_metadata()
-
-    # # Combine all mappings at once 
-    # faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df, nc_df])
+    # Step 6: Combine all mappings at once 
+    faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df, nc_df])
    
-    # # # sample_mapper.sample_faire_template_df = sample_mapper.sample_faire_template_df.assign(**all_results)
-    # sample_mapper.add_final_df_to_FAIRe_excel(sheet_name=sample_mapper.sample_mapping_sheet_name, faire_template_df=faire_sample_df)
+    # step 7: save to excel file
+    sample_mapper.add_final_df_to_FAIRe_excel(sheet_name=sample_mapper.sample_mapping_sheet_name, faire_template_df=faire_sample_df)
 
 
 if __name__ == "__main__":
