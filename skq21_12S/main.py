@@ -2,13 +2,13 @@ import sys
 sys.path.append("..")
 # from faire_metadata_mapper.sample_metadata_mapper import FaireSampleMetadataMapper
 from utils.sample_metadata_mapper import FaireSampleMetadataMapper
+from utils.experiment_run_metadata_mapper import ExperimentRunMetadataMapper
 import pandas as pd
 
-
-def main() -> None:
-
-     # initiate mapper
-    sample_mapper = FaireSampleMetadataMapper(config_yaml='sample_metadata_config.yaml')
+def create_sample_metadata():
+    
+    # initiate mapper
+    sample_mapper = FaireSampleMetadataMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/skq21_12S/sample_metadata_config.yaml')
 
     sample_metadata_results = {}
 
@@ -104,6 +104,20 @@ def main() -> None:
     # step 7: save to excel file
     sample_mapper.add_final_df_to_FAIRe_excel(sheet_name=sample_mapper.sample_mapping_sheet_name, faire_template_df=faire_sample_df)
 
+    return faire_sample_df, sample_mapper
+
+def main() -> None:
+
+    # commented out while testing and building experimentRunMetadata
+    # sample_metadata = create_sample_metadata()
+    # sample_df = sample_metadata[0]
+    # sample_mapper = sample_metadata[1]
+
+    exp_mapper = ExperimentRunMetadataMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/skq21_12S/sample_metadata_config.yaml')
+    print(exp_mapper.mapping_dict)
+    
+
+    
 
 if __name__ == "__main__":
     main()

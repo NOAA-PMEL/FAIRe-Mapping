@@ -10,16 +10,18 @@ import difflib
 
 class ExperimentRunMetadataMapper(OmeFaireMapper):
 
-    sheet_name = "experimentRunMetadata"
+    experiment_run_mapping_sheet_name = "experimentRunMetadata"
+    jv_metadata_sample_sheet_name = "Sample Data Sheet Long"
 
-    def __init__(self, config_yaml: yaml, faire_sample_metadata_df: pd.DataFrame):
+    def __init__(self, config_yaml: yaml):
         super().__init__(config_yaml)
 
         self.jv_run_sample_name_column = self.config_file['jv_run_sample_name_column']
         self.jv_index_name_col = self.config_file['jv_index_name_col']
-        self.short_cruise_name = self.config_file['short_cruise_name'] # The short cruise name (in the sample name)
+        self.run_short_cruise_name = self.config_file['run_short_cruise_name'] # The short cruise name (in the sample name)
         self.faire_sample_samp_name_col = 'samp_name' # The name of the column for sample name in the 
         self.jv_raw_data_path = self.config_file['jv_raw_data_path']
+        self.jv_run_sample_metadata_file_id = self.config_file['jv_run_sample_metadata_file_id']
 
         self.mapping_dict = self.create_experiment_run_mapping_dict()
         self.jv_run_metadata_df = self.create_experiment_metadata_df()
@@ -27,7 +29,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
 
     def create_experiment_run_mapping_dict(self):
 
-        experiment_mapping_df = self.load_csv_as_df(file_path=Path(self.config_file['jv_experiment_mapping_file']), header=1)
+        experiment_mapping_df = self.load_google_sheet_as_df(google_sheet_id=self.google_sheet_mapping_file_id, sheet_name=self.experiment_run_mapping_sheet_name, header=1)
 
         # Group by the mapping type
         group_by_mapping = experiment_mapping_df.groupby(self.mapping_file_mapped_type_column)
@@ -42,13 +44,13 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
     
     def create_experiment_metadata_df(self) -> pd.DataFrame:
 
-        exp_df = self.load_csv_as_df(file_path=Path(self.config_file['jv_run_sample_metadata_file']))
+        exp_df = self.load_google_sheet_as_df(google_sheet_id=self.jv_run_sample_metadata_file_id, sheet_name=self.jv_metadata_sample_sheet_name, header=0)
 
         # if DY2012 cruise, replace strings DY20 with DY2012
         exp_df[self.jv_run_sample_name_column] = exp_df[self.jv_run_sample_name_column].apply(self.str_replace_dy2012_cruise)
 
         # only keep rows with cruise name in sample name and Postive and Blank
-        cruise_df = exp_df[(exp_df[self.jv_run_sample_name_column].str.contains(self.short_cruise_name) | (exp_df[self.jv_run_sample_name_column] == 'POSITIVE') | (exp_df[self.jv_run_sample_name_column].str.contains('Blank')))].reset_index(drop=True)
+        cruise_df = exp_df[(exp_df[self.jv_run_sample_name_column].str.contains(self.run_short_cruise_name) | (exp_df[self.jv_run_sample_name_column] == 'POSITIVE') | (exp_df[self.jv_run_sample_name_column].str.contains('Blank')))].reset_index(drop=True)
 
         return cruise_df
     
