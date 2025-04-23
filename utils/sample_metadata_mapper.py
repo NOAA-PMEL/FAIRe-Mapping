@@ -282,7 +282,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     
     def convert_min_depth_from_minus_one_meter(self, metadata_row: pd.Series, max_depth_col_name: str):
         # Subtracts 1 from the max depth to calculate min depth (niskin bottle is ~1 m)
-
         max_depth = float(metadata_row[max_depth_col_name])
         if max_depth > 0:
             min_depth = max_depth - 1
