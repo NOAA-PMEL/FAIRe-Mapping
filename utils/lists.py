@@ -11,9 +11,7 @@ nc_faire_field_cols = ['samp_name',
                     'samp_collect_method',
                     'samp_size',
                     'samp_size_unit',
-                    'samp_store_temp',
                     'samp_store_sol',
-                    'samp_store_loc',
                     'samp_store_method_additional',
                     'samp_mat_process', # remove niskin info from it
                     'filter_passive_active_0_1',
@@ -30,7 +28,6 @@ nc_faire_field_cols = ['samp_name',
                     'precip_force_prep',
                     'precip_time_prep',
                     'precip_temp_prep',
-                    'prepped_samp_store_temp',
                     'prepped_samp_store_sol',
                     'prepped_samp_store_dur',
                     'prep_method_additional',
@@ -54,13 +51,30 @@ nc_faire_field_cols = ['samp_name',
                     ]
 
 
-assay_names = {'AmaralZettler_phytoplankton_18S_V9',
-               'Baker_marmam_dLoop',
-               'Kelly_metazoan_mt16S',
-               'LerayFolmer_metazoan_COI',
-               'Machida_metazoan_18S_V8',
-               'MiFish_UniversalTeleost_12S',
-               'Parada_universal_SSU16S_V4',
-               'Stoeck_phytoplankton_18S_V4',
-               'WhiteSterling_phytoplankton_ITS1',
+# standardized assay names to use 
+# TODO: mappings will probably need to be added by run. These map from run2
+marker_to_assay_mapping = {
+    '18S V9': 'AmaralZettler_phytoplankton_18S_V9',
+    'dLoop': 'Baker_marmam_dLoop',
+    '16S Kelley': 'Kelly_metazoan_mt16S',
+    'Leray CO1': 'LerayFolmer_metazoan_COI',
+    '18S Machida': 'Machida_metazoan_18S_V8',
+    'MiFish 12S': 'MiFish_UniversalTeleost_12S',
+    '16S Furhman': 'Parada_universal_SSU16S_V4',
+    '18S V4': 'Stoeck_phytoplankton_18S_V4',
+    'ITS': 'WhiteSterling_phytoplankton_ITS1',
+}
+
+# Dictionary that maps the JV metabarcoding marker in the run sample metadata to the actual directory names on Poseidon
+# TODO: Not sure if these will be consistent across runs - may need to build for each run. This works for JV run2, add others from other runs if they don't work for other runs
+marker_mapping = {
+    'MiFish 12S': 'MiFish',
+    '18S V4': '18Sv4',
+    '18S V9': '18Sv9',
+    'Leray CO1': 'COI',
+    '16S Furhman': 'Parada16S',
+    '18S Machida': 'Machida18S',
+    'ITS': 'ITS1',
+    'dLoop': 'dLoop',
+    '16S Kelley': 'Kelly16S' 
 }

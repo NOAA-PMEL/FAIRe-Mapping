@@ -40,6 +40,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.nc_samp_mat_process = self.config_file['nc_samp_mat_process']
         self.extraction_metadata_sheet_name = self.config_file['extraction_metadata_sheet_name']
         self.extraction_metadata_google_sheet_id = self.config_file['extraction_metadata_google_sheet_id']
+        self.sample_metadata_vessel_name_col = self.config_file['sample_metadata_vessel_name_col']
 
     
 
@@ -83,6 +84,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         nc_mapping_dict[self.constant_mapping]['samp_mat_process'] = self.nc_samp_mat_process
         nc_mapping_dict[self.related_mapping]['prepped_samp_store_dur'] = self.config_file['nc_prepped_samp_store_dur']
         nc_mapping_dict[self.constant_mapping]['samp_store_dur'] = "not applicable: control sample"
+        nc_mapping_dict[self.constant_mapping]['samp_store_temp'] = 'ambient temperature'
+        nc_mapping_dict[self.exact_mapping]['samp_store_loc'] = self.sample_metadata_vessel_name_col
 
         return nc_mapping_dict
 

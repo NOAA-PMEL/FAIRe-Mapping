@@ -5,6 +5,8 @@ from utils.sample_metadata_mapper import FaireSampleMetadataMapper
 from utils.experiment_run_metadata_mapper import ExperimentRunMetadataMapper
 import pandas as pd
 
+#TODO: Add cv checking for related mappings?
+
 def create_sample_metadata():
     
     # initiate mapper
@@ -108,13 +110,46 @@ def create_sample_metadata():
 
 def main() -> None:
 
-    # commented out while testing and building experimentRunMetadata
+   #  commented out while testing and building experimentRunMetadata
     # sample_metadata = create_sample_metadata()
     # sample_df = sample_metadata[0]
     # sample_mapper = sample_metadata[1]
 
-    exp_mapper = ExperimentRunMetadataMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/skq21_12S/sample_metadata_config.yaml')
-    print(exp_mapper.mapping_dict)
+    # exp_mapper = ExperimentRunMetadataMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/skq21_12S/sample_metadata_config.yaml')
+
+    # exp_metadata_results = {}
+    
+    # # Step 1: Add exact mappings
+    # for faire_col, metadata_col in exp_mapper.mapping_dict[exp_mapper.exact_mapping].items():
+    #     exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df[metadata_col].apply(
+            lambda row: exp_mapper.apply_exact_mappings(metadata_row=row, faire_col=faire_col))
+    
+    # Step 2: Add constants
+    for faire_col, static_value in exp_mapper.mapping_dict[exp_mapper.constant_mapping].items():
+        exp_metadata_results[faire_col] = exp_mapper.apply_static_mappings(faire_col=faire_col, static_value=static_value)
+
+    # Step 3: Add related mappings
+    for faire_col, metadata_col in exp_mapper.mapping_dict[exp_mapper.related_mapping].items():
+        # Add assay_name
+        if faire_col == 'assay_name':
+            exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df[metadata_col].apply(exp_mapper.convert_assay_to_standard)
+
+        if faire_col == 'lib_id':
+            exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df.apply(
+                lambda row: exp_mapper.jv_create_seq_id(metadata_row=row),
+                axis=1
+            )
+        
+        if faire_col == 'filename':
+            grouped_by_marker = exp_mapper.groupby('Metabarcoding Marker')
+            for marker, group in grouped_by_marker:
+                marker_folder = 
+
+        
+    
+    exp_df = pd.DataFrame(exp_metadata_results)
+    print(exp_df)
+    
     
 
     

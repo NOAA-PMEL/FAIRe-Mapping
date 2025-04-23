@@ -5,6 +5,7 @@ sample_metadata_file_neg_control_col_name: 'Negative_control' # Name of the colu
 sample_metadata_cast_no_col_name: 'Cast_No.'
 sample_metadata_bottle_no_col_name: 'btl_nb'
 sample_metadata_depth_col_name: 'Depth_m_notes' # only needed if using depth-1 to calculate minimum depth
+sample_metadata_vessel_name_col: 'Cruise_ID_short'
 
 # Extraction sheet related
 extraction_metadata_google_sheet_id: 1qLZzrYk7s9b68g1oW32fer68bfLKSGzTsJDlJRYmOzg
