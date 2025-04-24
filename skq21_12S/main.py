@@ -3,6 +3,7 @@ sys.path.append("..")
 # from faire_metadata_mapper.sample_metadata_mapper import FaireSampleMetadataMapper
 from utils.sample_metadata_mapper import FaireSampleMetadataMapper
 from utils.experiment_run_metadata_mapper import ExperimentRunMetadataMapper
+from utils.lists import marker_to_raw_folder_mapping
 import pandas as pd
 
 #TODO: Add cv checking for related mappings?
@@ -110,18 +111,18 @@ def create_sample_metadata():
 
 def main() -> None:
 
-   #  commented out while testing and building experimentRunMetadata
+    # commented out while testing and building experimentRunMetadata
     # sample_metadata = create_sample_metadata()
     # sample_df = sample_metadata[0]
     # sample_mapper = sample_metadata[1]
 
-    # exp_mapper = ExperimentRunMetadataMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/skq21_12S/sample_metadata_config.yaml')
-
-    # exp_metadata_results = {}
+    exp_mapper = ExperimentRunMetadataMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/skq21_12S/sample_metadata_config.yaml')
+  
+    exp_metadata_results = {}
     
-    # # Step 1: Add exact mappings
-    # for faire_col, metadata_col in exp_mapper.mapping_dict[exp_mapper.exact_mapping].items():
-    #     exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df[metadata_col].apply(
+    # Step 1: Add exact mappings
+    for faire_col, metadata_col in exp_mapper.mapping_dict[exp_mapper.exact_mapping].items():
+        exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df[metadata_col].apply(
             lambda row: exp_mapper.apply_exact_mappings(metadata_row=row, faire_col=faire_col))
     
     # Step 2: Add constants
@@ -139,14 +140,27 @@ def main() -> None:
                 lambda row: exp_mapper.jv_create_seq_id(metadata_row=row),
                 axis=1
             )
-        
         if faire_col == 'filename':
-            grouped_by_marker = exp_mapper.groupby('Metabarcoding Marker')
-            for marker, group in grouped_by_marker:
-                marker_folder = 
-
-        
-    
+            exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df.apply(
+                lambda row: exp_mapper.get_raw_file_names(metadata_row=row, raw_file_dict=exp_mapper.raw_filename_dict),
+                axis=1
+            )
+        if faire_col =='filename2':
+            exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df.apply(
+                lambda row: exp_mapper.get_raw_file_names(metadata_row=row, raw_file_dict=exp_mapper.raw_filename2_dict),
+                axis=1
+            )
+        if faire_col == 'checksum_filename':
+            exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df.apply(
+                lambda row: exp_mapper.get_cheksums(metadata_row=row, raw_file_dict=exp_mapper.raw_filename_dict),
+                axis = 1
+            )
+        if faire_col == 'checksum_filename2':
+            exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df.apply(
+                lambda row: exp_mapper.get_cheksums(metadata_row=row, raw_file_dict=exp_mapper.raw_filename2_dict),
+                axis = 1
+            )
+                
     exp_df = pd.DataFrame(exp_metadata_results)
     print(exp_df)
     

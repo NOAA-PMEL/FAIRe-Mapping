@@ -57,7 +57,7 @@ marker_to_assay_mapping = {
     '18S V9': 'AmaralZettler_phytoplankton_18S_V9',
     'dLoop': 'Baker_marmam_dLoop',
     '16S Kelley': 'Kelly_metazoan_mt16S',
-    'Leray CO1': 'LerayFolmer_metazoan_COI',
+    'Leray CO1': 'LerayFolmer_metazoan_COI', #geller and folmer is same region
     '18S Machida': 'Machida_metazoan_18S_V8',
     'MiFish 12S': 'MiFish_UniversalTeleost_12S',
     '16S Furhman': 'Parada_universal_SSU16S_V4',
@@ -67,7 +67,7 @@ marker_to_assay_mapping = {
 
 # Dictionary that maps the JV metabarcoding marker in the run sample metadata to the actual directory names on Poseidon
 # TODO: Not sure if these will be consistent across runs - may need to build for each run. This works for JV run2, add others from other runs if they don't work for other runs
-marker_mapping = {
+marker_to_raw_folder_mapping = {
     'MiFish 12S': 'MiFish',
     '18S V4': '18Sv4',
     '18S V9': '18Sv9',
