@@ -34,12 +34,12 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         self.mapping_dict = self._create_experiment_run_mapping_dict()
         self.jv_run_metadata_df = self._create_experiment_metadata_df()
         
-        # populate raw_filename_dicts
+        # populate data dicts
         self.raw_filename_dict = {} # dictionary of forward raw data files with checksums
         self.raw_filename2_dict = {} # dictionary of reverse raw data files with checksums
         self.asv_data_dict =  {}
         # self._create_marker_sample_raw_data_file_dicts() #uncomment after other calculations
-        self._count_asv_tsv()
+        self._count_asv_tsv(revamp_blast=self.config_file['revamp_blast'])
         
 
     def _create_experiment_run_mapping_dict(self):
@@ -210,24 +210,25 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             sample_name = sample_name.replace('MP_', '')
             return f'{self.run_name}.{marker}.{sample_name}' 
     
-    def _count_asv_tsv(self) -> dict:
+    def _count_asv_tsv(self, revamp_blast: bool = True) -> dict:
         # Create  a nested dictionary of marker, sample names and counts
         # {marker: {E56. : {output_read_count: 5, output_otu_num: 8}}}
+        # if revamp_blast is True will run _count_otu_tax_assigned_using_REVAMP_blast_based_tax to add the otu_num_tax_assigned
 
         # Process each marker type
         for marker_folder_name in marker_to_folder_mapping.values():
             print(f"Processing marker: {marker_folder_name}")
 
             # Build path to the specific marker's dada2 directory
-            marker_path = os.path.join(self.jv_asv_count_tsv_parent_path, marker_folder_name, 'dada2')
-            asv_tsv_file = os.path.join(marker_path, "ASVs_counts.tsv")
+            marker_asv_counts_path = os.path.join(self.jv_asv_count_tsv_parent_path, marker_folder_name, 'dada2')
+            asv_tsv_file = os.path.join(marker_asv_counts_path, "ASVs_counts.tsv")
 
             if not os.path.exists(asv_tsv_file):
                 print(f"File not found: {asv_tsv_file}")
                 continue
 
             # Initialize marker in the nested dictionary
-            self.asv_data_dict[marker_folder_name] ={}
+            self.asv_data_dict[marker_folder_name] = {}
 
             try:
                 # Read the TSV file with pandas
@@ -256,12 +257,40 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                     # store output_read_count in the nested dictionary
                     self.asv_data_dict[marker_folder_name][updated_sample_name] = {'output_read_count': output_read_count.item(), 
                                                                                    'output_otu_num': non_zero_output_asv_num.item()}
-       
             except Exception as e:
                 print(f" Error proecssing file {asv_tsv_file}: {str(e)}")
 
+        # Since getting the otu_num_tax_assigned depends on which version of the taxonomy we are using for the submission
+        # if revamp_blast == True then use the ASVs_counts_mergedOnTaxonomy.tsv file to get this info.
+        if revamp_blast == True:
+            self._count_otu_tax_assigned_using_REVAMP_blast_based_tax()
+
+    def _count_otu_tax_assigned_using_REVAMP_blast_based_tax(self):
+        
+        for marker_folder_name in marker_to_folder_mapping.values():
+            marker_path = os.path.join(self.jv_asv_count_tsv_parent_path, marker_folder_name, 'ASV2Taxonomy')
+            asv_tax_file = os.path.join(marker_path, "ASVs_counts_mergedOnTaxonomy.tsv")
+
+             # Read the TSV file with pandas
+            asv_tax_df = pd.read_csv(asv_tax_file, sep='\t')
+            cruise_specific_cols = [col for col in asv_tax_df.columns if self.run_short_cruise_name in col or 'POSITIVE' in col]
+
+            # set the asv column as the index
+            asv_tax_df = asv_tax_df.set_index('x')
+
+            for sample_name in cruise_specific_cols:
+
+                # get the output_otu_num which is the total number asvs for each sample (non zero count number)
+                non_zero_otu_num_tax_assinged = (asv_tax_df[sample_name] > 0).sum()
+
+                # update sample names to match rest of data
+                updated_sample_name = self._clean_asv_samp_names(sample_name=sample_name, marker=marker_folder_name)
+
+                self.asv_data_dict[marker_folder_name][updated_sample_name]["otu_num_tax_assigned"] = non_zero_otu_num_tax_assinged.item()
+
+
             
-    
+
     def process_paired_end_fastq_files(self, metadata_row: pd.Series) -> int:
         # Process R1 FASTQ file using exact file path
 
