@@ -3,7 +3,7 @@ sys.path.append("..")
 # from faire_metadata_mapper.sample_metadata_mapper import FaireSampleMetadataMapper
 from utils.sample_metadata_mapper import FaireSampleMetadataMapper
 from utils.experiment_run_metadata_mapper import ExperimentRunMetadataMapper
-from utils.lists import marker_to_raw_folder_mapping
+from utils.lists import marker_to_folder_mapping
 import pandas as pd
 
 #TODO: Add cv checking for related mappings?
@@ -116,59 +116,61 @@ def main() -> None:
     # sample_df = sample_metadata[0]
     # sample_mapper = sample_metadata[1]
 
-    exp_mapper = ExperimentRunMetadataMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/skq21_12S/sample_metadata_config.yaml')
+    exp_mapper = ExperimentRunMetadataMapper(config_yaml='config.yaml')
+    dict = exp_mapper.count_asv_tsv()
+    print(dict)
   
-    exp_metadata_results = {}
+    # exp_metadata_results = {}
     
-    # Step 1: Add exact mappings
-    for faire_col, metadata_col in exp_mapper.mapping_dict[exp_mapper.exact_mapping].items():
-        exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df[metadata_col].apply(
-            lambda row: exp_mapper.apply_exact_mappings(metadata_row=row, faire_col=faire_col))
+    # # Step 1: Add exact mappings
+    # for faire_col, metadata_col in exp_mapper.mapping_dict[exp_mapper.exact_mapping].items():
+    #     exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df[metadata_col].apply(
+    #         lambda row: exp_mapper.apply_exact_mappings(metadata_row=row, faire_col=faire_col))
     
-    # Step 2: Add constants
-    for faire_col, static_value in exp_mapper.mapping_dict[exp_mapper.constant_mapping].items():
-        exp_metadata_results[faire_col] = exp_mapper.apply_static_mappings(faire_col=faire_col, static_value=static_value)
+    # # Step 2: Add constants
+    # for faire_col, static_value in exp_mapper.mapping_dict[exp_mapper.constant_mapping].items():
+    #     exp_metadata_results[faire_col] = exp_mapper.apply_static_mappings(faire_col=faire_col, static_value=static_value)
 
-    # Step 3: Add related mappings
-    for faire_col, metadata_col in exp_mapper.mapping_dict[exp_mapper.related_mapping].items():
-        # Add assay_name
-        if faire_col == 'assay_name':
-            exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df[metadata_col].apply(exp_mapper.convert_assay_to_standard)
+    # # Step 3: Add related mappings
+    # for faire_col, metadata_col in exp_mapper.mapping_dict[exp_mapper.related_mapping].items():
+    #     # Add assay_name
+    #     if faire_col == 'assay_name':
+    #         exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df[metadata_col].apply(exp_mapper.convert_assay_to_standard)
 
-        elif faire_col == 'lib_id':
-            exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df.apply(
-                lambda row: exp_mapper.jv_create_seq_id(metadata_row=row),
-                axis=1
-            )
-        elif faire_col == 'filename':
-            exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df.apply(
-                lambda row: exp_mapper.get_raw_file_names(metadata_row=row, raw_file_dict=exp_mapper.raw_filename_dict),
-                axis=1
-            )
-        elif faire_col =='filename2':
-            exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df.apply(
-                lambda row: exp_mapper.get_raw_file_names(metadata_row=row, raw_file_dict=exp_mapper.raw_filename2_dict),
-                axis=1
-            )
-        elif faire_col == 'checksum_filename':
-            exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df.apply(
-                lambda row: exp_mapper.get_cheksums(metadata_row=row, raw_file_dict=exp_mapper.raw_filename_dict),
-                axis = 1
-            )
-        elif faire_col == 'checksum_filename2':
-            exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df.apply(
-                lambda row: exp_mapper.get_cheksums(metadata_row=row, raw_file_dict=exp_mapper.raw_filename2_dict),
-                axis = 1
-            )
-        elif faire_col == 'input_read_count':
-            exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df.apply(
-                lambda row: exp_mapper.process_paired_end_fastq_files(metadata_row=row),
-                axis=1
-            )
+    #     elif faire_col == 'lib_id':
+    #         exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df.apply(
+    #             lambda row: exp_mapper.jv_create_seq_id(metadata_row=row),
+    #             axis=1
+    #         )
+    #     elif faire_col == 'filename':
+    #         exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df.apply(
+    #             lambda row: exp_mapper.get_raw_file_names(metadata_row=row, raw_file_dict=exp_mapper.raw_filename_dict),
+    #             axis=1
+    #         )
+    #     elif faire_col =='filename2':
+    #         exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df.apply(
+    #             lambda row: exp_mapper.get_raw_file_names(metadata_row=row, raw_file_dict=exp_mapper.raw_filename2_dict),
+    #             axis=1
+    #         )
+    #     elif faire_col == 'checksum_filename':
+    #         exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df.apply(
+    #             lambda row: exp_mapper.get_cheksums(metadata_row=row, raw_file_dict=exp_mapper.raw_filename_dict),
+    #             axis = 1
+    #         )
+    #     elif faire_col == 'checksum_filename2':
+    #         exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df.apply(
+    #             lambda row: exp_mapper.get_cheksums(metadata_row=row, raw_file_dict=exp_mapper.raw_filename2_dict),
+    #             axis = 1
+    #         )
+    #     elif faire_col == 'input_read_count':
+    #         exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df.apply(
+    #             lambda row: exp_mapper.process_paired_end_fastq_files(metadata_row=row),
+    #             axis=1
+    #         )
 
                 
-    exp_df = pd.DataFrame(exp_metadata_results)
-    print(exp_df)
+    # exp_df = pd.DataFrame(exp_metadata_results)
+    # print(exp_df)
     
     
 

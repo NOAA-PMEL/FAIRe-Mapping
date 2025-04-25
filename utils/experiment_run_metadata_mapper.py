@@ -1,6 +1,6 @@
 from .faire_mapper import OmeFaireMapper
 from pathlib import Path
-from .lists import marker_to_assay_mapping , marker_to_raw_folder_mapping
+from .lists import marker_to_assay_mapping , marker_to_folder_mapping
 from .custom_exception import NoAcceptableAssayMatch
 import yaml
 import pandas as pd
@@ -28,6 +28,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         self.jv_run_sample_metadata_file_id = self.config_file['jv_run_sample_metadata_file_id']
         self.jv_run_name = self.config_file['jv_run_name']
         self.run_short_cruise_name = self.config_file['run_short_cruise_name']
+        self.jv_asv_count_tsv_parent_path = self.config_file['jv_asv_count_tsv_parent_path']
 
         self.mapping_dict = self._create_experiment_run_mapping_dict()
         self.jv_run_metadata_df = self._create_experiment_metadata_df()
@@ -35,7 +36,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         # populate raw_filename_dicts
         self.raw_filename_dict = {} # dictionary of forward raw data files with checksums
         self.raw_filename2_dict = {} # dictionary of reverse raw data files with checksums
-        self._create_marker_sample_raw_data_file_dicts()
+        # self._create_marker_sample_raw_data_file_dicts() #uncomment after other calculations
         
 
     def _create_experiment_run_mapping_dict(self):
@@ -114,7 +115,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         grouped = self.jv_run_metadata_df.groupby(self.jv_metadata_marker_col_name)
 
         for marker, group in grouped:
-            folder_name = marker_to_raw_folder_mapping.get(marker, marker)
+            folder_name = marker_to_folder_mapping.get(marker, marker)
             marker_dir = os.path.join(self.jv_raw_data_path, folder_name)
 
             # TODO: consider adding raise Error here?
@@ -173,57 +174,8 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         checksum = raw_file_dict.get(marker_name).get(sample_name).get('checksum')
 
         return checksum
-    
 
-    # def count_fastq_reads_robust(self, fastq_file: str) -> int:
-    #     # Count the number of records in a FASTq file by looking for ehader lines that start with @ followed by 
-    #     # some character and thena  colon. Also verifies the count is 1/4 of total lines
-
-    #     if not os.path.exists(fastq_file):
-    #         print(f"Error: File {fastq_file} does not exist.")
-
-    #     # Determine if the file is gzipped
-    #     is_gzipped = fastq_file.endswith('.gz')
-
-    #     # Command is count total lines
-    #     if is_gzipped:
-    #         total_lines_cmd = f"zcat {fastq_file} | wc -l"
-    #     else:
-    #         total_lines_cmd = f"wc -l < {fastq_file}"
-
-    #     # Command to count header lines with patter @*:
-    #     if is_gzipped:
-    #         header_count_cmd = f"zcat {fastq_file} | grep -c '^@[^:]*:'"
-    #     else:
-    #         header_count_cmd = f"grep -c '^@[^:]*:' {fastq_file}"
-
-    #     try:
-    #         # Get total line count
-    #         total_lines_result = subprocess.run(total_lines_cmd, shell=True, capture_output=True, text=True)
-    #         total_lines = int(total_lines_result.stdout.strip())
-
-    #         # Get header count
-    #         header_count_result = subprocess.run(header_count_cmd, shell=True, capture_output=True, text=True)
-    #         header_count = int(header_count_result.stdout.strip())
-
-    #         # Verify that header count is 1/4 of total line count
-    #         expected_header_count = total_lines / 4
-            
-    #         # If counts don't match (with samll tolerance for possible file oddities)
-    #         if abs(header_count - expected_header_count) > 0.01 * expected_header_count:
-    #             print(f"WARNING: Detected {header_count} headers but files has {total_lines} lines.")
-    #             print(f"Expected {expected_header_count} header for a standard FASTQ file.")
-    #             print(f"This may indicate a non-standard FASTQ format or wrapped sequences")
-    #             raise ValueError("Header count does not match expected 1/4 of total lines")
-            
-    #         return header_count
-        
-    #     except ValueError as ve:
-    #         print(f"Validation error: {ve}")
-    #     except Exception as e:
-    #         print(f"Error executing command: {e}")
-
-    def count_fastq_files_bioawk(self, fastq_file):
+    def _count_fastq_files_bioawk(self, fastq_file):
         # Use Bioawk to count FASTQ records accurately regardless of line wrapping
         # Returns the count of records in the FASTQ file
 
@@ -258,7 +210,50 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
 
         return input_read_count
 
+    def count_asv_tsv(self) -> dict:
+        # Create  a nested dictionary of marker, sample names and counts
+        # {marker: {E56. : {output_read_count: 5, output_otu_num: 8}}}
 
+        # dictionary to store aggregated counts with nested structure
+        asv_data = {}
+
+        # Process each marker type
+        for marker_folder_name in marker_to_folder_mapping.values():
+            print(f"Processing marker: {marker_folder_name}")
+
+            # Build path to the specific marker's dada2 directory
+            marker_path = os.path.join(self.jv_asv_count_tsv_parent_path, marker_folder_name, 'dada2')
+            asv_tsv_file = os.path.join(marker_path, "ASVs_counts.tsv")
+
+            if not os.path.exists(asv_tsv_file):
+                print(f"File not found: {asv_tsv_file}")
+                continue
+
+            # Initialize marker in the nested dictionary
+            asv_data[marker_folder_name] ={}
+
+            try:
+                # Read the TSV file with pandas
+                asv_df = pd.read_csv(asv_tsv_file, sep='\t')
+                cruise_specific_cols = [col for col in asv_df.columns if self.run_short_cruise_name in col or 'POSITIVE' in col]
+
+                if not cruise_specific_cols:
+                    print(f"No {self.run_short_cruise_name} samps found in {asv_tsv_file}")
+                    continue
+
+                # calculate sum for each filtered column
+                for sample_name in cruise_specific_cols:
+                    # sum the column values
+                    output_read_count = asv_df[sample_name].sum()
+                    
+                    # store in the nested dictionary
+                    asv_data[marker_folder_name][sample_name] = {'output_read_count': output_read_count.item()}
+                    
+            except Exception as e:
+                print(f" Error proecssing file {asv_tsv_file}: {str(e)}")
+            
+            
+        return asv_data
     
 
         
