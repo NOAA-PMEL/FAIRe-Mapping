@@ -266,6 +266,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             self._count_otu_tax_assigned_using_REVAMP_blast_based_tax()
 
     def _count_otu_tax_assigned_using_REVAMP_blast_based_tax(self):
+        #TODO: fix for dLoop and may need to pull out paths based on Runs :/
         
         for marker_folder_name in marker_to_folder_mapping.values():
             marker_path = os.path.join(self.jv_asv_count_tsv_parent_path, marker_folder_name, 'ASV2Taxonomy')
