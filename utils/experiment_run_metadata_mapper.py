@@ -29,6 +29,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         self.jv_run_name = self.config_file['jv_run_name']
         self.run_short_cruise_name = self.config_file['run_short_cruise_name']
         self.jv_asv_count_tsv_parent_path = self.config_file['jv_asv_count_tsv_parent_path']
+        self.run_name = self.config_file['run_name']
 
         self.mapping_dict = self._create_experiment_run_mapping_dict()
         self.jv_run_metadata_df = self._create_experiment_metadata_df()
@@ -36,7 +37,9 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         # populate raw_filename_dicts
         self.raw_filename_dict = {} # dictionary of forward raw data files with checksums
         self.raw_filename2_dict = {} # dictionary of reverse raw data files with checksums
+        self.asv_data_dict =  {}
         # self._create_marker_sample_raw_data_file_dicts() #uncomment after other calculations
+        self._count_asv_tsv()
         
 
     def _create_experiment_run_mapping_dict(self):
@@ -197,25 +200,19 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             return count
         
         except Exception as e:
-            print(f"ERror executing command: {e}")
-        
+            print(f"Error executing command: {e}")
     
-    def process_paired_end_fastq_files(self, metadata_row: pd.Series):
-        # Process R1 FASTQ file using exact file path
-
-        # Get the filepath to the 
-        r1_file_path = self.raw_filename_dict.get(metadata_row[self.jv_metadata_marker_col_name]).get(metadata_row[self.jv_run_sample_name_column]).get('filepath')
-
-        input_read_count = self.count_fastq_files_bioawk(r1_file_path)
-
-        return input_read_count
-
-    def count_asv_tsv(self) -> dict:
+    def _clean_asv_samp_names(self, sample_name: str, marker: str) -> str:
+        # Cleans sample names in asv data to match other data (e.g. removed MP_ and replaces other _ with .)
+        if 'positive' not in sample_name.lower():
+            return sample_name.replace('MP_', '').replace('_', '.')
+        else:
+            sample_name = sample_name.replace('MP_', '')
+            return f'{self.run_name}.{marker}.{sample_name}' 
+    
+    def _count_asv_tsv(self) -> dict:
         # Create  a nested dictionary of marker, sample names and counts
         # {marker: {E56. : {output_read_count: 5, output_otu_num: 8}}}
-
-        # dictionary to store aggregated counts with nested structure
-        asv_data = {}
 
         # Process each marker type
         for marker_folder_name in marker_to_folder_mapping.values():
@@ -230,32 +227,56 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                 continue
 
             # Initialize marker in the nested dictionary
-            asv_data[marker_folder_name] ={}
+            self.asv_data_dict[marker_folder_name] ={}
 
             try:
                 # Read the TSV file with pandas
                 asv_df = pd.read_csv(asv_tsv_file, sep='\t')
                 cruise_specific_cols = [col for col in asv_df.columns if self.run_short_cruise_name in col or 'POSITIVE' in col]
 
+                # set the asv column as the index
+                asv_df = asv_df.set_index('x')
+
                 if not cruise_specific_cols:
                     print(f"No {self.run_short_cruise_name} samps found in {asv_tsv_file}")
                     continue
 
-                # calculate sum for each filtered column
+                # calculate sum for each filtered column and the otu num
                 for sample_name in cruise_specific_cols:
-                    # sum the column values
+                    
+                    # sum the column values for output read count
                     output_read_count = asv_df[sample_name].sum()
+
+                    # get the output_otu_num which is the total number asvs for each sample (non zero count number)
+                    non_zero_output_asv_num = (asv_df[sample_name] > 0).sum()
+
+                    # update sample names to match rest of data
+                    updated_sample_name = self._clean_asv_samp_names(sample_name=sample_name, marker=marker_folder_name)
                     
-                    # store in the nested dictionary
-                    asv_data[marker_folder_name][sample_name] = {'output_read_count': output_read_count.item()}
-                    
+                    # store output_read_count in the nested dictionary
+                    self.asv_data_dict[marker_folder_name][updated_sample_name] = {'output_read_count': output_read_count.item(), 
+                                                                                   'output_otu_num': non_zero_output_asv_num.item()}
+       
             except Exception as e:
                 print(f" Error proecssing file {asv_tsv_file}: {str(e)}")
-            
-            
-        return asv_data
-    
 
+            
+    
+    def process_paired_end_fastq_files(self, metadata_row: pd.Series) -> int:
+        # Process R1 FASTQ file using exact file path
+
+        # Get the filepath to the 
+        r1_file_path = self.raw_filename_dict.get(metadata_row[self.jv_metadata_marker_col_name]).get(metadata_row[self.jv_run_sample_name_column]).get('filepath')
+
+        input_read_count = self.count_fastq_files_bioawk(r1_file_path)
+
+        return input_read_count
+    
+    # def process_asv_count_tsv(self, metadata_row: pd.Series) -> int:
+
+        
+
+    
         
 
         

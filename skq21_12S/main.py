@@ -117,9 +117,8 @@ def main() -> None:
     # sample_mapper = sample_metadata[1]
 
     exp_mapper = ExperimentRunMetadataMapper(config_yaml='config.yaml')
-    dict = exp_mapper.count_asv_tsv()
-    print(dict)
-  
+    print(exp_mapper.asv_data_dict)
+   
     # exp_metadata_results = {}
     
     # # Step 1: Add exact mappings
@@ -167,6 +166,8 @@ def main() -> None:
     #             lambda row: exp_mapper.process_paired_end_fastq_files(metadata_row=row),
     #             axis=1
     #         )
+    #     elif faire_col == 'output_read_count':
+    #         exp_metadata_results[faire_col]
 
                 
     # exp_df = pd.DataFrame(exp_metadata_results)
