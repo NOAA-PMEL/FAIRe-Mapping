@@ -5,8 +5,10 @@ from .custom_exception import NoAcceptableAssayMatch
 import yaml
 import pandas as pd
 import os
+import subprocess
 import re
 import hashlib
+import gzip
 
 # TODO: add run3_marrker_POSITIVE to positive controls sample names (and blanks?) - double check with Sean and Zack about doing this
 
@@ -96,7 +98,8 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                 md5_checksum = self._get_md5_checksum(filepath)
                 target_dict[marker][sample_name] = {
                     "filename": filename,
-                    "checksum": md5_checksum
+                    "checksum": md5_checksum,
+                    "filepath": filepath
                 }
 
         else:
@@ -105,7 +108,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
     
     def _create_marker_sample_raw_data_file_dicts(self):
         # Finds all matching data files by marker for each sample returns two nested dict one for forward raw data files, and one for reverse raw data files
-        # {marker1: {sample1: {filename: file1.gz, checksum: 56577}}
+        # {marker1: {sample1: {filename: file1.gz, checksum: 56577, filepath: eff/dsdf.fastq.gz}}
 
         # group run metadata by marker
         grouped = self.jv_run_metadata_df.groupby(self.jv_metadata_marker_col_name)
@@ -170,6 +173,93 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         checksum = raw_file_dict.get(marker_name).get(sample_name).get('checksum')
 
         return checksum
+    
+
+    # def count_fastq_reads_robust(self, fastq_file: str) -> int:
+    #     # Count the number of records in a FASTq file by looking for ehader lines that start with @ followed by 
+    #     # some character and thena  colon. Also verifies the count is 1/4 of total lines
+
+    #     if not os.path.exists(fastq_file):
+    #         print(f"Error: File {fastq_file} does not exist.")
+
+    #     # Determine if the file is gzipped
+    #     is_gzipped = fastq_file.endswith('.gz')
+
+    #     # Command is count total lines
+    #     if is_gzipped:
+    #         total_lines_cmd = f"zcat {fastq_file} | wc -l"
+    #     else:
+    #         total_lines_cmd = f"wc -l < {fastq_file}"
+
+    #     # Command to count header lines with patter @*:
+    #     if is_gzipped:
+    #         header_count_cmd = f"zcat {fastq_file} | grep -c '^@[^:]*:'"
+    #     else:
+    #         header_count_cmd = f"grep -c '^@[^:]*:' {fastq_file}"
+
+    #     try:
+    #         # Get total line count
+    #         total_lines_result = subprocess.run(total_lines_cmd, shell=True, capture_output=True, text=True)
+    #         total_lines = int(total_lines_result.stdout.strip())
+
+    #         # Get header count
+    #         header_count_result = subprocess.run(header_count_cmd, shell=True, capture_output=True, text=True)
+    #         header_count = int(header_count_result.stdout.strip())
+
+    #         # Verify that header count is 1/4 of total line count
+    #         expected_header_count = total_lines / 4
+            
+    #         # If counts don't match (with samll tolerance for possible file oddities)
+    #         if abs(header_count - expected_header_count) > 0.01 * expected_header_count:
+    #             print(f"WARNING: Detected {header_count} headers but files has {total_lines} lines.")
+    #             print(f"Expected {expected_header_count} header for a standard FASTQ file.")
+    #             print(f"This may indicate a non-standard FASTQ format or wrapped sequences")
+    #             raise ValueError("Header count does not match expected 1/4 of total lines")
+            
+    #         return header_count
+        
+    #     except ValueError as ve:
+    #         print(f"Validation error: {ve}")
+    #     except Exception as e:
+    #         print(f"Error executing command: {e}")
+
+    def count_fastq_files_bioawk(self, fastq_file):
+        # Use Bioawk to count FASTQ records accurately regardless of line wrapping
+        # Returns the count of records in the FASTQ file
+
+        if not os.path.exists(fastq_file):
+            print(f"Error: File {fastq_file} does not exist.")
+
+        cmd = f"bioawk -t -c fastx 'END {{print NR}}' {fastq_file}"
+
+        try:
+            # Run the command and capture the output
+            result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+
+            # check if command executed successfully
+            if result.returncode != 0:
+                print(f"Error executing bioawk {result.stderr}")
+            
+            # parse the output to get the count
+            count = int(result.stdout.strip())
+            return count
+        
+        except Exception as e:
+            print(f"ERror executing command: {e}")
+        
+    
+    def process_paired_end_fastq_files(self, metadata_row: pd.Series):
+        # Process R1 FASTQ file using exact file path
+
+        # Get the filepath to the 
+        r1_file_path = self.raw_filename_dict.get(metadata_row[self.jv_metadata_marker_col_name]).get(metadata_row[self.jv_run_sample_name_column]).get('filepath')
+
+        input_read_count = self.count_fastq_files_bioawk(r1_file_path)
+
+        return input_read_count
+
+
+    
 
         
 

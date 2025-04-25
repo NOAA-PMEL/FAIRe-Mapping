@@ -135,31 +135,37 @@ def main() -> None:
         if faire_col == 'assay_name':
             exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df[metadata_col].apply(exp_mapper.convert_assay_to_standard)
 
-        if faire_col == 'lib_id':
+        elif faire_col == 'lib_id':
             exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df.apply(
                 lambda row: exp_mapper.jv_create_seq_id(metadata_row=row),
                 axis=1
             )
-        if faire_col == 'filename':
+        elif faire_col == 'filename':
             exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df.apply(
                 lambda row: exp_mapper.get_raw_file_names(metadata_row=row, raw_file_dict=exp_mapper.raw_filename_dict),
                 axis=1
             )
-        if faire_col =='filename2':
+        elif faire_col =='filename2':
             exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df.apply(
                 lambda row: exp_mapper.get_raw_file_names(metadata_row=row, raw_file_dict=exp_mapper.raw_filename2_dict),
                 axis=1
             )
-        if faire_col == 'checksum_filename':
+        elif faire_col == 'checksum_filename':
             exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df.apply(
                 lambda row: exp_mapper.get_cheksums(metadata_row=row, raw_file_dict=exp_mapper.raw_filename_dict),
                 axis = 1
             )
-        if faire_col == 'checksum_filename2':
+        elif faire_col == 'checksum_filename2':
             exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df.apply(
                 lambda row: exp_mapper.get_cheksums(metadata_row=row, raw_file_dict=exp_mapper.raw_filename2_dict),
                 axis = 1
             )
+        elif faire_col == 'input_read_count':
+            exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df.apply(
+                lambda row: exp_mapper.process_paired_end_fastq_files(metadata_row=row),
+                axis=1
+            )
+
                 
     exp_df = pd.DataFrame(exp_metadata_results)
     print(exp_df)
