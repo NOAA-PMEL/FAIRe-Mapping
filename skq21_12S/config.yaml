@@ -25,13 +25,30 @@ nc_prepped_samp_store_dur: 'verbatimEventDate | Extraction Date (Local)' # which
 jv_run_sample_name_column: Sample Name
 jv_index_name_col: Index Name
 jv_raw_data_path: /data/raw_data/20240328_JV_Run2_OCNMS_Arctic_eDNA/renamed/
-jv_asv_count_tsv_parent_path: /home/poseidon/mcallister/eDNA_bioinformatics/Run2/REVAMP/01_originalREVAMP/ # The path to the folder with all the markers for the ASVs_counts.tsv
 jv_run_sample_metadata_file_id: 1t_i2c0q-Oe4RHwUimBa9XuqRAlPXY1SiQ1m4dgkou9k
 jv_run_name: pmel_ome_run2
 run_short_cruise_name: SKQ2021 # the short cruise name in the jv run csv file to filter by cruise name
 run_name: run2 # for adding to the Positive control sample names
-revamp_blast: True # if using teh revamp blast-based taxonomy assignment then set this to True, otherwise False
-
+revamp_blast: True # if using the revamp blast-based taxonomy assignment then set this to True, otherwise False
+jv_asv_count_tsv_parent_path: /home/poseidon/mcallister/eDNA_bioinformatics/Run2/REVAMP/01_originalREVAMP/ # The path to the folder with all the markers for the ASVs_counts.tsv
+asv_counts_tsvs_for_run: #dloop left out because Sean said dLoop did not work for Run2, keys match metabarcoding marker in metadata spreadsheet
+  '18S V4': /home/poseidon/mcallister/eDNA_bioinformatics/Run2/REVAMP/01_originalREVAMP/18Sv4/dada2/ASVs_counts.tsv
+  '18S V9': /home/poseidon/mcallister/eDNA_bioinformatics/Run2/REVAMP/01_originalREVAMP/18Sv9/dada2/ASVs_counts.tsv
+  'Leray CO1': /home/poseidon/mcallister/eDNA_bioinformatics/Run2/REVAMP/01_originalREVAMP/COI/dada2/ASVs_counts.tsv
+  'ITS': /home/poseidon/mcallister/eDNA_bioinformatics/Run2/REVAMP/01_originalREVAMP/ITS1/dada2/ASVs_counts.tsv
+  '16S Kelley': /home/poseidon/mcallister/eDNA_bioinformatics/Run2/REVAMP/01_originalREVAMP/Kelly16S/dada2/ASVs_counts.tsv
+  '18S Machida': /home/poseidon/mcallister/eDNA_bioinformatics/Run2/REVAMP/01_originalREVAMP/Machida18S/dada2/ASVs_counts.tsv
+  'MiFish 12S': /home/poseidon/mcallister/eDNA_bioinformatics/Run2/REVAMP/01_originalREVAMP/MiFish/dada2/ASVs_counts.tsv
+  '16S Furhman': /home/poseidon/mcallister/eDNA_bioinformatics/Run2/REVAMP/01_originalREVAMP/Parada16S/dada2/ASVs_counts.tsv
+otu_num_tax_assigned_files_for_run: # The files used to calculate the otu_num_tax_assigned - Sean said it depends on the version of taxonomy we are using
+  '18S V4': /home/poseidon/mcallister/eDNA_bioinformatics/Run2/REVAMP/01_originalREVAMP/18Sv4/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
+  '18S V9': /home/poseidon/mcallister/eDNA_bioinformatics/Run2/REVAMP/01_originalREVAMP/18Sv9/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
+  'Leray CO1': /home/poseidon/mcallister/eDNA_bioinformatics/Run2/REVAMP/01_originalREVAMP/COI/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
+  'ITS': /home/poseidon/mcallister/eDNA_bioinformatics/Run2/REVAMP/01_originalREVAMP/ITS1/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
+  '16S Kelley': /home/poseidon/mcallister/eDNA_bioinformatics/Run2/REVAMP/01_originalREVAMP/Kelly16S/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
+  '18S Machida': /home/poseidon/mcallister/eDNA_bioinformatics/Run2/REVAMP/01_originalREVAMP/Machida18S/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
+  'MiFish 12S': /home/poseidon/mcallister/eDNA_bioinformatics/Run2/REVAMP/01_originalREVAMP/MiFish/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
+  '16S Furhman': /home/poseidon/mcallister/eDNA_bioinformatics/Run2/REVAMP/01_originalREVAMP/Parada16S/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
 
 
 # FAIRe template related

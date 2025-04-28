@@ -67,7 +67,7 @@ marker_to_assay_mapping = {
 
 # Dictionary that maps the JV metabarcoding marker in the run sample metadata to the actual directory names on Poseidon
 # TODO: Not sure if these will be consistent across runs - may need to build for each run. This works for JV run2, add others from other runs if they don't work for other runs
-marker_to_folder_mapping = {
+marker_to_shorthand_mapping = {
     'MiFish 12S': 'MiFish',
     '18S V4': '18Sv4',
     '18S V9': '18Sv9',

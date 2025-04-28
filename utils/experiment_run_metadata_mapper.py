@@ -1,6 +1,6 @@
 from .faire_mapper import OmeFaireMapper
 from pathlib import Path
-from .lists import marker_to_assay_mapping , marker_to_folder_mapping
+from .lists import marker_to_assay_mapping, marker_to_shorthand_mapping
 from .custom_exception import NoAcceptableAssayMatch
 import yaml
 import pandas as pd
@@ -28,8 +28,9 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         self.jv_run_sample_metadata_file_id = self.config_file['jv_run_sample_metadata_file_id']
         self.jv_run_name = self.config_file['jv_run_name']
         self.run_short_cruise_name = self.config_file['run_short_cruise_name']
-        self.jv_asv_count_tsv_parent_path = self.config_file['jv_asv_count_tsv_parent_path']
         self.run_name = self.config_file['run_name']
+        self.asv_counts_tsvs_for_run = self.config_file['asv_counts_tsvs_for_run']
+        self.otu_num_tax_assigned_files_for_run = self.config_file['otu_num_tax_assigned_files_for_run']
 
         self.mapping_dict = self._create_experiment_run_mapping_dict()
         self.jv_run_metadata_df = self._create_experiment_metadata_df()
@@ -39,7 +40,8 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         self.raw_filename2_dict = {} # dictionary of reverse raw data files with checksums
         self.asv_data_dict =  {}
         # self._create_marker_sample_raw_data_file_dicts() #uncomment after other calculations
-        self._count_asv_tsv(revamp_blast=self.config_file['revamp_blast'])
+        self._create_count_asv_dict(revamp_blast=self.config_file['revamp_blast'])
+
         
 
     def _create_experiment_run_mapping_dict(self):
@@ -118,7 +120,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         grouped = self.jv_run_metadata_df.groupby(self.jv_metadata_marker_col_name)
 
         for marker, group in grouped:
-            folder_name = marker_to_folder_mapping.get(marker, marker)
+            folder_name = marker_to_shorthand_mapping.get(marker, marker)
             marker_dir = os.path.join(self.jv_raw_data_path, folder_name)
 
             # TODO: consider adding raise Error here?
@@ -210,55 +212,47 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             sample_name = sample_name.replace('MP_', '')
             return f'{self.run_name}.{marker}.{sample_name}' 
     
-    def _count_asv_tsv(self, revamp_blast: bool = True) -> dict:
+    def _create_count_asv_dict(self, revamp_blast: bool = True) -> dict:
+        # TODO: add functionality of revamp_bast is not True?
         # Create  a nested dictionary of marker, sample names and counts
         # {marker: {E56. : {output_read_count: 5, output_otu_num: 8}}}
         # if revamp_blast is True will run _count_otu_tax_assigned_using_REVAMP_blast_based_tax to add the otu_num_tax_assigned
 
-        # Process each marker type
-        for marker_folder_name in marker_to_folder_mapping.values():
-            print(f"Processing marker: {marker_folder_name}")
-
-            # Build path to the specific marker's dada2 directory
-            marker_asv_counts_path = os.path.join(self.jv_asv_count_tsv_parent_path, marker_folder_name, 'dada2')
-            asv_tsv_file = os.path.join(marker_asv_counts_path, "ASVs_counts.tsv")
+        for metabarcoding_marker, asv_tsv_file in self.asv_counts_tsvs_for_run.items():
+            asv_tsv_file = os.path.abspath(asv_tsv_file)
 
             if not os.path.exists(asv_tsv_file):
-                print(f"File not found: {asv_tsv_file}")
-                continue
+                raise ValueError(f"File not found: {asv_tsv_file}")
 
             # Initialize marker in the nested dictionary
-            self.asv_data_dict[marker_folder_name] = {}
+            marker = marker_to_shorthand_mapping.get(metabarcoding_marker)
+            self.asv_data_dict[marker] = {}
 
-            try:
-                # Read the TSV file with pandas
-                asv_df = pd.read_csv(asv_tsv_file, sep='\t')
-                cruise_specific_cols = [col for col in asv_df.columns if self.run_short_cruise_name in col or 'POSITIVE' in col]
+            # Read the TSV file with pandas
+            asv_df = pd.read_csv(asv_tsv_file, sep='\t')
+            cruise_specific_cols = [col for col in asv_df.columns if self.run_short_cruise_name in col or 'POSITIVE' in col]
 
-                # set the asv column as the index
-                asv_df = asv_df.set_index('x')
+            # set the asv column as the index
+            asv_df = asv_df.set_index('x')
 
-                if not cruise_specific_cols:
-                    print(f"No {self.run_short_cruise_name} samps found in {asv_tsv_file}")
-                    continue
+            if not cruise_specific_cols:
+                print(f"No {self.run_short_cruise_name} samps found in {asv_tsv_file}")
+            
+            # calculate sum for each filtered column and the otu num
+            for sample_name in cruise_specific_cols:
+                
+                # sum the column values for output read count
+                output_read_count = asv_df[sample_name].sum()
 
-                # calculate sum for each filtered column and the otu num
-                for sample_name in cruise_specific_cols:
-                    
-                    # sum the column values for output read count
-                    output_read_count = asv_df[sample_name].sum()
+                # get the output_otu_num which is the total number asvs for each sample (non zero count number)
+                non_zero_output_asv_num = (asv_df[sample_name] > 0).sum()
 
-                    # get the output_otu_num which is the total number asvs for each sample (non zero count number)
-                    non_zero_output_asv_num = (asv_df[sample_name] > 0).sum()
-
-                    # update sample names to match rest of data
-                    updated_sample_name = self._clean_asv_samp_names(sample_name=sample_name, marker=marker_folder_name)
-                    
-                    # store output_read_count in the nested dictionary
-                    self.asv_data_dict[marker_folder_name][updated_sample_name] = {'output_read_count': output_read_count.item(), 
-                                                                                   'output_otu_num': non_zero_output_asv_num.item()}
-            except Exception as e:
-                print(f" Error proecssing file {asv_tsv_file}: {str(e)}")
+                # update sample names to match rest of data
+                updated_sample_name = self._clean_asv_samp_names(sample_name=sample_name, marker=marker)
+                
+                # store output_read_count in the nested dictionary
+                self.asv_data_dict[marker][updated_sample_name] = {'output_read_count': output_read_count.item(), 
+                                                                                 'output_otu_num': non_zero_output_asv_num.item()}
 
         # Since getting the otu_num_tax_assigned depends on which version of the taxonomy we are using for the submission
         # if revamp_blast == True then use the ASVs_counts_mergedOnTaxonomy.tsv file to get this info.
@@ -266,13 +260,13 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             self._count_otu_tax_assigned_using_REVAMP_blast_based_tax()
 
     def _count_otu_tax_assigned_using_REVAMP_blast_based_tax(self):
-        #TODO: fix for dLoop and may need to pull out paths based on Runs :/
+        # Calculates the otu_num_tax_assined from the ASVs_counts_mergedOnTaxonomy.tsv file
         
-        for marker_folder_name in marker_to_folder_mapping.values():
-            marker_path = os.path.join(self.jv_asv_count_tsv_parent_path, marker_folder_name, 'ASV2Taxonomy')
-            asv_tax_file = os.path.join(marker_path, "ASVs_counts_mergedOnTaxonomy.tsv")
+         for metabarcoding_marker, asv_tax_file in self.otu_num_tax_assigned_files_for_run.items():
 
-             # Read the TSV file with pandas
+            marker = marker_to_shorthand_mapping.get(metabarcoding_marker)
+
+            # Read the TSV file with pandas
             asv_tax_df = pd.read_csv(asv_tax_file, sep='\t')
             cruise_specific_cols = [col for col in asv_tax_df.columns if self.run_short_cruise_name in col or 'POSITIVE' in col]
 
@@ -285,12 +279,9 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                 non_zero_otu_num_tax_assinged = (asv_tax_df[sample_name] > 0).sum()
 
                 # update sample names to match rest of data
-                updated_sample_name = self._clean_asv_samp_names(sample_name=sample_name, marker=marker_folder_name)
+                updated_sample_name = self._clean_asv_samp_names(sample_name=sample_name, marker=marker)
 
-                self.asv_data_dict[marker_folder_name][updated_sample_name]["otu_num_tax_assigned"] = non_zero_otu_num_tax_assinged.item()
-
-
-            
+                self.asv_data_dict[marker][updated_sample_name]["otu_num_tax_assigned"] = non_zero_otu_num_tax_assinged.item()
 
     def process_paired_end_fastq_files(self, metadata_row: pd.Series) -> int:
         # Process R1 FASTQ file using exact file path

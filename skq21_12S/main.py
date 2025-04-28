@@ -3,7 +3,7 @@ sys.path.append("..")
 # from faire_metadata_mapper.sample_metadata_mapper import FaireSampleMetadataMapper
 from utils.sample_metadata_mapper import FaireSampleMetadataMapper
 from utils.experiment_run_metadata_mapper import ExperimentRunMetadataMapper
-from utils.lists import marker_to_folder_mapping
+from utils.lists import marker_to_shorthand_mapping
 import pandas as pd
 
 #TODO: Add cv checking for related mappings?
