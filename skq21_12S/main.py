@@ -85,6 +85,9 @@ def create_sample_metadata(exp_metadata_df: pd.DataFrame, samp_associated_positi
                 axis=1
             )
 
+        elif faire_col == 'assay_name':
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(sample_mapper.add_assay_name)
+
         elif faire_col == 'env_local_scale':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(sample_mapper.calculate_env_local_scale)
 
@@ -110,7 +113,7 @@ def create_sample_metadata(exp_metadata_df: pd.DataFrame, samp_associated_positi
     # nc_df = sample_mapper.fill_nc_metadata(final_sample_df = sample_df)
 
     # Step 5 Add positive controls
-    pos_df = sample_mapper.fill_seq_pos_control_metadata()
+    pos_df = sample_mapper.fill_seq_pos_control_metadata(final_sample_df = sample_df)
 
     # Step 6: Combine all mappings at once (add nc_df if negative controls were sequenced)
     faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df, pos_df])
@@ -145,12 +148,8 @@ def main() -> None:
     # Get sample dictionary of associated positives
     samp_associated_positives = exp_mapper.rel_pos_cont_id_dict
 
-    # commented out while testing and building experimentRunMetadata
+    # create sample metadata - experiment metadata needed first
     sample_metadata = create_sample_metadata(exp_metadata_df=exp_df, samp_associated_positives=samp_associated_positives)
-    sample_df = sample_metadata[0]
-    sample_mapper = sample_metadata[1]
-
-
                 
 
 if __name__ == "__main__":

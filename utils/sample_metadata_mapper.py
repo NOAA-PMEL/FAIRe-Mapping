@@ -11,7 +11,6 @@ from .custom_exception import NoInsdcGeoLocError
 from .lists import nc_faire_field_cols
 
 # TODO: Turn nucl_acid_ext for DY20/12 into a BeBOP and change in extraction spreadsheet. Link to spreadsheet: https://docs.google.com/spreadsheets/d/1iY7Z8pNsKXHqsp6CsfjvKn2evXUPDYM2U3CVRGKUtX8/edit?gid=0#gid=0
-# TODO: need to add in assay_name
 # TODO: continue update pos_df - add not applicable: sample to user defined fields, also add pos_cont_type
 
 class FaireSampleMetadataMapper(OmeFaireMapper):
@@ -51,6 +50,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.insdc_locations = self.extract_insdc_geographic_locations()
         self.mapping_dict = self.create_sample_mapping_dict()
         self.nc_mapping_dict = self.create_nc_mapping_dict()
+        self.sample_assay_dict = self.create_assay_name_dict()
 
     def create_sample_mapping_dict(self) -> dict:
             # creates a mapping dictionary and saves as self.mapping_dict
@@ -88,6 +88,11 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         nc_mapping_dict[self.exact_mapping]['samp_store_loc'] = self.sample_metadata_vessel_name_col
 
         return nc_mapping_dict
+
+    def create_assay_name_dict(self) -> dict:
+        # Creates a dicitonary of the samples and their assays
+        grouped = self.exp_metadata_df.groupby('samp_name')['assay_name'].apply(list).to_dict()
+        return grouped
 
     def convert_mdy_date_to_iso8061(self, date_string: str) -> str:
         # converts from m/d/y to iso8061
@@ -305,6 +310,12 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         return rel_cont_id 
 
+    def add_assay_name(self, sample_name: str) -> str:
+        # Uses the sample name to look up assays from the sample_assay_dict (generated from the exp_run_metadata_df)
+        assays = self.sample_assay_dict.get(sample_name)
+        assays_formatted = ' | '.join(assays)
+        return assays_formatted
+
     def convert_wind_degrees_to_direction(self, degree_metadata_row: pd.Series) -> str:
         # converts wind direction  to cardinal directions
         
@@ -451,7 +462,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         return nc_df
 
-    def fill_seq_pos_control_metadata(self) -> pd.DataFrame:
+    def fill_seq_pos_control_metadata(self, final_sample_df: pd.DataFrame) -> pd.DataFrame:
         #TODO: add pos_cont_type mapping
 
         # Get positive control df and only keep the sample name and assay name columns
@@ -467,8 +478,15 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         positive_samp_df['eventDate'] = 'missing: not provided'
 
+        positive_samp_df['pos_cont_type'] = 'PCR positive of synthetic DNA'
+
         # fill res of empty values
         faire_pos_df = pd.concat([self.sample_faire_template_df, positive_samp_df])
+
+        new_cols = [col for col in final_sample_df.columns if col not in faire_pos_df.columns]
+        for col in new_cols: 
+            faire_pos_df[col] = 'not applicable: control sample'
+        
         faire_pos_df = self.fill_empty_sample_values(df=faire_pos_df, default_message='not applicable: control sample')
 
         return faire_pos_df

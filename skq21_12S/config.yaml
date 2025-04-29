@@ -30,7 +30,8 @@ jv_run_name: pmel_ome_run2
 run_short_cruise_name: SKQ2021 # the short cruise name in the jv run csv file to filter by cruise name
 run_name: run2 # for adding to the Positive control sample names
 revamp_blast: True # if using the revamp blast-based taxonomy assignment then set this to True, otherwise False
-jv_asv_count_tsv_parent_path: /home/poseidon/mcallister/eDNA_bioinformatics/Run2/REVAMP/01_originalREVAMP/ # The path to the folder with all the markers for the ASVs_counts.tsv
+ignore_markers: # Add Metabarcoding Marker name EXACTLY from run_sample_metadata_file if not submitting info for that marker
+  - dLoop
 asv_counts_tsvs_for_run: #dloop left out because Sean said dLoop did not work for Run2, keys match metabarcoding marker in metadata spreadsheet
   '18S V4': /home/poseidon/mcallister/eDNA_bioinformatics/Run2/REVAMP/01_originalREVAMP/18Sv4/dada2/ASVs_counts.tsv
   '18S V9': /home/poseidon/mcallister/eDNA_bioinformatics/Run2/REVAMP/01_originalREVAMP/18Sv9/dada2/ASVs_counts.tsv

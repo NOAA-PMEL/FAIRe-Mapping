@@ -30,17 +30,18 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         self.run_name = self.config_file['run_name']
         self.asv_counts_tsvs_for_run = self.config_file['asv_counts_tsvs_for_run']
         self.otu_num_tax_assigned_files_for_run = self.config_file['otu_num_tax_assigned_files_for_run']
+        self.ignore_markers = self.config_file['ignore_markers']
 
         self.mapping_dict = self._create_experiment_run_mapping_dict()
         self.jv_run_metadata_df = self._create_experiment_metadata_df()
         
         # populate data dicts
-        # self.raw_filename_dict = {} # dictionary of forward raw data files with checksums
-        # self.raw_filename2_dict = {} # dictionary of reverse raw data files with checksums
+        self.raw_filename_dict = {} # dictionary of forward raw data files with checksums
+        self.raw_filename2_dict = {} # dictionary of reverse raw data files with checksums
         self.asv_data_dict =  {}
-        # self._create_marker_sample_raw_data_file_dicts() 
+        self._create_marker_sample_raw_data_file_dicts() 
         self._create_count_asv_dict(revamp_blast=self.config_file['revamp_blast'])
-        self.rel_pos_cont_id_dict = self.create_positive_samp_and_assay_dict()
+        self.rel_pos_cont_id_dict = self._create_positive_samp_dict()
 
         self.exp_run_faire_template_df = self.load_faire_template_as_df(file_path=self.config_file['faire_template_file'], sheet_name=self.faire_template_exp_run_sheet_name, header=self.faire_sheet_header).dropna()
 
@@ -68,31 +69,31 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                     lambda row: self.jv_create_seq_id(metadata_row=row),
                     axis=1
                 )
-            # elif faire_col == 'filename':
-            #     exp_metadata_results[faire_col] = self.jv_run_metadata_df.apply(
-            #         lambda row: self.get_raw_file_names(metadata_row=row, raw_file_dict=self.raw_filename_dict),
-            #         axis=1
-            #     )
-            # elif faire_col =='filename2':
-            #     exp_metadata_results[faire_col] = self.jv_run_metadata_df.apply(
-            #         lambda row: self.get_raw_file_names(metadata_row=row, raw_file_dict=self.raw_filename2_dict),
-            #         axis=1
-            #     )
-            # elif faire_col == 'checksum_filename':
-            #     exp_metadata_results[faire_col] = self.jv_run_metadata_df.apply(
-            #         lambda row: self.get_cheksums(metadata_row=row, raw_file_dict=self.raw_filename_dict),
-            #         axis = 1
-            #     )
-            # elif faire_col == 'checksum_filename2':
-            #     exp_metadata_results[faire_col] = self.jv_run_metadata_df.apply(
-            #         lambda row: self.get_cheksums(metadata_row=row, raw_file_dict=self.raw_filename2_dict),
-            #         axis = 1
-            #     )
-            # elif faire_col == 'input_read_count':
-            #     exp_metadata_results[faire_col] = self.jv_run_metadata_df.apply(
-            #         lambda row: self.process_paired_end_fastq_files(metadata_row=row),
-            #         axis=1
-            #     )
+            elif faire_col == 'filename':
+                exp_metadata_results[faire_col] = self.jv_run_metadata_df.apply(
+                    lambda row: self.get_raw_file_names(metadata_row=row, raw_file_dict=self.raw_filename_dict),
+                    axis=1
+                )
+            elif faire_col =='filename2':
+                exp_metadata_results[faire_col] = self.jv_run_metadata_df.apply(
+                    lambda row: self.get_raw_file_names(metadata_row=row, raw_file_dict=self.raw_filename2_dict),
+                    axis=1
+                )
+            elif faire_col == 'checksum_filename':
+                exp_metadata_results[faire_col] = self.jv_run_metadata_df.apply(
+                    lambda row: self.get_cheksums(metadata_row=row, raw_file_dict=self.raw_filename_dict),
+                    axis = 1
+                )
+            elif faire_col == 'checksum_filename2':
+                exp_metadata_results[faire_col] = self.jv_run_metadata_df.apply(
+                    lambda row: self.get_cheksums(metadata_row=row, raw_file_dict=self.raw_filename2_dict),
+                    axis = 1
+                )
+            elif faire_col == 'input_read_count':
+                exp_metadata_results[faire_col] = self.jv_run_metadata_df.apply(
+                    lambda row: self.process_paired_end_fastq_files(metadata_row=row),
+                    axis=1
+                )
             elif faire_col == 'output_read_count' or faire_col == faire_col == 'output_otu_num' or faire_col == 'otu_num_tax_assigned':
                 exp_metadata_results[faire_col] = self.jv_run_metadata_df.apply(
                     lambda row: self.process_asv_counts(metadata_row=row, faire_col=faire_col),
@@ -132,6 +133,11 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         # TODO: maybe rethink th
 
         exp_df = self.load_google_sheet_as_df(google_sheet_id=self.jv_run_sample_metadata_file_id, sheet_name=self.jv_metadata_sample_sheet_name, header=0)
+
+        # filter rows if ignore_markers is present using str.contains with regex OR operator (|)
+        if self.ignore_markers:
+            pattern = '|'.join(self.ignore_markers)
+            exp_df = exp_df[~exp_df[self.jv_metadata_marker_col_name].str.contains(pattern, case=True, na=False)]
       
         # if DY2012 cruise, replace strings DY20 with DY2012
         exp_df[self.jv_run_sample_name_column] = exp_df[self.jv_run_sample_name_column].apply(self.str_replace_dy2012_cruise)
@@ -147,7 +153,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
 
         return cruise_df
     
-    def create_positive_samp_and_assay_dict(self):
+    def _create_positive_samp_dict(self):
         # This will create a dictionary of all the positive samples and their associated samples (to be used for the rel_cont_id in the SampleMetadata)
         # eg. {E54.SKQ21: [run1.POSITIVE.IOT, run1.POSITIVE.18S4]}
 
