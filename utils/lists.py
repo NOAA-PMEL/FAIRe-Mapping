@@ -78,3 +78,16 @@ marker_to_shorthand_mapping = {
     'dLoop': 'dLoop',
     '16S Kelley': 'Kelly16S' 
 }
+
+# marker shorthand to gblock name - based on this spreadsheet: https://docs.google.com/spreadsheets/d/1sdShcSBPvAcIWXBXJpCfjirv57FNjJFOfOYFd5_I3gM/edit?gid=0#gid=0
+marker_shorthand_to_pos_cont_gblcok_name = {
+    'MiFish': 'Haast_pos_MiFish',
+    '18Sv4': 'Luti_pos_18Sv4',
+    '18Sv9': 'Halo_pos_18Sv89',
+    'COI': 'Moa_pos_CO1',
+    'Parada16S': 'Camel_pos_Univ16S',
+    'Machida18S': 'Halo_pos_18Sv89',
+    'ITS1': 'LuV_pos_ITS1',
+    'dLoop': 'Obre_pos_dLoop',
+    'Kelly16S': 'Dodo_pos_16SKelly'
+}

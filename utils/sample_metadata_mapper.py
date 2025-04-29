@@ -8,7 +8,7 @@ import requests
 import numpy as np
 from bs4 import BeautifulSoup
 from .custom_exception import NoInsdcGeoLocError
-from .lists import nc_faire_field_cols
+from .lists import nc_faire_field_cols, marker_shorthand_to_pos_cont_gblcok_name
 
 # TODO: Turn nucl_acid_ext for DY20/12 into a BeBOP and change in extraction spreadsheet. Link to spreadsheet: https://docs.google.com/spreadsheets/d/1iY7Z8pNsKXHqsp6CsfjvKn2evXUPDYM2U3CVRGKUtX8/edit?gid=0#gid=0
 # TODO: continue update pos_df - add not applicable: sample to user defined fields, also add pos_cont_type
@@ -262,6 +262,17 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         return neg_cont_type
     
+    def add_pos_cont_type(self, pos_cont_sample_name:str) -> str:
+        
+        # Get the marker from the positive control sample name (e.g. run2.ITS1.POSITIVE - this will give you ITS1)
+        shorthand_marker = pos_cont_sample_name.split('.')[1]
+
+        g_block = marker_shorthand_to_pos_cont_gblcok_name.get(shorthand_marker)
+
+        pos_cont_type = f"PCR positive of synthetic DNA. Gblock name: {g_block}"
+
+        return pos_cont_type
+
     def add_samp_category_by_sample_name(self, metadata_row: pd.Series, faire_col: str, metadata_col: str) -> dict:
         # TODO: double check logic for negative controls: blanks = extraction negatives, .NC = field negatives. Waiting on Zack and Sean's run metadata?
         # TODO: create add_pos_con_type for positive controls (same as neg_cont_type is handled)
@@ -478,7 +489,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         positive_samp_df['eventDate'] = 'missing: not provided'
 
-        positive_samp_df['pos_cont_type'] = 'PCR positive of synthetic DNA'
+        positive_samp_df['pos_cont_type'] = positive_samp_df['samp_name'].apply(self.add_pos_cont_type)
 
         # fill res of empty values
         faire_pos_df = pd.concat([self.sample_faire_template_df, positive_samp_df])
