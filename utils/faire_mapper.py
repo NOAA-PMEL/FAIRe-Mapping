@@ -36,7 +36,8 @@ class OmeFaireMapper:
         self.mapping_file_metadata_column = 'source_name_or_constant'
         self.mapping_file_mapped_type_column = 'mapping'
         
-        self.drop_down_value_df = self.load_faire_template_as_df(file_path=self.config_file['faire_template_file'], sheet_name='Drop-down values', header=0)
+        self.faire_template_file=self.config_file['faire_template_file']
+        self.drop_down_value_df = self.load_faire_template_as_df(self.faire_template_file, sheet_name='Drop-down values', header=0)
         # self.faire_unit_column_dict = {term: term.replace('_unit', '') for term in self.mapping_df[self.mapping_file_FAIRe_column].values if '_unit' in term}
         self.final_faire_template_path = self.config_file['final_faire_template_path']
         self.faire_sheet_header = 2
@@ -177,10 +178,10 @@ class OmeFaireMapper:
         dt_obj = dt_obj.strftime("%Y-%m-%dT%H:%M:%SZ")
         return dt_obj
 
-    def add_final_df_to_FAIRe_excel(self, sheet_name: str, faire_template_df: pd.DataFrame):
+    def add_final_df_to_FAIRe_excel(self, excel_file_to_read_from: str, sheet_name: str, faire_template_df: pd.DataFrame):
 
         # Step 1 load the workbook to preserve formatting
-        workbook = openpyxl.load_workbook(self.config_file['faire_template_file'])
+        workbook = openpyxl.load_workbook(excel_file_to_read_from)
         sheet = workbook[sheet_name]
         
         # step 2: identify new columns added to the DataFrame
@@ -211,7 +212,8 @@ class OmeFaireMapper:
                 sheet.cell(row=row_idx, column=col_idx).value = value
 
         # step 4 save the workbook preserved with headers
-        workbook.save(self.config_file['final_faire_template_path'])
+        workbook.save(self.final_faire_template_path)
+        print(f"saved to {self.final_faire_template_path}!")
        
 
 

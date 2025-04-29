@@ -12,7 +12,7 @@ from .lists import nc_faire_field_cols
 
 # TODO: Turn nucl_acid_ext for DY20/12 into a BeBOP and change in extraction spreadsheet. Link to spreadsheet: https://docs.google.com/spreadsheets/d/1iY7Z8pNsKXHqsp6CsfjvKn2evXUPDYM2U3CVRGKUtX8/edit?gid=0#gid=0
 # TODO: need to add in assay_name
-# TODO: Add rel_cont_id (maybe after experimentRunMetadata is added so can add controls from PCR and sequencing)
+# TODO: continue update pos_df - add not applicable: sample to user defined fields, also add pos_cont_type
 
 class FaireSampleMetadataMapper(OmeFaireMapper):
 
@@ -25,7 +25,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                                              "pos_cont_type": "not applicable: sample group"}
     
 
-    def __init__(self, config_yaml: yaml):
+    def __init__(self, config_yaml: yaml, exp_metadata_df: pd.Series):
         super().__init__(config_yaml)
 
         self.sample_metadata_sample_name_column = self.config_file['sample_metadata_sample_name_column']
@@ -42,10 +42,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.extraction_metadata_google_sheet_id = self.config_file['extraction_metadata_google_sheet_id']
         self.sample_metadata_vessel_name_col = self.config_file['sample_metadata_vessel_name_col']
 
-    
+        self.exp_metadata_df = exp_metadata_df
 
-        self.sample_metadata_df = self.split_out_nc_df()[0]
-        self.nc_df = self.split_out_nc_df()[1]
+        self.sample_metadata_df = self.filter_metadata_dfs()[0]
+        self.nc_df = self.filter_metadata_dfs()[1]
         self.sample_faire_template_df = self.load_faire_template_as_df(file_path=self.config_file['faire_template_file'], sheet_name=self.sample_mapping_sheet_name, header=self.faire_sheet_header).dropna()
         self.replicates_dict = self.create_biological_replicates_dict()
         self.insdc_locations = self.extract_insdc_geographic_locations()
@@ -114,7 +114,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         except Exception as e:
             print(f"Error converting {date_string}: {str(e)}")
 
-    
     def extraction_avg_aggregation(self, extractions_df: pd.DataFrame):
         # For extractions, calculates the mean if more than one concentration per sample name.
 
@@ -175,14 +174,26 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         return metadata_df
 
-    def split_out_nc_df(self):
+    def filter_metadata_dfs(self):
 
+        # Extract all unique sample names from experiment run metadata df
+        exp_sample_names = self.exp_metadata_df['samp_name'].unique()
+
+        # Join sample metadata with extraction metadata to get samp_df
         samp_df = self.join_sample_and_extract_df()
-        nc_mask = samp_df[self.sample_metadata_sample_name_column].astype(str).str.contains('.NC', case=True)
-        nc_df = samp_df[nc_mask].copy()
-        samp_df = samp_df[~nc_mask].copy()
 
-        return samp_df, nc_df
+        # filter samp_df to keep only rows with sample names that exist in the exp_sample_names
+        samp_df_filtered = samp_df[samp_df[self.sample_metadata_sample_name_column].isin(exp_sample_names)]
+        
+        try:
+            nc_mask = samp_df_filtered[self.sample_metadata_sample_name_column].astype(str).str.contains('.NC', case=True)
+            nc_df = samp_df[nc_mask].copy()
+            samp_df_filtered = samp_df[~nc_mask].copy()
+            return samp_df_filtered, nc_df
+        except:
+            print("Looks like there are no negatives in the sample df, returning an empty nc_df")
+            nc_df = pd.DataFrame()
+            return samp_df_filtered, nc_df
     
     def extract_insdc_geographic_locations(self) -> list:
 
@@ -253,13 +264,15 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         
         pos_control_str = 'POSITIVE'
 
-        # If Negative Control column of the metadata is True
-        if metadata_row[self.sample_metadata_file_neg_control_col_name]:
-            return self.check_cv_word(value='negative control', faire_attribute=faire_col)
-        elif pos_control_str in metadata_row[metadata_col]:
-            return self.check_cv_word(value='positive control', faire_attribute=faire_col)
-        else:
-            return self.check_cv_word(value='sample', faire_attribute=faire_col)
+        # If Negative Control column of the metadata is True. Try because metadata_file_neg_control_col_name will not be present if positive control
+        try:
+            if metadata_row[self.sample_metadata_file_neg_control_col_name]:
+                return self.check_cv_word(value='negative control', faire_attribute=faire_col)
+            else:
+                return self.check_cv_word(value='sample', faire_attribute=faire_col)
+        except:
+            if pos_control_str in metadata_row[metadata_col]:
+                return self.check_cv_word(value='positive control', faire_attribute=faire_col)
         
     def add_material_sample_id(self, metadata_row) -> str:
         # Formats MaterialSampleID to be numerical (discussed with Sean) - double check if this needs to be updated for three digit cast numbers 
@@ -274,7 +287,24 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         material_sample_id = formatted_cast + formatted_btl
 
         return material_sample_id
-    
+
+    def add_rel_cont_id(self, metadata_row: pd.Series, samp_seq_pos_controls_dict: dict) -> str:
+        # Adds the rel_cont_id
+        sample_name = metadata_row[self.sample_metadata_sample_name_column]
+        
+        # Get positive controls
+        control_samps = samp_seq_pos_controls_dict.get(sample_name)
+
+        # Get field negative sample names in a list and add to associated_seq_pos
+        if not self.nc_df.empty:
+            nc_samples = self.nc_df[self.sample_metadata_sample_name_column].tolist()
+            control_samps.extend(nc_samples)
+
+        # join with | 
+        rel_cont_id = ' | '.join(control_samps)
+
+        return rel_cont_id 
+
     def convert_wind_degrees_to_direction(self, degree_metadata_row: pd.Series) -> str:
         # converts wind direction  to cardinal directions
         
@@ -291,7 +321,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         else:
             min_depth = max_depth
         return min_depth
-
         
     def format_geo_loc(self, metadata_row: str, geo_loc_metadata_col: str) -> dict:
         # TODO: add if statement for Arctic OCean? SKQ21-12S?
@@ -359,15 +388,14 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         return iso_duration
     
-
     def fill_empty_sample_values(self, df: pd.DataFrame, default_message = "missing: not collected"):
         # fill empty values for samples after mapping over all sample data without control samples
 
         # check if data frame is sample data frame and if so, then adds not applicable: control sample to control columns
-        if '.NC' not in df['samp_name'].iloc[0]:
+        if '.NC' not in df['samp_name'].iloc[0] and 'POSITIVE' not in df['samp_name'].iloc[0]:
             for col, message in self.not_applicable_to_samp_faire_col_dict.items():
                 df[col] = message
-        else:
+        elif '.NC' in df['samp_name']:
             # for NC sample pos_cont_type is just not applicable
             df['pos_cont_type'] = "not applicable"
         
@@ -422,8 +450,32 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         nc_df = self.fill_empty_sample_values(df = nc_df, default_message='not applicable: control sample')
 
         return nc_df
-            
-    
+
+    def fill_seq_pos_control_metadata(self) -> pd.DataFrame:
+        #TODO: add pos_cont_type mapping
+
+        # Get positive control df and only keep the sample name and assay name columns
+        positive_samp_df = self.exp_metadata_df[self.exp_metadata_df['samp_name'].str.contains('POSITIVE', case=True)][['samp_name', 'assay_name']]
+
+        # Update sample_category
+        positive_samp_df['samp_category'] = positive_samp_df.apply(
+            lambda row: self.add_samp_category_by_sample_name(metadata_row=row, faire_col='samp_category', metadata_col='samp_name'),
+            axis=1
+        )
+
+        positive_samp_df['neg_cont_type'] = 'not applicable'
+
+        positive_samp_df['eventDate'] = 'missing: not provided'
+
+        # fill res of empty values
+        faire_pos_df = pd.concat([self.sample_faire_template_df, positive_samp_df])
+        faire_pos_df = self.fill_empty_sample_values(df=faire_pos_df, default_message='not applicable: control sample')
+
+        return faire_pos_df
+
+
+
+
                 
 
 

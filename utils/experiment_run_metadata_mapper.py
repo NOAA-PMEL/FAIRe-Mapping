@@ -1,5 +1,4 @@
 from .faire_mapper import OmeFaireMapper
-from pathlib import Path
 from .lists import marker_to_assay_mapping, marker_to_shorthand_mapping
 from .custom_exception import NoAcceptableAssayMatch
 import yaml
@@ -8,15 +7,15 @@ import os
 import subprocess
 import re
 import hashlib
-import gzip
 
-# TODO: add run3_marrker_POSITIVE to positive controls sample names (and blanks?) - double check with Sean and Zack about doing this
+# TODO: add associatedSequences functionlity after submittting to NCBI
 
 class ExperimentRunMetadataMapper(OmeFaireMapper):
 
     experiment_run_mapping_sheet_name = "experimentRunMetadata"
     jv_metadata_sample_sheet_name = "Sample Data Sheet Long"
     jv_metadata_marker_col_name = "Metabarcoding Marker"
+    faire_template_exp_run_sheet_name = "experimentRunMetadata"
 
     def __init__(self, config_yaml: yaml):
         super().__init__(config_yaml)
@@ -36,13 +35,74 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         self.jv_run_metadata_df = self._create_experiment_metadata_df()
         
         # populate data dicts
-        self.raw_filename_dict = {} # dictionary of forward raw data files with checksums
-        self.raw_filename2_dict = {} # dictionary of reverse raw data files with checksums
+        # self.raw_filename_dict = {} # dictionary of forward raw data files with checksums
+        # self.raw_filename2_dict = {} # dictionary of reverse raw data files with checksums
         self.asv_data_dict =  {}
-        # self._create_marker_sample_raw_data_file_dicts() #uncomment after other calculations
+        # self._create_marker_sample_raw_data_file_dicts() 
         self._create_count_asv_dict(revamp_blast=self.config_file['revamp_blast'])
+        self.rel_pos_cont_id_dict = self.create_positive_samp_and_assay_dict()
 
+        self.exp_run_faire_template_df = self.load_faire_template_as_df(file_path=self.config_file['faire_template_file'], sheet_name=self.faire_template_exp_run_sheet_name, header=self.faire_sheet_header).dropna()
+
+    def generate_jv_run_metadata(self) -> pd.DataFrame :
+        # Works for run2, need to check other jv runs - maybe can potentially use for OSU runs, if mapping file is generically the same?
+        exp_metadata_results = {}
+    
+        # Step 1: Add exact mappings
+        for faire_col, metadata_col in self.mapping_dict[self.exact_mapping].items():
+            exp_metadata_results[faire_col] = self.jv_run_metadata_df[metadata_col].apply(
+                lambda row: self.apply_exact_mappings(metadata_row=row, faire_col=faire_col))
         
+        # Step 2: Add constants
+        for faire_col, static_value in self.mapping_dict[self.constant_mapping].items():
+            exp_metadata_results[faire_col] = self.apply_static_mappings(faire_col=faire_col, static_value=static_value)
+
+        # Step 3: Add related mappings
+        for faire_col, metadata_col in self.mapping_dict[self.related_mapping].items():
+            # Add assay_name
+            if faire_col == 'assay_name':
+                exp_metadata_results[faire_col] = self.jv_run_metadata_df[metadata_col].apply(self.convert_assay_to_standard)
+
+            elif faire_col == 'lib_id':
+                exp_metadata_results[faire_col] = self.jv_run_metadata_df.apply(
+                    lambda row: self.jv_create_seq_id(metadata_row=row),
+                    axis=1
+                )
+            # elif faire_col == 'filename':
+            #     exp_metadata_results[faire_col] = self.jv_run_metadata_df.apply(
+            #         lambda row: self.get_raw_file_names(metadata_row=row, raw_file_dict=self.raw_filename_dict),
+            #         axis=1
+            #     )
+            # elif faire_col =='filename2':
+            #     exp_metadata_results[faire_col] = self.jv_run_metadata_df.apply(
+            #         lambda row: self.get_raw_file_names(metadata_row=row, raw_file_dict=self.raw_filename2_dict),
+            #         axis=1
+            #     )
+            # elif faire_col == 'checksum_filename':
+            #     exp_metadata_results[faire_col] = self.jv_run_metadata_df.apply(
+            #         lambda row: self.get_cheksums(metadata_row=row, raw_file_dict=self.raw_filename_dict),
+            #         axis = 1
+            #     )
+            # elif faire_col == 'checksum_filename2':
+            #     exp_metadata_results[faire_col] = self.jv_run_metadata_df.apply(
+            #         lambda row: self.get_cheksums(metadata_row=row, raw_file_dict=self.raw_filename2_dict),
+            #         axis = 1
+            #     )
+            # elif faire_col == 'input_read_count':
+            #     exp_metadata_results[faire_col] = self.jv_run_metadata_df.apply(
+            #         lambda row: self.process_paired_end_fastq_files(metadata_row=row),
+            #         axis=1
+            #     )
+            elif faire_col == 'output_read_count' or faire_col == faire_col == 'output_otu_num' or faire_col == 'otu_num_tax_assigned':
+                exp_metadata_results[faire_col] = self.jv_run_metadata_df.apply(
+                    lambda row: self.process_asv_counts(metadata_row=row, faire_col=faire_col),
+                    axis=1
+                )
+
+        exp_df = pd.DataFrame(exp_metadata_results)
+        faire_exp_df = pd.concat([self.exp_run_faire_template_df, exp_df])
+
+        return faire_exp_df
 
     def _create_experiment_run_mapping_dict(self):
 
@@ -59,19 +119,57 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         
         return mapping_dict
     
+    def transform_pos_samp_name_in_metadata(self, metadata_row: pd.Series) -> str:
+        # update positive sample names
+       
+        if 'POSITIVE' in metadata_row[self.jv_run_sample_name_column]:
+            marker = marker_to_shorthand_mapping.get(metadata_row[self.jv_metadata_marker_col_name])
+            return f"{self.run_name}.{marker}.POSITIVE"
+        else:
+            return metadata_row[self.jv_run_sample_name_column]
+
     def _create_experiment_metadata_df(self) -> pd.DataFrame:
         # TODO: maybe rethink th
 
         exp_df = self.load_google_sheet_as_df(google_sheet_id=self.jv_run_sample_metadata_file_id, sheet_name=self.jv_metadata_sample_sheet_name, header=0)
-
+      
         # if DY2012 cruise, replace strings DY20 with DY2012
         exp_df[self.jv_run_sample_name_column] = exp_df[self.jv_run_sample_name_column].apply(self.str_replace_dy2012_cruise)
 
         # only keep rows with cruise name in sample name and Postive
-        cruise_df = exp_df[(exp_df[self.jv_run_sample_name_column].str.contains(self.run_short_cruise_name) | (exp_df[self.jv_run_sample_name_column] == 'POSITIVE'))].reset_index(drop=True)
+        cruise_df = exp_df[(exp_df[self.jv_run_sample_name_column].str.contains(self.run_short_cruise_name) | (exp_df[self.jv_run_sample_name_column].str.contains('POSITIVE')))].reset_index(drop=True)
         
+        # Change positive control sample names
+        cruise_df[self.jv_run_sample_name_column] = cruise_df.apply(
+            lambda row: self.transform_pos_samp_name_in_metadata(metadata_row=row),
+            axis=1
+        )
+
         return cruise_df
     
+    def create_positive_samp_and_assay_dict(self):
+        # This will create a dictionary of all the positive samples and their associated samples (to be used for the rel_cont_id in the SampleMetadata)
+        # eg. {E54.SKQ21: [run1.POSITIVE.IOT, run1.POSITIVE.18S4]}
+
+        # Get dictionary mapping each sample to the markers it belongs to
+        sample_to_markers = self.jv_run_metadata_df.groupby(self.jv_run_sample_name_column)[self.jv_metadata_marker_col_name].apply(list).to_dict()
+
+       # Get dictionary mapping each marker to its positive samples
+        marker_to_positives = self.jv_run_metadata_df[self.jv_run_metadata_df[self.jv_run_sample_name_column].str.contains('POSITIVE')].groupby(self.jv_metadata_marker_col_name)[self.jv_run_sample_name_column].apply(list).to_dict()
+
+        result = {}
+        for sample, markers in sample_to_markers.items():
+            # Collect all positive sample from all the markers this sample belongs to
+            positives = []
+            for marker in markers:
+                if marker in marker_to_positives:
+                    positives.extend(marker_to_positives[marker])
+
+            # Rmove duplicates
+            result[sample] = list(dict.fromkeys(positives))
+
+        return result
+
     def _get_md5_checksum(self, filepath: str):
 
         md5_hash = hashlib.md5()
@@ -86,7 +184,11 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
     def _outline_raw_data_dict(self, sample_name: str, file_num: int, all_files: list, marker: str, marker_dir: str) -> dict:
         # outlines raw filename dictionary used by create_marker_sample_raw_data_files for filename and filename2 in FAIRe
 
-        pattern = re.compile(f"^{re.escape(sample_name)}_R[{file_num}].+")
+        # Account for sample name changes in positive samples
+        if 'POSITIVE' not in sample_name:
+            pattern = re.compile(f"^{re.escape(sample_name)}_R[{file_num}].+")
+        else:
+            pattern = re.compile(f"^{re.escape('POSITIVE')}_R[{file_num}].+")
 
         matching_files = [f for f in all_files if pattern.match(f)]
 
@@ -111,7 +213,6 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         else:
             print(f"Warning: No matching files found for sample {sample_name} in marker {marker}")
 
-    
     def _create_marker_sample_raw_data_file_dicts(self):
         # Finds all matching data files by marker for each sample returns two nested dict one for forward raw data files, and one for reverse raw data files
         # {marker1: {sample1: {filename: file1.gz, checksum: 56577, filepath: eff/dsdf.fastq.gz}}
@@ -136,8 +237,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                 
                 self._outline_raw_data_dict(sample_name=sample_name, file_num=1, all_files=all_files, marker=marker, marker_dir=marker_dir)
                 self._outline_raw_data_dict(sample_name=sample_name, file_num=2, all_files=all_files, marker=marker ,marker_dir=marker_dir)
-
-    
+   
     def convert_assay_to_standard(self, marker: str) -> str:
         # matches the marker to the corresponding assay and returns standardized assay name
         
@@ -164,7 +264,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         marker_name = metadata_row[self.jv_metadata_marker_col_name]
         sample_name = metadata_row[self.jv_run_sample_name_column]
 
-        # Get approrpiate nested marker dict and correspongind nested sample list with dictionary of files and checksums
+        # Get approrpiate nested marker dict and corresponding nested sample list with dictionary of files and checksums
         filename = raw_file_dict.get(marker_name).get(sample_name).get('filename')
 
         return filename
@@ -252,7 +352,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                 
                 # store output_read_count in the nested dictionary
                 self.asv_data_dict[marker][updated_sample_name] = {'output_read_count': output_read_count.item(), 
-                                                                                 'output_otu_num': non_zero_output_asv_num.item()}
+                                                                   'output_otu_num': non_zero_output_asv_num.item()}
 
         # Since getting the otu_num_tax_assigned depends on which version of the taxonomy we are using for the submission
         # if revamp_blast == True then use the ASVs_counts_mergedOnTaxonomy.tsv file to get this info.
@@ -289,11 +389,27 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         # Get the filepath to the 
         r1_file_path = self.raw_filename_dict.get(metadata_row[self.jv_metadata_marker_col_name]).get(metadata_row[self.jv_run_sample_name_column]).get('filepath')
 
-        input_read_count = self.count_fastq_files_bioawk(r1_file_path)
+        input_read_count = self._count_fastq_files_bioawk(r1_file_path)
 
         return input_read_count
     
-    # def process_asv_count_tsv(self, metadata_row: pd.Series) -> int:
+    def process_asv_counts(self, metadata_row: pd.Series, faire_col) -> str or int:
+        # Get the count (either output_read_count, output_otu_num, or otu_num_tax_assigned) from the asv_data_dict based on sample name and marker
+
+        # normalize marker to shorthand
+        marker = marker_to_shorthand_mapping.get(metadata_row[self.jv_metadata_marker_col_name])
+        sample_name = metadata_row[self.jv_run_sample_name_column]
+
+        # Get the count
+        try:
+            count = self.asv_data_dict.get(marker).get(sample_name).get(faire_col)
+        except Exception as e:
+            print(f"No count data for {sample_name} with {marker} {e}")
+            count = "missing: not collected"
+
+        return count
+
+       
 
         
 

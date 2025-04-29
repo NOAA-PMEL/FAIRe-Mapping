@@ -7,11 +7,13 @@ from utils.lists import marker_to_shorthand_mapping
 import pandas as pd
 
 #TODO: Add cv checking for related mappings?
+# TODO: change order of saving excel file and add csv saving at end
 
-def create_sample_metadata():
+def create_sample_metadata(exp_metadata_df: pd.DataFrame, samp_associated_positives: dict):
     
     # initiate mapper
-    sample_mapper = FaireSampleMetadataMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/skq21_12S/sample_metadata_config.yaml')
+    sample_mapper = FaireSampleMetadataMapper(config_yaml='config.yaml',
+                                              exp_metadata_df=exp_metadata_df)
 
     sample_metadata_results = {}
 
@@ -37,6 +39,12 @@ def create_sample_metadata():
         elif faire_col == 'materialSampleID' or faire_col == 'sample_derived_from':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
                 lambda row: sample_mapper.add_material_sample_id(metadata_row=row),
+                axis=1
+            )
+        
+        elif faire_col == 'rel_cont_id':
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.add_rel_cont_id(metadata_row=row, samp_seq_pos_controls_dict=samp_associated_positives),
                 axis=1
             )
 
@@ -95,87 +103,55 @@ def create_sample_metadata():
                 lambda row: sample_mapper.convert_min_depth_from_minus_one_meter(metadata_row=row, max_depth_col_name='FinalDepth'),
                 axis=1
             )
-    # # Step 4: fill in NA with missing not collected or not applicable because they are samples
+    # Step 4: fill in NA with missing not collected or not applicable because they are samples
     sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))
     
-    # Step 5: fill NC data frame
-    nc_df = sample_mapper.fill_nc_metadata(final_sample_df = sample_df)
+    # # Step 5: fill NC data frame if there is - DO THIS ONLY IF negative controls were sequenced! They were not for SKQ21
+    # nc_df = sample_mapper.fill_nc_metadata(final_sample_df = sample_df)
 
-    # Step 6: Combine all mappings at once 
-    faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df, nc_df])
+    # Step 5 Add positive controls
+    pos_df = sample_mapper.fill_seq_pos_control_metadata()
+
+    # Step 6: Combine all mappings at once (add nc_df if negative controls were sequenced)
+    faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df, pos_df])
    
     # step 7: save to excel file
-    sample_mapper.add_final_df_to_FAIRe_excel(sheet_name=sample_mapper.sample_mapping_sheet_name, faire_template_df=faire_sample_df)
+    sample_mapper.add_final_df_to_FAIRe_excel(excel_file_to_read_from=sample_mapper.final_faire_template_path,
+                                              sheet_name=sample_mapper.sample_mapping_sheet_name, 
+                                              faire_template_df=faire_sample_df)
 
     return faire_sample_df, sample_mapper
 
-def main() -> None:
-
-    # commented out while testing and building experimentRunMetadata
-    # sample_metadata = create_sample_metadata()
-    # sample_df = sample_metadata[0]
-    # sample_mapper = sample_metadata[1]
+def create_exp_run_metadata():
 
     exp_mapper = ExperimentRunMetadataMapper(config_yaml='config.yaml')
-    print(exp_mapper.asv_data_dict)
-   
-    # exp_metadata_results = {}
-    
-    # # Step 1: Add exact mappings
-    # for faire_col, metadata_col in exp_mapper.mapping_dict[exp_mapper.exact_mapping].items():
-    #     exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df[metadata_col].apply(
-    #         lambda row: exp_mapper.apply_exact_mappings(metadata_row=row, faire_col=faire_col))
-    
-    # # Step 2: Add constants
-    # for faire_col, static_value in exp_mapper.mapping_dict[exp_mapper.constant_mapping].items():
-    #     exp_metadata_results[faire_col] = exp_mapper.apply_static_mappings(faire_col=faire_col, static_value=static_value)
+    faire_exp_df = exp_mapper.generate_jv_run_metadata()
 
-    # # Step 3: Add related mappings
-    # for faire_col, metadata_col in exp_mapper.mapping_dict[exp_mapper.related_mapping].items():
-    #     # Add assay_name
-    #     if faire_col == 'assay_name':
-    #         exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df[metadata_col].apply(exp_mapper.convert_assay_to_standard)
+    # save to excel
+    exp_mapper.add_final_df_to_FAIRe_excel(excel_file_to_read_from=exp_mapper.faire_template_file,
+                                           sheet_name=exp_mapper.faire_template_exp_run_sheet_name, 
+                                           faire_template_df=faire_exp_df)
 
-    #     elif faire_col == 'lib_id':
-    #         exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df.apply(
-    #             lambda row: exp_mapper.jv_create_seq_id(metadata_row=row),
-    #             axis=1
-    #         )
-    #     elif faire_col == 'filename':
-    #         exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df.apply(
-    #             lambda row: exp_mapper.get_raw_file_names(metadata_row=row, raw_file_dict=exp_mapper.raw_filename_dict),
-    #             axis=1
-    #         )
-    #     elif faire_col =='filename2':
-    #         exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df.apply(
-    #             lambda row: exp_mapper.get_raw_file_names(metadata_row=row, raw_file_dict=exp_mapper.raw_filename2_dict),
-    #             axis=1
-    #         )
-    #     elif faire_col == 'checksum_filename':
-    #         exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df.apply(
-    #             lambda row: exp_mapper.get_cheksums(metadata_row=row, raw_file_dict=exp_mapper.raw_filename_dict),
-    #             axis = 1
-    #         )
-    #     elif faire_col == 'checksum_filename2':
-    #         exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df.apply(
-    #             lambda row: exp_mapper.get_cheksums(metadata_row=row, raw_file_dict=exp_mapper.raw_filename2_dict),
-    #             axis = 1
-    #         )
-    #     elif faire_col == 'input_read_count':
-    #         exp_metadata_results[faire_col] = exp_mapper.jv_run_metadata_df.apply(
-    #             lambda row: exp_mapper.process_paired_end_fastq_files(metadata_row=row),
-    #             axis=1
-    #         )
-    #     elif faire_col == 'output_read_count':
-    #         exp_metadata_results[faire_col]
+
+    return faire_exp_df, exp_mapper
+
+def main() -> None:
+
+    # step 1: generate exp metadata - this will inform which sample get metadata
+    exp_metadata = create_exp_run_metadata()
+    exp_df = exp_metadata[0]
+    exp_mapper = exp_metadata[1]
+    
+    # Get sample dictionary of associated positives
+    samp_associated_positives = exp_mapper.rel_pos_cont_id_dict
+
+    # commented out while testing and building experimentRunMetadata
+    sample_metadata = create_sample_metadata(exp_metadata_df=exp_df, samp_associated_positives=samp_associated_positives)
+    sample_df = sample_metadata[0]
+    sample_mapper = sample_metadata[1]
+
 
                 
-    # exp_df = pd.DataFrame(exp_metadata_results)
-    # print(exp_df)
-    
-    
-
-    
 
 if __name__ == "__main__":
     main()
