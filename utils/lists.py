@@ -54,15 +54,15 @@ nc_faire_field_cols = ['samp_name',
 # standardized assay names to use 
 # TODO: mappings will probably need to be added by run. These map from run2
 marker_to_assay_mapping = {
-    '18S V9': 'AmaralZettler_phytoplankton_18S_V9',
-    'dLoop': 'Baker_marmam_dLoop',
-    '16S Kelley': 'Kelly_metazoan_mt16S',
-    'Leray CO1': 'LerayFolmer_metazoan_COI', #geller and folmer is same region
-    '18S Machida': 'Machida_metazoan_18S_V8',
-    'MiFish 12S': 'MiFish_UniversalTeleost_12S',
-    '16S Furhman': 'Parada_universal_SSU16S_V4',
-    '18S V4': 'Stoeck_phytoplankton_18S_V4',
-    'ITS': 'WhiteSterling_phytoplankton_ITS1',
+    '18S V9': 'ssu18sv9_amaralzettler',
+    'dLoop': 'dloopv1.5v4_baker',
+    '16S Kelley': 'lsu16s_2434-2571_kelly',
+    'Leray CO1': 'COI_1835-2198_lerayfolmer', #geller and folmer is same region
+    '18S Machida': 'ssu18sv8_machida',
+    'MiFish 12S': 'ssu12sv5v6_mifish_u_sales',
+    '16S Furhman': 'ssu16sv4v5_parada',
+    '18S V4': 'ssu18sv4_stoeck',
+    'ITS': 'ITS1_sterling',
 }
 
 # Dictionary that maps the JV metabarcoding marker in the run sample metadata to the actual directory names on Poseidon
