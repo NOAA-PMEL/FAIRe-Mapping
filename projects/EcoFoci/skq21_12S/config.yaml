@@ -5,7 +5,7 @@ sample_metadata_file_neg_control_col_name: 'Negative_control' # Name of the colu
 sample_metadata_cast_no_col_name: 'Cast_No.'
 sample_metadata_bottle_no_col_name: 'Rosette_position'
 sample_metadata_depth_col_name: 'ctd_pressure' # only needed if using depth-1 to calculate minimum depth
-sample_metadata_vessel_name_col: 'Cruise_ID_short'
+vessel_name: Sikuliaq
 
 # Extraction sheet related
 # extraction_metadata_file: '/home/poseidon/zalmanek/FAIRe-Mapping/dy2012/faire_mapping_and_output/sample_metadata_files/SeanMcAllister_NOAA_finalConcentrations_June2021.xlsx - Info_ByPlate.csv'

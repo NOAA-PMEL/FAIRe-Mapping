@@ -10,6 +10,7 @@ from bs4 import BeautifulSoup
 from .custom_exception import NoInsdcGeoLocError
 from .lists import nc_faire_field_cols, marker_shorthand_to_pos_cont_gblcok_name
 
+# TODO: update vessel names in config.yaml files once know spelling
 # TODO: Turn nucl_acid_ext for DY20/12 into a BeBOP and change in extraction spreadsheet. Link to spreadsheet: https://docs.google.com/spreadsheets/d/1iY7Z8pNsKXHqsp6CsfjvKn2evXUPDYM2U3CVRGKUtX8/edit?gid=0#gid=0
 # TODO: continue update pos_df - add not applicable: sample to user defined fields, also add pos_cont_type
 
@@ -39,7 +40,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.nc_samp_mat_process = self.config_file['nc_samp_mat_process']
         self.extraction_metadata_sheet_name = self.config_file['extraction_metadata_sheet_name']
         self.extraction_metadata_google_sheet_id = self.config_file['extraction_metadata_google_sheet_id']
-        self.sample_metadata_vessel_name_col = self.config_file['sample_metadata_vessel_name_col']
+        self.vessel_name = self.config_file['vessel_name']
 
         self.exp_metadata_df = exp_metadata_df
 
@@ -85,7 +86,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         nc_mapping_dict[self.related_mapping]['prepped_samp_store_dur'] = self.config_file['nc_prepped_samp_store_dur']
         nc_mapping_dict[self.constant_mapping]['samp_store_dur'] = "not applicable: control sample"
         nc_mapping_dict[self.constant_mapping]['samp_store_temp'] = 'ambient temperature'
-        nc_mapping_dict[self.exact_mapping]['samp_store_loc'] = self.sample_metadata_vessel_name_col
+        nc_mapping_dict[self.exact_mapping]['samp_store_loc'] = self.vessel_name
 
         return nc_mapping_dict
 

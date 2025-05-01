@@ -8,6 +8,7 @@ import subprocess
 import re
 import hashlib
 
+# TODO: will need to update to handle different folder names for raw data in renamed than in run2
 # TODO: add associatedSequences functionlity after submittting to NCBI
 
 class ExperimentRunMetadataMapper(OmeFaireMapper):
