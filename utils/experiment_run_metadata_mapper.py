@@ -228,23 +228,22 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         grouped = self.jv_run_metadata_df.groupby(self.jv_metadata_marker_col_name)
 
         for marker, group in grouped:
-            folder_name = marker_to_shorthand_mapping.get(marker, marker)
-            marker_dir = os.path.join(self.jv_raw_data_path, folder_name)
+           # Get the raw data folder name by shorthand marker - see dict in lists.py
+            shorthand_marker = marker_to_shorthand_mapping.get(marker)
+            for marker_folder_name in os.listdir(self.jv_raw_data_path):
+                if shorthand_marker in marker_folder_name:
+                    print(f"{marker} from sequencing data using raw data folder: {marker_folder_name}")
+                    marker_dir = os.path.join(self.jv_raw_data_path, marker_folder_name)
 
-            # TODO: consider adding raise Error here?
-            if not os.path.exists(marker_dir):
-                print(f"Warning: Directory for marker {marker} ({marker_dir}) not found")
-                continue
+                    # Get all filenames in the direcotry
+                    all_files = os.listdir(marker_dir)
 
-            # Get all filenames in the direcotry
-            all_files = os.listdir(marker_dir)
+                    # For each sample in this marker group
+                    for sample_name in group[self.jv_run_sample_name_column].unique():
+                        
+                        self._outline_raw_data_dict(sample_name=sample_name, file_num=1, all_files=all_files, marker=marker, marker_dir=marker_dir)
+                        self._outline_raw_data_dict(sample_name=sample_name, file_num=2, all_files=all_files, marker=marker ,marker_dir=marker_dir)
 
-            # For each sample in this marker group
-            for sample_name in group[self.jv_run_sample_name_column].unique():
-                
-                self._outline_raw_data_dict(sample_name=sample_name, file_num=1, all_files=all_files, marker=marker, marker_dir=marker_dir)
-                self._outline_raw_data_dict(sample_name=sample_name, file_num=2, all_files=all_files, marker=marker ,marker_dir=marker_dir)
-   
     def convert_assay_to_standard(self, marker: str) -> str:
         # matches the marker to the corresponding assay and returns standardized assay name
         
@@ -256,12 +255,13 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             return assay
 
     def jv_create_seq_id(self, metadata_row: pd.Series) -> str:
-        # create lib_id by concatenating index and sample name together
+        # create lib_id by concatenating sample name, index, marker and run name together
 
         index_name = metadata_row[self.jv_index_name_col]
         sample_name = metadata_row[self.jv_run_sample_name_column]
+        shorthand_marker = marker_to_shorthand_mapping.get(metadata_row[self.jv_metadata_marker_col_name])
 
-        lib_id = sample_name + "_" + index_name
+        lib_id = sample_name + "_" + index_name + "_" + shorthand_marker + "_" + self.run_name
 
         return lib_id
 
