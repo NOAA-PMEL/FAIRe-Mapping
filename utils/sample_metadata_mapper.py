@@ -13,7 +13,8 @@ from bs4 import BeautifulSoup
 from .custom_exception import NoInsdcGeoLocError
 from .lists import nc_faire_field_cols, marker_shorthand_to_pos_cont_gblcok_name
 
-# TODO: update vessel names in config.yaml files once know spelling
+# TODO: Need to figure out how to incorporate blanks from extractions into data frame. If they are in the same extraction set as the samples
+# with the shorthand cruise nmae, need to include as extraction blank (see Alaska extractions for examples)
 # TODO: Turn nucl_acid_ext for DY20/12 into a BeBOP and change in extraction spreadsheet. Link to spreadsheet: https://docs.google.com/spreadsheets/d/1iY7Z8pNsKXHqsp6CsfjvKn2evXUPDYM2U3CVRGKUtX8/edit?gid=0#gid=0
 # TODO: continue update pos_df - add not applicable: sample to user defined fields, also add pos_cont_type
 
@@ -38,7 +39,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.sample_metadata_file_neg_control_col_name = self.config_file['sample_metadata_file_neg_control_col_name']
         self.sample_metadata_cast_no_col_name = self.config_file['sample_metadata_cast_no_col_name']
         self.sample_metadata_bottle_no_col_name = self.config_file['sample_metadata_bottle_no_col_name']
-        self.sample_metadata_depth_col_name = self.config_file['sample_metadata_depth_col_name'] if self.config_file['sample_metadata_depth_col_name'] else None
         self.extraction_sample_name_col = self.config_file['extraction_sample_name_col']
         self.extraction_cruise_key = self.config_file['extraction_cruise_key']
         self.extraction_conc_col_name = self.config_file['extraction_conc_col_name']
@@ -48,6 +48,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.extraction_metadata_google_sheet_id = self.config_file['extraction_metadata_google_sheet_id']
         self.vessel_name = self.config_file['vessel_name']
         self.faire_template_file = self.config_file['faire_template_file']
+        self.google_sheet_mapping_file_id = self.config_file['google_sheet_mapping_file_id']
 
         # self.exp_metadata_df = exp_metadata_df
 
@@ -172,20 +173,46 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         
         return extract_avg_df
     
+    def transform_metadata_df(self):
+        # Converts sample metadata to a data frame and checks to make sure NC samples have NC in the name (dy2206 had this problem)
+        samp_metadata_df = self.load_csv_as_df(file_path=Path(self.config_file['sample_metadata_file']))
+
+        # Add .NC to sample name if the Negative Control column is True and its missing (in DY2206 cruise)
+        samp_metadata_df[self.sample_metadata_sample_name_column] = samp_metadata_df.apply(
+            lambda row: self.check_nc_samp_name_has_nc(metadata_row=row),
+            axis=1)
+        
+        return samp_metadata_df
+
     def join_sample_and_extract_df(self):
         # join extraction sheet with sample metadata sheet on Sample name - keeping only samples from extraction df
 
         extract_df = self.filter_cruise_avg_extraction_conc()
 
+        samp_df = self.transform_metadata_df()
+
         metadata_df = pd.merge(
             left = extract_df,
-            right = self.load_csv_as_df(file_path=Path(self.config_file['sample_metadata_file'])),
+            right = samp_df,
             left_on = self.extraction_sample_name_col,
             right_on = self.sample_metadata_sample_name_column,
             how='left'
         )
 
         return metadata_df
+
+    def check_nc_samp_name_has_nc(self, metadata_row: pd.Series) -> str:
+        # Checks to make sure sample names have .NC if the negative control column is True, if not adds the .NC
+        sample_name = metadata_row[self.sample_metadata_sample_name_column]
+        if metadata_row[self.sample_metadata_file_neg_control_col_name] == 'TRUE' or metadata_row[self.sample_metadata_file_neg_control_col_name] == True:
+            if '.NC' not in metadata_row[self.sample_metadata_sample_name_column]:
+                samp_name_bits = sample_name.split('.')
+                samp_name = f'{samp_name_bits[0]}.NC.{samp_name_bits[1]}'
+                return samp_name
+            else:
+                return sample_name
+        else:
+            return sample_name
 
     def filter_metadata_dfs(self):
 
@@ -232,7 +259,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     
     def extract_replicate_sample_parent(self, sample_name):
             # Extracts the E number in the sample name
-            return sample_name.split('.')[0]
+            if pd.notna(sample_name):
+                return sample_name.split('.')[0]
     
     def create_biological_replicates_dict(self) -> dict:
         # Creates a dictionary of the parent E number as a key and the replicate sample names as the values
@@ -360,7 +388,12 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
      
         # For use cases that have the sea in the 
         if 'sea' in metadata_row[geo_loc_metadata_col].lower():
-            geo_loc = 'USA: ' + metadata_row[geo_loc_metadata_col]
+            # Typos in geo_loc for dy2206
+            if 'Beiring' in metadata_row[geo_loc_metadata_col]:
+                sea = metadata_row[geo_loc_metadata_col].replace('Beiring', 'Bering')
+            else:
+                sea = metadata_row[geo_loc_metadata_col]
+            geo_loc = 'USA: ' + sea
         else: geo_loc = metadata_row[geo_loc_metadata_col]
     
         # check that geo_loc_name (first string before first :) is an acceptes insdc word
@@ -410,18 +443,25 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     def calculate_date_duration(self, metadata_row: pd.Series, start_date_col: str, end_date_col: str) -> datetime:
         # takes two dates and calcualtes the difference to find the duration of time in ISO 8601 format
         # Handles both simple date format (2021-04-01) and dattime format (2020-09-05T02:50:00Z)
-        
         # reformat date: # Handles both simple date format (2021-04-01) and dattime format (2020-09-05T02:50:00Z)
-        start_date = self.format_dates_for_duration_calculation(date=metadata_row[start_date_col])
-        end_date= self.format_dates_for_duration_calculation(date=metadata_row[end_date_col])
+        start_date = metadata_row[start_date_col]
+        end_date = metadata_row[end_date_col]
+
+        if pd.notna(start_date) and pd.notna(end_date):
+            start_date = self.format_dates_for_duration_calculation(date=metadata_row[start_date_col])
+            end_date= self.format_dates_for_duration_calculation(date=metadata_row[end_date_col])
     
-        #Calculate the difference
-        duration = end_date - start_date
+            #Calculate the difference
+            duration = end_date - start_date
 
-        # Convert to ISO 8061
-        iso_duration = isodate.duration_isoformat(duration)
+            # Convert to ISO 8061
+            iso_duration = isodate.duration_isoformat(duration)
 
-        return iso_duration
+            return iso_duration
+        
+        else:
+            # if start date or end date is NA will return missing: not collected
+            return "missing: not collected "
     
     def get_tot_depth_water_col_from_lat_lon(self, metadata_row: pd.Series, lat_col: float, lon_col: float, exact_map_col: str = None) -> float:
 
@@ -429,16 +469,15 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         if pd.notna(metadata_row[exact_map_col]):
             return metadata_row[exact_map_col]
         else:
-
             lat = metadata_row[lat_col]
             lon = metadata_row[lon_col]
 
             # Check if verbatim column and use to determin negative or positive sign 
             # pandas has a bug where it removes the negative using .apply()
             if 'S' in metadata_row['verbatimLatitude']:
-                lat = float(-lat)
+                lat = float(-abs(lat))
             if 'W' in metadata_row['verbatimLongitude']:
-                lon = float(-lon)
+                lon = float(-abs(lon))
 
             # open the gebco dataset
             ds = xr.open_dataset(self.gebco_file)

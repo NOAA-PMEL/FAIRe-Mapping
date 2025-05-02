@@ -8,7 +8,7 @@ import subprocess
 import re
 import hashlib
 
-# TODO: will need to update to handle different folder names for raw data in renamed than in run2
+# TODO: update for PCR replicates?
 # TODO: add associatedSequences functionlity after submittting to NCBI
 
 class ExperimentRunMetadataMapper(OmeFaireMapper):
@@ -31,6 +31,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         self.asv_counts_tsvs_for_run = self.config_file['asv_counts_tsvs_for_run']
         self.otu_num_tax_assigned_files_for_run = self.config_file['otu_num_tax_assigned_files_for_run']
         self.ignore_markers = self.config_file['ignore_markers']
+        self.google_sheet_mapping_file_id = self.config_file['google_sheet_mapping_file_id']
 
         self.mapping_dict = self._create_experiment_run_mapping_dict()
         self.jv_run_metadata_df = self._create_experiment_metadata_df()

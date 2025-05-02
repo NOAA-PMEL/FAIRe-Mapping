@@ -49,7 +49,7 @@ def create_skq21_12S_sample_metadata():
         elif faire_col == 'decimalLongitude' or faire_col == 'decimalLatitude':
             date_cols = metadata_col.split(' | ')
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
-                lambda row: sample_mapper.map_using_two_cols_if_one_is_na_use_other(metadata_row=row, desired_col_name=date_cols[0], use_if_na_col_name=date_cols[1]),
+                lambda row: sample_mapper.map_using_two_or_three_cols_if_one_is_na_use_other(metadata_row=row, desired_col_name=date_cols[0], use_if_na_col_name=date_cols[1]),
                 axis=1
             )
 
@@ -64,7 +64,7 @@ def create_skq21_12S_sample_metadata():
             event_dates = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('eventDate')
             date_cols = event_dates.split(' | ')
             sample_collection_date = sample_mapper.sample_metadata_df.apply(
-                lambda row: sample_mapper.map_using_two_cols_if_one_is_na_use_other(metadata_row=row, desired_col_name=date_cols[0], use_if_na_col_name=date_cols[1], transform_use_col_to_date_format=True),
+                lambda row: sample_mapper.map_using_two_or_three_cols_if_one_is_na_use_other(metadata_row=row, desired_col_name=date_cols[0], use_if_na_col_name=date_cols[1], transform_use_col_to_date_format=True),
                 axis=1
             )
             sample_metadata_results['eventDate'] = sample_collection_date
@@ -85,7 +85,7 @@ def create_skq21_12S_sample_metadata():
             max_depth_faire_col = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('maximumDepthInMeters')
             depth_col_names = max_depth_faire_col.split(' | ')
             max_depth = sample_mapper.sample_metadata_df.apply(
-                lambda row: sample_mapper.map_using_two_cols_if_one_is_na_use_other(metadata_row=row, desired_col_name=depth_col_names[0], use_if_na_col_name=depth_col_names[1]),
+                lambda row: sample_mapper.map_using_two_or_three_cols_if_one_is_na_use_other(metadata_row=row, desired_col_name=depth_col_names[0], use_if_na_col_name=depth_col_names[1]),
                 axis=1
             )
             sample_mapper.sample_metadata_df['FinalDepth'] = max_depth
@@ -95,7 +95,11 @@ def create_skq21_12S_sample_metadata():
                 lambda row: sample_mapper.convert_min_depth_from_minus_one_meter(metadata_row=row, max_depth_col_name='FinalDepth'),
                 axis=1
             )
-    # Step 4: fill in NA with missing not collected or not applicable because they are samples
+
+        elif faire_col == 'date_ext':
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(sample_mapper.convert_date_to_iso8601)
+   
+   # Step 4: fill in NA with missing not collected or not applicable because they are samples
     sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))
     
     # Step 5: fill NC data frame if there is - DO THIS ONLY IF negative controls were sequenced! They were not for SKQ21

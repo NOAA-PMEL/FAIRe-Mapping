@@ -31,7 +31,6 @@ class OmeFaireMapper:
         self.config_file = self.load_config(config_yaml)
         self.google_sheet_json_cred = self.config_file['json_creds']
 
-        self.google_sheet_mapping_file_id = self.config_file['google_sheet_mapping_file_id']
         self.mapping_file_FAIRe_column = 'faire_field'
         self.mapping_file_metadata_column = 'source_name_or_constant'
         self.mapping_file_mapped_type_column = 'mapping'
@@ -155,23 +154,47 @@ class OmeFaireMapper:
         #     self.check_and_add_geo_loc(formatted_geo_loc=static_value, new_row=new_row, faire_col=faire_col)
         return static_value
     
-    def map_using_two_cols_if_one_is_na_use_other(self, metadata_row: pd.Series, desired_col_name: str, use_if_na_col_name: str, transform_use_col_to_date_format=False) -> datetime:
+    def map_using_two_or_three_cols_if_one_is_na_use_other(self, metadata_row: pd.Series, desired_col_name: str, 
+                                                  use_if_na_col_name: str, transform_use_col_to_date_format=False,
+                                                  use_if_second_col_is_na: str = None) -> datetime:
         # If a faire column maps to two columns because there is data missing from the desired column,
         # and will need to use data from another column in that case, then return the other columns data
         # only works if mapping is exact for columns
         # Make date = true if use_if_na_col_name needs to be transformed from 
-        if pd.notna(metadata_row[desired_col_name]):
-            return metadata_row[desired_col_name]
-        else:
-            if transform_use_col_to_date_format == False:
+        
+        if transform_use_col_to_date_format == False:
+            # If desired col name value is not na
+            if pd.notna(metadata_row[desired_col_name]):
+                return metadata_row[desired_col_name]
+            elif pd.notna(metadata_row[use_if_na_col_name]):
                 return metadata_row[use_if_na_col_name]
             else:
+                return metadata_row[use_if_second_col_is_na]
+        else:
+            if pd.notna(metadata_row[use_if_na_col_name]):
                 return self.convert_date_to_iso8601(date=metadata_row[use_if_na_col_name])
-        
+            else:
+                return self.convert_date_to_iso8601(date=metadata_row[use_if_second_col_is_na])
+                  
     def convert_date_to_iso8601(self, date: str) -> datetime:
         # converts strings from 2021/11/08 00:00:00 to iso8601 format  to 2021-11-08T00:00:00Z
-        dt_obj = datetime.strptime(date, "%Y/%m/%d %H:%M:%S")
+        # also converts strings from 5/1/2024 to 2024-01-05T00:00:00Z
+        # And coverts 2024-05-01 to 2024-01-05T00:00:00Z
+    
+        if "/" in date and ":" in date: # for dates in the form 2021/11/08 00:00:00
+            dt_obj = datetime.strptime(date, "%Y/%m/%d %H:%M:%S")
+        elif "/" in date and ":" not in date: # format for dates in 5/1/2024
+            dt_obj = datetime.strptime(date, "%m/%d/%Y")
+            # Add time component of midnight
+            dt_obj = dt_obj.replace(hour=0, minute=0, second=0)
+        elif "-" in date and len(date.split("-")) == 3: # Format like 2024-04-10
+            dt_obj = datetime.strptime(date, "%Y-%m-%d")
+            dt_obj = dt_obj.replace(hour=0, minute=0, second=0)
+        else:
+            raise ValueError(f"Unsupported date format: {date}")
+
         dt_obj = dt_obj.strftime("%Y-%m-%dT%H:%M:%SZ")
+     
         return dt_obj
 
     def add_final_df_to_FAIRe_excel(self, excel_file_to_read_from: str, sheet_name: str, faire_template_df: pd.DataFrame):

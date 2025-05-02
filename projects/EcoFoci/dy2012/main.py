@@ -40,7 +40,7 @@ def create_dy2012_sample_metadata():
             )
         elif faire_col == 'minimumDepthInMeters':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
-                lambda row: sample_mapper.convert_min_depth_from_minus_one_meter(metadata_row=row, max_depth_col_name=sample_mapper.sample_metadata_depth_col_name),
+                lambda row: sample_mapper.convert_min_depth_from_minus_one_meter(metadata_row=row, max_depth_col_name=metadata_col),
                 axis=1
             )
         elif faire_col == 'wind_direction':
@@ -60,6 +60,9 @@ def create_dy2012_sample_metadata():
                 lambda row: sample_mapper.calculate_date_duration(metadata_row=row, start_date_col=date_col_names[0], end_date_col=date_col_names[1]),
                 axis=1
             )
+        
+        elif faire_col == 'date_ext':
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(sample_mapper.convert_date_to_iso8601)
             
     # Step 4: fill in NA with missing not collected or not applicable because they are samples
     sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))
