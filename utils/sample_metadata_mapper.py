@@ -6,6 +6,9 @@ import pandas as pd
 import yaml
 import requests
 import numpy as np
+import xarray as xr
+# import matplotlib.pyplot as plt
+# from pyproj import Transformer
 from bs4 import BeautifulSoup
 from .custom_exception import NoInsdcGeoLocError
 from .lists import nc_faire_field_cols, marker_shorthand_to_pos_cont_gblcok_name
@@ -23,9 +26,12 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     faire_lon_col_name = "verbatimLongitude"
     not_applicable_to_samp_faire_col_dict = {"neg_cont_type": "not applicable: sample group",
                                              "pos_cont_type": "not applicable: sample group"}
+    gebco_file = "/home/poseidon/zalmanek/FAIRe-Mapping/utils/GEBCO_2024.nc"
     
 
-    def __init__(self, config_yaml: yaml, exp_metadata_df: pd.Series):
+    def __init__(self, config_yaml: yaml):
+        #TODO: used to have exp_metadata_df: pd.Series as init, but removed because of abstracting out sequencing yaml. See all associated commented out portions
+        # May need to move this part into a separate class that combines after all sample_metadata is generated for each cruise
         super().__init__(config_yaml)
 
         self.sample_metadata_sample_name_column = self.config_file['sample_metadata_sample_name_column']
@@ -41,8 +47,9 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.extraction_metadata_sheet_name = self.config_file['extraction_metadata_sheet_name']
         self.extraction_metadata_google_sheet_id = self.config_file['extraction_metadata_google_sheet_id']
         self.vessel_name = self.config_file['vessel_name']
+        self.faire_template_file = self.config_file['faire_template_file']
 
-        self.exp_metadata_df = exp_metadata_df
+        # self.exp_metadata_df = exp_metadata_df
 
         self.sample_metadata_df = self.filter_metadata_dfs()[0]
         self.nc_df = self.filter_metadata_dfs()[1]
@@ -51,7 +58,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.insdc_locations = self.extract_insdc_geographic_locations()
         self.mapping_dict = self.create_sample_mapping_dict()
         self.nc_mapping_dict = self.create_nc_mapping_dict()
-        self.sample_assay_dict = self.create_assay_name_dict()
+        # self.sample_assay_dict = self.create_assay_name_dict()
 
     def create_sample_mapping_dict(self) -> dict:
             # creates a mapping dictionary and saves as self.mapping_dict
@@ -69,7 +76,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             for mapping_value, group in group_by_mapping:
                 column_map_dict = {k: v for k, v in zip(group[self.mapping_file_FAIRe_column], group[self.mapping_file_metadata_column]) if pd.notna(v)}
                 mapping_dict[mapping_value] = column_map_dict
-            
+    
             return mapping_dict
     
     def create_nc_mapping_dict(self) -> dict:
@@ -86,14 +93,14 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         nc_mapping_dict[self.related_mapping]['prepped_samp_store_dur'] = self.config_file['nc_prepped_samp_store_dur']
         nc_mapping_dict[self.constant_mapping]['samp_store_dur'] = "not applicable: control sample"
         nc_mapping_dict[self.constant_mapping]['samp_store_temp'] = 'ambient temperature'
-        nc_mapping_dict[self.exact_mapping]['samp_store_loc'] = self.vessel_name
+        nc_mapping_dict[self.constant_mapping]['samp_store_loc'] = self.vessel_name
 
         return nc_mapping_dict
 
-    def create_assay_name_dict(self) -> dict:
-        # Creates a dicitonary of the samples and their assays
-        grouped = self.exp_metadata_df.groupby('samp_name')['assay_name'].apply(list).to_dict()
-        return grouped
+    # def create_assay_name_dict(self) -> dict:
+    #     # Creates a dicitonary of the samples and their assays
+    #     grouped = self.exp_metadata_df.groupby('samp_name')['assay_name'].apply(list).to_dict()
+    #     return grouped
 
     def convert_mdy_date_to_iso8061(self, date_string: str) -> str:
         # converts from m/d/y to iso8061
@@ -183,16 +190,16 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     def filter_metadata_dfs(self):
 
         # Extract all unique sample names from experiment run metadata df
-        exp_sample_names = self.exp_metadata_df['samp_name'].unique()
+        # exp_sample_names = self.exp_metadata_df['samp_name'].unique()
 
         # Join sample metadata with extraction metadata to get samp_df
         samp_df = self.join_sample_and_extract_df()
 
         # filter samp_df to keep only rows with sample names that exist in the exp_sample_names
-        samp_df_filtered = samp_df[samp_df[self.sample_metadata_sample_name_column].isin(exp_sample_names)]
+        # samp_df_filtered = samp_df[samp_df[self.sample_metadata_sample_name_column].isin(exp_sample_names)]
         
         try:
-            nc_mask = samp_df_filtered[self.sample_metadata_sample_name_column].astype(str).str.contains('.NC', case=True)
+            nc_mask = samp_df[self.sample_metadata_sample_name_column].astype(str).str.contains('.NC', case=True)
             nc_df = samp_df[nc_mask].copy()
             samp_df_filtered = samp_df[~nc_mask].copy()
             return samp_df_filtered, nc_df
@@ -331,10 +338,13 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     def convert_wind_degrees_to_direction(self, degree_metadata_row: pd.Series) -> str:
         # converts wind direction  to cardinal directions
         
-        direction_labels = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
-        ix  = np.round(degree_metadata_row / (360. / len(direction_labels))).astype('i')
+        if pd.isna(degree_metadata_row) or degree_metadata_row is None:
+            return "missing: not collected"
+        else:
+            direction_labels = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
+            ix  = np.round(degree_metadata_row / (360. / len(direction_labels))).astype('i')
 
-        return direction_labels[ix % 16]
+            return direction_labels[ix % 16]
     
     def convert_min_depth_from_minus_one_meter(self, metadata_row: pd.Series, max_depth_col_name: str):
         # Subtracts 1 from the max depth to calculate min depth (niskin bottle is ~1 m)
@@ -386,6 +396,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                 # Create datetime and strip timezone info
                 dt = datetime.fromisoformat(date).replace(tzinfo=None)
         # To account for dates in form 9/5/20 - may need to refactor
+        elif '/' in date and ' ' in date: #from like 2022/01/03 12:34:54
+            dt = datetime.strptime(date, "%Y/%m/%d %H:%M:%S")
         elif '/' in date:
             date = datetime.strptime(date, "%m/%d/%y")
             date = date.strftime("%Y-%m-%d")
@@ -411,6 +423,27 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         return iso_duration
     
+    def get_tot_depth_water_col_from_lat_lon(self, metadata_row: pd.Series, lat_col: str, lon_col: str, exact_map_col: str = None) -> float:
+        print(metadata_row)
+        if pd.notna(metadata_row[exact_map_col]):
+            return metadata_row[exact_map_col]
+        else:
+
+            lat = metadata_row[lat_col]
+            lon = metadata_row[lon_col]
+
+            # open the gebco dataset
+            ds = xr.open_dataset(self.gebco_file)
+
+            # get the closest point in the dataset to the coordinates
+            elevation = ds.elevation.sel(lat=lat, lon=lon, method='nearest').values
+
+            # close the dataset
+            ds.close()
+            print(elevation)
+
+            return float(elevation)
+
     def fill_empty_sample_values(self, df: pd.DataFrame, default_message = "missing: not collected"):
         # fill empty values for samples after mapping over all sample data without control samples
 
@@ -434,7 +467,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # Fills the negative control data frame
         
         nc_results = {}
-       
         # add exact mappings
         for faire_col, metadata_col in self.nc_mapping_dict[self.exact_mapping].items():
             nc_results[faire_col] = self.nc_df[metadata_col].apply(
@@ -474,7 +506,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         return nc_df
 
-    def fill_seq_pos_control_metadata(self, final_sample_df: pd.DataFrame) -> pd.DataFrame:
+    # def fill_seq_pos_control_metadata(self, final_sample_df: pd.DataFrame) -> pd.DataFrame:
         #TODO: add pos_cont_type mapping
 
         # Get positive control df and only keep the sample name and assay name columns

@@ -26,7 +26,6 @@ jv_run_sample_name_column: Sample Name
 jv_index_name_col: Index Name
 jv_raw_data_path: /data/raw_data/20240328_JV_Run2_OCNMS_Arctic_eDNA/renamed/
 jv_run_sample_metadata_file_id: 1t_i2c0q-Oe4RHwUimBa9XuqRAlPXY1SiQ1m4dgkou9k
-jv_run_name: pmel_ome_run2
 run_short_cruise_name: SKQ2021 # the short cruise name in the jv run csv file to filter by cruise name
 run_name: run2 # for adding to the Positive control sample names
 revamp_blast: True # if using the revamp blast-based taxonomy assignment then set this to True, otherwise False

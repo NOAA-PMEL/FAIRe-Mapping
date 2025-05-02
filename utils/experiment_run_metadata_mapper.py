@@ -26,7 +26,6 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         self.faire_sample_samp_name_col = 'samp_name' # The name of the column for sample name in the 
         self.jv_raw_data_path = self.config_file['jv_raw_data_path']
         self.jv_run_sample_metadata_file_id = self.config_file['jv_run_sample_metadata_file_id']
-        self.jv_run_name = self.config_file['jv_run_name']
         self.run_short_cruise_name = self.config_file['run_short_cruise_name']
         self.run_name = self.config_file['run_name']
         self.asv_counts_tsvs_for_run = self.config_file['asv_counts_tsvs_for_run']
@@ -67,7 +66,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
 
             elif faire_col == 'lib_id':
                 exp_metadata_results[faire_col] = self.jv_run_metadata_df.apply(
-                    lambda row: self.jv_create_seq_id(metadata_row=row),
+                    lambda row: self.jv_create_lib_id(metadata_row=row),
                     axis=1
                 )
             elif faire_col == 'filename':
@@ -228,21 +227,22 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         grouped = self.jv_run_metadata_df.groupby(self.jv_metadata_marker_col_name)
 
         for marker, group in grouped:
-           # Get the raw data folder name by shorthand marker - see dict in lists.py
+           # Get the raw data folder name by shorthand marker - see dict in lists.py. If 
             shorthand_marker = marker_to_shorthand_mapping.get(marker)
-            for marker_folder_name in os.listdir(self.jv_raw_data_path):
-                if shorthand_marker in marker_folder_name:
-                    print(f"{marker} from sequencing data using raw data folder: {marker_folder_name}")
-                    marker_dir = os.path.join(self.jv_raw_data_path, marker_folder_name)
+            marker_raw_data_dir = self.jv_raw_data_path.get(shorthand_marker)
+            if os.path.exists(marker_raw_data_dir):
+                print(f"raw data for {shorthand_marker} in folder: {marker_raw_data_dir}")
+            else:
+                raise ValueError(f"{marker_raw_data_dir} does not exist!")
+            
+            # Get all filenames in the direcotry
+            all_files = os.listdir(marker_raw_data_dir)
 
-                    # Get all filenames in the direcotry
-                    all_files = os.listdir(marker_dir)
-
-                    # For each sample in this marker group
-                    for sample_name in group[self.jv_run_sample_name_column].unique():
-                        
-                        self._outline_raw_data_dict(sample_name=sample_name, file_num=1, all_files=all_files, marker=marker, marker_dir=marker_dir)
-                        self._outline_raw_data_dict(sample_name=sample_name, file_num=2, all_files=all_files, marker=marker ,marker_dir=marker_dir)
+            # For each sample in this marker group
+            for sample_name in group[self.jv_run_sample_name_column].unique():
+                
+                self._outline_raw_data_dict(sample_name=sample_name, file_num=1, all_files=all_files, marker=marker, marker_dir=marker_raw_data_dir)
+                self._outline_raw_data_dict(sample_name=sample_name, file_num=2, all_files=all_files, marker=marker ,marker_dir=marker_raw_data_dir)
 
     def convert_assay_to_standard(self, marker: str) -> str:
         # matches the marker to the corresponding assay and returns standardized assay name
@@ -254,7 +254,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         else:
             return assay
 
-    def jv_create_seq_id(self, metadata_row: pd.Series) -> str:
+    def jv_create_lib_id(self, metadata_row: pd.Series) -> str:
         # create lib_id by concatenating sample name, index, marker and run name together
 
         index_name = metadata_row[self.jv_index_name_col]
@@ -325,14 +325,13 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         # {marker: {E56. : {output_read_count: 5, output_otu_num: 8}}}
         # if revamp_blast is True will run _count_otu_tax_assigned_using_REVAMP_blast_based_tax to add the otu_num_tax_assigned
 
-        for metabarcoding_marker, asv_tsv_file in self.asv_counts_tsvs_for_run.items():
+        for marker, asv_tsv_file in self.asv_counts_tsvs_for_run.items():
             asv_tsv_file = os.path.abspath(asv_tsv_file)
 
             if not os.path.exists(asv_tsv_file):
                 raise ValueError(f"File not found: {asv_tsv_file}")
 
             # Initialize marker in the nested dictionary
-            marker = marker_to_shorthand_mapping.get(metabarcoding_marker)
             self.asv_data_dict[marker] = {}
 
             # Read the TSV file with pandas
@@ -369,9 +368,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
     def _count_otu_tax_assigned_using_REVAMP_blast_based_tax(self):
         # Calculates the otu_num_tax_assined from the ASVs_counts_mergedOnTaxonomy.tsv file
         
-         for metabarcoding_marker, asv_tax_file in self.otu_num_tax_assigned_files_for_run.items():
-
-            marker = marker_to_shorthand_mapping.get(metabarcoding_marker)
+         for marker, asv_tax_file in self.otu_num_tax_assigned_files_for_run.items():
 
             # Read the TSV file with pandas
             asv_tax_df = pd.read_csv(asv_tax_file, sep='\t')
