@@ -75,12 +75,12 @@ def create_dy2209_sample_metadata():
         elif faire_col == 'wind_direction':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(sample_mapper.convert_wind_degrees_to_direction)
 
-        # elif faire_col == 'tot_depth_water_col':
-        #     cols = metadata_col.split(' | ')
-        #     sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
-        #         lambda row: sample_mapper.get_tot_depth_water_col_from_lat_lon(metadata_row=row, lat_col=cols[1], lon_col=cols[2], exact_map_col=cols[0]),
-        #         axis=1
-        #     )
+        elif faire_col == 'tot_depth_water_col':
+            cols = metadata_col.split(' | ')
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.get_tot_depth_water_col_from_lat_lon(metadata_row=row, lat_col=cols[1], lon_col=cols[2], exact_map_col=cols[0]),
+                axis=1
+            )
     
     # Step 4: fill in NA with missing not collected or not applicable because they are samples
     sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))

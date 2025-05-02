@@ -423,14 +423,22 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         return iso_duration
     
-    def get_tot_depth_water_col_from_lat_lon(self, metadata_row: pd.Series, lat_col: str, lon_col: str, exact_map_col: str = None) -> float:
-        print(metadata_row)
+    def get_tot_depth_water_col_from_lat_lon(self, metadata_row: pd.Series, lat_col: float, lon_col: float, exact_map_col: str = None) -> float:
+
+
         if pd.notna(metadata_row[exact_map_col]):
             return metadata_row[exact_map_col]
         else:
 
             lat = metadata_row[lat_col]
             lon = metadata_row[lon_col]
+
+            # Check if verbatim column and use to determin negative or positive sign 
+            # pandas has a bug where it removes the negative using .apply()
+            if 'S' in metadata_row['verbatimLatitude']:
+                lat = float(-lat)
+            if 'W' in metadata_row['verbatimLongitude']:
+                lon = float(-lon)
 
             # open the gebco dataset
             ds = xr.open_dataset(self.gebco_file)
@@ -440,9 +448,9 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
             # close the dataset
             ds.close()
-            print(elevation)
 
-            return float(elevation)
+            # make positive value
+            return abs(elevation)
 
     def fill_empty_sample_values(self, df: pd.DataFrame, default_message = "missing: not collected"):
         # fill empty values for samples after mapping over all sample data without control samples
