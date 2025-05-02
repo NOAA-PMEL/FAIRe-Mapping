@@ -8,11 +8,10 @@ import pandas as pd
 #TODO: Add cv checking for related mappings?
 # TODO: change order of saving excel file and add csv saving at end
 
-def create_sample_metadata(exp_metadata_df: pd.DataFrame, samp_associated_positives: dict):
+def create_skq21_12S_sample_metadata():
     
     # initiate mapper
-    sample_mapper = FaireSampleMetadataMapper(config_yaml='config.yaml',
-                                              exp_metadata_df=exp_metadata_df)
+    sample_mapper = FaireSampleMetadataMapper(config_yaml='config.yaml')
 
     sample_metadata_results = {}
 
@@ -38,12 +37,6 @@ def create_sample_metadata(exp_metadata_df: pd.DataFrame, samp_associated_positi
         elif faire_col == 'materialSampleID' or faire_col == 'sample_derived_from':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
                 lambda row: sample_mapper.add_material_sample_id(metadata_row=row),
-                axis=1
-            )
-        
-        elif faire_col == 'rel_cont_id':
-            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
-                lambda row: sample_mapper.add_rel_cont_id(metadata_row=row, samp_seq_pos_controls_dict=samp_associated_positives),
                 axis=1
             )
 
@@ -84,9 +77,6 @@ def create_sample_metadata(exp_metadata_df: pd.DataFrame, samp_associated_positi
                 axis=1
             )
 
-        elif faire_col == 'assay_name':
-            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(sample_mapper.add_assay_name)
-
         elif faire_col == 'env_local_scale':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(sample_mapper.calculate_env_local_scale)
 
@@ -108,47 +98,23 @@ def create_sample_metadata(exp_metadata_df: pd.DataFrame, samp_associated_positi
     # Step 4: fill in NA with missing not collected or not applicable because they are samples
     sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))
     
-    # # Step 5: fill NC data frame if there is - DO THIS ONLY IF negative controls were sequenced! They were not for SKQ21
-    # nc_df = sample_mapper.fill_nc_metadata(final_sample_df = sample_df)
-
-    # Step 5 Add positive controls
-    pos_df = sample_mapper.fill_seq_pos_control_metadata(final_sample_df = sample_df)
+    # Step 5: fill NC data frame if there is - DO THIS ONLY IF negative controls were sequenced! They were not for SKQ21
+    nc_df = sample_mapper.fill_nc_metadata(final_sample_df = sample_df)
 
     # Step 6: Combine all mappings at once (add nc_df if negative controls were sequenced)
-    faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df, pos_df])
+    faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df, nc_df])
    
     # step 7: save to excel file
-    sample_mapper.add_final_df_to_FAIRe_excel(excel_file_to_read_from=sample_mapper.final_faire_template_path,
+    sample_mapper.add_final_df_to_FAIRe_excel(excel_file_to_read_from=sample_mapper.faire_template_file,
                                               sheet_name=sample_mapper.sample_mapping_sheet_name, 
                                               faire_template_df=faire_sample_df)
 
     return faire_sample_df, sample_mapper
 
-def create_exp_run_metadata():
-
-    exp_mapper = ExperimentRunMetadataMapper(config_yaml='config.yaml')
-    faire_exp_df = exp_mapper.generate_jv_run_metadata()
-
-    # save to excel
-    exp_mapper.add_final_df_to_FAIRe_excel(excel_file_to_read_from=exp_mapper.faire_template_file,
-                                           sheet_name=exp_mapper.faire_template_exp_run_sheet_name, 
-                                           faire_template_df=faire_exp_df)
-
-
-    return faire_exp_df, exp_mapper
-
 def main() -> None:
 
-    # step 1: generate exp metadata - this will inform which sample get metadata
-    exp_metadata = create_exp_run_metadata()
-    exp_df = exp_metadata[0]
-    exp_mapper = exp_metadata[1]
-    
-    # Get sample dictionary of associated positives
-    samp_associated_positives = exp_mapper.rel_pos_cont_id_dict
-
     # create sample metadata - experiment metadata needed first
-    sample_metadata = create_sample_metadata(exp_metadata_df=exp_df, samp_associated_positives=samp_associated_positives)
+    sample_metadata = create_skq21_12S_sample_metadata()
                 
 
 if __name__ == "__main__":

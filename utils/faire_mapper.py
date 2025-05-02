@@ -99,7 +99,6 @@ class OmeFaireMapper:
     
         return samp_name
     
-
     def str_replace_nc_samps_with_E(self, samp_name: pd.Series) -> str:
         # If an E was put in front of an NC sample (this happends in some of the extractions e.g. the SKQ21 extractions), will remove the E
         samp_name = str(samp_name)
@@ -118,8 +117,7 @@ class OmeFaireMapper:
         controlled_vocab = [vocab_word for vocab_word in filtered_row[vocab_columns].values.flatten() if pd.notna(vocab_word)]
 
         return controlled_vocab
-    
-    
+     
     def check_cv_word(self, value: str, faire_attribute: str) -> dict:
         # Check a word in a list of the controlled voabulary for a FAIRe attribute to see if it exists (accounts for any updates)
         # and if it does, will add to the new row.
@@ -136,7 +134,6 @@ class OmeFaireMapper:
                 new_value = ' | '.join(value)
                 return new_value
     
-
     def apply_exact_mappings(self, metadata_row, faire_col):
 
         if faire_col in self.drop_down_value_df['term_name'].values:
@@ -146,7 +143,6 @@ class OmeFaireMapper:
 
         return metadata_row
     
-
     def apply_static_mappings(self, faire_col: str, static_value) -> dict:
         # returns static_value for row
         # TODO: need to adjust this for controls that weren't necessarily collected in the wild (e.g. habitat_natural_articicial_0_1, 
