@@ -1,0 +1,28 @@
+## DY2012 Sample Metadata config.yaml ##
+# Metadata file related 
+sample_metadata_file: /home/poseidon/zalmanek/OME-EcoFOCI/EcoFOCI/data/1_SampleCollection/2022_DY22-06_CruiseData/FinalOME_Merge_DY22-06.csv
+sample_metadata_sample_name_column: Sample_Name # The name of the column in the metadata spreadsheet that lists the sample names
+sample_metadata_file_neg_control_col_name: 'Negative_control' # Name of the column in the metadata spreadsheet for the boolean Negative Control
+sample_metadata_cast_no_col_name: 'Cast_No.'
+sample_metadata_bottle_no_col_name: 'Rosette_position'
+vessel_name: Dyson
+
+# Extraction sheet related
+extraction_metadata_google_sheet_id: 1KTs7LiITWi4DxmAjevH19HkWzKDY4CSkmd184dKmKxQ
+extraction_cruise_key: .DY2206 #the name in the SampleName column of the extractions sheet to filter for the specific cruise
+extraction_sample_name_col: FINAL Sample NAME
+extraction_conc_col_name: Qubit Conc.  (ng/μL) #to calculate average of extraction concentration
+extraction_date_col_name: Extraction Date (Local)
+extraction_metadata_sheet_name: Extraction Sheets
+
+# mapping file related
+google_sheet_mapping_file_id: 1cKlckX2MNusrEHrhjRlVDFYjZtTaWw49cYDMMvEcEKY
+nc_samp_mat_process:  'Water samples were filtered through a 0.22 micron sterivex filter using a peristaltic pump with tubing attached to the outlet end of the sterivex.' # mapping for negative controls for nc_samp_mapt_process
+nc_prepped_samp_store_dur: 'Date_UTC_notes | Extraction Date (Local)' # which columns the NC prepped samp_store_dur map to (will most likely be different than rest of samples because no ctd or bottle dates for NC)
+
+# FAIRe template related
+faire_template_file: /home/poseidon/zalmanek/FAIRe-Mapping/faire_template.xlsx
+final_faire_template_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2206/data/dy2206_faire.xlsx
+
+# path to json creds file for google sheets
+json_creds: /home/poseidon/zalmanek/FAIRe-Mapping/credentials.json
