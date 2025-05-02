@@ -1,4 +1,4 @@
-## DY2209 config.yaml ##
+## DY2209 Sample Metadata config.yaml ##
 # Metadata file related 
 sample_metadata_file: /home/poseidon/zalmanek/OME-EcoFOCI/EcoFOCI/data/1_SampleCollection/2022_DY22-09_CruiseData/FinalOME_Merge_DY22-09.csv
 sample_metadata_sample_name_column: Sample_Name # The name of the column in the metadata spreadsheet that lists the sample names
@@ -21,38 +21,6 @@ extraction_metadata_sheet_name: 'Extraction Sheets'
 google_sheet_mapping_file_id: 1QO3m-Nnc0H9WjqRz8BnihUgTxDX-CaNgOys26TqAYjQ
 nc_samp_mat_process:  'Water samples were filtered through a 0.22 micron sterivex filter using a peristaltic pump with tubing attached to the outlet end of the sterivex.' # mapping for negative controls for nc_samp_mapt_process
 nc_prepped_samp_store_dur: 'Date_UTC_notes | Extraction Date (Local)' # which columns the NC prepped samp_store_dur map to (will most likely be different than rest of samples because no ctd or bottle dates for NC)
-
-# RunInfo
-jv_run_sample_name_column: Sample Name
-jv_index_name_col: Index Name
-jv_raw_data_path: # The raw data path of each marker folder (a lot are in a renamed folder)
-  '18Sv4': /data/raw_data/20250118_JV_Run4_Arctic_eDNA/renamed/JVB4314_18Sv4/
-  'COI': /data/raw_data/20250118_JV_Run4_Arctic_eDNA/renamed/JVB4314_UniCOI/
-  'ITS1': /data/raw_data/20250118_JV_Run4_Arctic_eDNA/renamed/JVB4314_ITS1_diatom/
-  'Machida18S': /data/raw_data/20250118_JV_Run4_Arctic_eDNA/renamed/JVB4314_18SMachida/
-  'MiFish': /data/raw_data/20250118_JV_Run4_Arctic_eDNA/renamed/JVB4314_MiFishU_F2/
-  'Parada16S': /data/raw_data/20250118_JV_Run4_Arctic_eDNA/renamed/JVB4314_16Sv4v5/
-jv_run_sample_metadata_file_id: 1XWUAaidPfeRdAsCI-NRAzRIz4QK6OxGg4FGWCxuPkTg
-run_short_cruise_name: DY2209 # the short cruise name in the jv run csv file to filter by cruise name
-run_name: run4 # for adding to the Positive control sample names
-revamp_blast: True # if using the revamp blast-based taxonomy assignment then set this to True, otherwise False
-ignore_markers: # Add Metabarcoding Marker name EXACTLY from run_sample_metadata_file if not submitting info for that marker
-  - dLoop
-asv_counts_tsvs_for_run: #dloop left out because Sean said dLoop did not work for Run2, keys match metabarcoding marker in metadata spreadsheet
-  '18Sv4': /home/poseidon/mcallister/eDNA_bioinformatics/Run4/18Sv4_REVAMP_out/dada2/ASVs_counts.tsv
-  'COI': /home/poseidon/mcallister/eDNA_bioinformatics/Run4/COI_REVAMP_out/dada2/ASVs_counts.tsv
-  'ITS1': /home/poseidon/mcallister/eDNA_bioinformatics/Run4/ITS1_REVAMP_out/dada2/ASVs_counts.tsv
-  'Machida18S': /home/poseidon/mcallister/eDNA_bioinformatics/Run4/Machida18S_REVAMP_out/dada2/ASVs_counts.tsv
-  'MiFish': /home/poseidon/mcallister/eDNA_bioinformatics/Run4/MiFish_REVAMP_out/dada2/ASVs_counts.tsv
-  'Parada16S': /home/poseidon/mcallister/eDNA_bioinformatics/Run4/Parada16S_REVAMP_out/dada2/ASVs_counts.tsv
-otu_num_tax_assigned_files_for_run: # The files used to calculate the otu_num_tax_assigned - Sean said it depends on the version of taxonomy we are using
-  '18Sv4': /home/poseidon/mcallister/eDNA_bioinformatics/Run4/18Sv4_REVAMP_out/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
-  'COI': /home/poseidon/mcallister/eDNA_bioinformatics/Run4/COI_REVAMP_out/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
-  'ITS1': /home/poseidon/mcallister/eDNA_bioinformatics/Run4/ITS1_REVAMP_out/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
-  'Machida18S': /home/poseidon/mcallister/eDNA_bioinformatics/Run4/Machida18S_REVAMP_out/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
-  'MiFish': /home/poseidon/mcallister/eDNA_bioinformatics/Run4/MiFish_REVAMP_out/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
-  'Parada16S': /home/poseidon/mcallister/eDNA_bioinformatics/Run4/Parada16S_REVAMP_out/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
-
 
 # FAIRe template related
 faire_template_file: /home/poseidon/zalmanek/FAIRe-Mapping/faire_template.xlsx
