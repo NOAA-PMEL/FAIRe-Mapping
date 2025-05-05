@@ -16,7 +16,7 @@ def create_dy2306_sample_metadata():
     sample_metadata_results = {}
 
     ### Add Sample Mappings ######
-    Step 1: Add exact mappings
+    # Step 1: Add exact mappings
     for faire_col, metadata_col in sample_mapper.mapping_dict[sample_mapper.exact_mapping].items():
         sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(
             lambda row: sample_mapper.apply_exact_mappings(metadata_row=row, faire_col=faire_col))
