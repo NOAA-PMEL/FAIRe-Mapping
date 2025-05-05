@@ -5,7 +5,8 @@ from utils.sample_metadata_mapper import FaireSampleMetadataMapper
 from utils.experiment_run_metadata_mapper import ExperimentRunMetadataMapper
 import pandas as pd
 
-# TODO: add related mapping to tot_depth_water_col when GDBC downloads when net cdf finishes copying
+# TODO: figure out what to do about missing samples in the sample data. Sample E1820.DY2306 - E1842.DY2306 are missing 
+# (but they exist in the extraction spreadsheet)
 
 
 def create_dy2306_sample_metadata():
