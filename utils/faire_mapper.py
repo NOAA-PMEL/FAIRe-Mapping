@@ -122,7 +122,6 @@ class OmeFaireMapper:
         # and if it does, will add to the new row.
         
         controlled_vocab = self.extract_controlled_vocab(faire_attribute=faire_attribute)
-
         # make static_value a list (to account for more than one value as the static_value)
         value = value.split(' | ') if '|' in value else [value]
 

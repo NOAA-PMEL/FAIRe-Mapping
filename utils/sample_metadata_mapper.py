@@ -465,8 +465,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     
     def get_tot_depth_water_col_from_lat_lon(self, metadata_row: pd.Series, lat_col: float, lon_col: float, exact_map_col: str = None) -> float:
 
-
-        if pd.notna(metadata_row[exact_map_col]):
+        if exact_map_col is not None or pd.notna(metadata_row[exact_map_col]):
             return metadata_row[exact_map_col]
         else:
             lat = metadata_row[lat_col]
@@ -532,12 +531,17 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                     lambda row: self.add_samp_category_by_sample_name(metadata_row=row, faire_col=faire_col, metadata_col=metadata_col),
                     axis=1
                 )
+            
             elif faire_col == 'prepped_samp_store_dur':
-                date_col_names = metadata_col.split(' | ')
-                nc_results[faire_col] = self.nc_df.apply(
-                    lambda row: self.calculate_date_duration(metadata_row=row, start_date_col=date_col_names[0], end_date_col=date_col_names[1]),
-                    axis=1
-                )
+                if metadata_col != 'missing: not collected':
+                    date_col_names = metadata_col.split(' | ')
+                    nc_results[faire_col] = self.nc_df.apply(
+                        lambda row: self.calculate_date_duration(metadata_row=row, start_date_col=date_col_names[0], end_date_col=date_col_names[1]),
+                        axis=1
+                    )
+                else:
+                    nc_results[faire_col] = metadata_col # if metadata_col = "missing: not collected, then will be value"
+            
             elif faire_col == 'neg_cont_type':
                 nc_results[faire_col] = self.nc_df[metadata_col].apply(self.add_neg_cont_type)
     
