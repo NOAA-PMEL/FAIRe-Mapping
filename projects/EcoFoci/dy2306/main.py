@@ -69,8 +69,8 @@ def create_dy2306_sample_metadata():
             sample_metadata_results['decimalLongitude'] = decimal_longitude
             sample_mapper.sample_metadata_df['decimalLongitude'] = decimal_longitude
 
-            tot_depth_water_cols = sample_mapper.mapping_dict(sample_mapper.related_mapping).get('tot_depth_water_col')
-            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+            # Now can calculate tot_depth_water_col from processed decimalLatitude and decimalLongitude
+            sample_metadata_results['tot_depth_water_col'] = sample_mapper.sample_metadata_df.apply(
                 lambda row: sample_mapper.get_tot_depth_water_col_from_lat_lon(metadata_row=row, lat_col='decimalLatitude', lon_col='decimalLongitude'),
                 axis=1
             )
