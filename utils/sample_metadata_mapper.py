@@ -122,8 +122,18 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                 # convert to iso 8601 format
                 return date_obj.strftime('%Y-%m-%d')
 
+            elif len(parts) == 2:
+                # hande month/year format by assuming day=1
+                month, year = parts
+                formatted_date = f"{int(month):02d}/01/{year}"
+
+                #parse date string
+                date_obj = datetime.strptime(formatted_date, "%m/%d/%Y")
+
+                # convert to iso 8601 format
+                return date_obj.strftime('%Y-%m-%d')
             else:
-                raise ValueError(f"Date doesnt have three parts: {date_string}")
+                raise ValueError(f"Date doesnt have two or three parts: {date_string}")
         
         except Exception as e:
             print(f"Error converting {date_string}: {str(e)}")
@@ -175,12 +185,19 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     
     def transform_metadata_df(self):
         # Converts sample metadata to a data frame and checks to make sure NC samples have NC in the name (dy2206 had this problem)
+        # Also fixes sample names for SKQ23 cruise where sample metadata has _, but extraction metadata has -
         samp_metadata_df = self.load_csv_as_df(file_path=Path(self.config_file['sample_metadata_file']))
 
         # Add .NC to sample name if the Negative Control column is True and its missing (in DY2206 cruise)
         samp_metadata_df[self.sample_metadata_sample_name_column] = samp_metadata_df.apply(
-            lambda row: self.check_nc_samp_name_has_nc(metadata_row=row),
+            lambda row: self._check_nc_samp_name_has_nc(metadata_row=row),
             axis=1)
+        
+        # Fix sample names that have _ with -. For SKQ23 cruises where run and extraction metadata has -, and sample metadata has _
+        samp_metadata_df[self.sample_metadata_sample_name_column] = samp_metadata_df[self.sample_metadata_sample_name_column].apply(self._fix_samp_names)
+
+        # Remove 'CTD' from Cast_No. value if present
+        samp_metadata_df[self.sample_metadata_cast_no_col_name] = samp_metadata_df[self.sample_metadata_cast_no_col_name].apply(self.remove_extraneous_cast_no_chars)
         
         return samp_metadata_df
 
@@ -205,7 +222,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         return metadata_df
 
-    def check_nc_samp_name_has_nc(self, metadata_row: pd.Series) -> str:
+    def _check_nc_samp_name_has_nc(self, metadata_row: pd.Series) -> str:
         # Checks to make sure sample names have .NC if the negative control column is True, if not adds the .NC
         sample_name = metadata_row[self.sample_metadata_sample_name_column]
         if metadata_row[self.sample_metadata_file_neg_control_col_name] == 'TRUE' or metadata_row[self.sample_metadata_file_neg_control_col_name] == True:
@@ -217,6 +234,20 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                 return sample_name
         else:
             return sample_name
+
+    def _fix_samp_names(self, sample_name: str) -> str:
+        # Fixes samples names (really just for SKQ23 sample names to replace _ with -. As the extraction and run sheets use -)
+        if '_' in sample_name:
+            sample_name = sample_name.replace('_', '-')
+
+        return sample_name
+
+    def remove_extraneous_cast_no_chars(self, cast_no: str) -> int:
+        # If Cast_No. is in the format of CTD001, then returns just the int
+        if pd.notna(cast_no) and 'CTD' in cast_no:
+            cast_no = int(cast_no.replace('CTD',''))
+                       
+        return cast_no
 
     def filter_metadata_dfs(self):
 
