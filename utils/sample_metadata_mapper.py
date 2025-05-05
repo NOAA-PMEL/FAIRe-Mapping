@@ -199,6 +199,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             how='left'
         )
 
+        # Drop rows where the sample name column value is NA. This is for cruises where samples were split up
+        # e.g. PPS samples that were deployed from the DY2306 cruise. They will be a separate sample metadata file.
+        metadata_df = metadata_df.dropna(subset=[self.sample_metadata_sample_name_column])
+
         return metadata_df
 
     def check_nc_samp_name_has_nc(self, metadata_row: pd.Series) -> str:
@@ -465,30 +469,35 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     
     def get_tot_depth_water_col_from_lat_lon(self, metadata_row: pd.Series, lat_col: float, lon_col: float, exact_map_col: str = None) -> float:
 
-        if exact_map_col is not None or pd.notna(metadata_row[exact_map_col]):
-            return metadata_row[exact_map_col]
-        else:
-            lat = metadata_row[lat_col]
-            lon = metadata_row[lon_col]
+        try:
+            if pd.notna(metadata_row[exact_map_col]):
+                return metadata_row[exact_map_col]
+            else:
+                lat = metadata_row[lat_col]
+                lon = metadata_row[lon_col]
+        except:
+            if exact_map_col == None:
+                lat = metadata_row[lat_col]
+                lon = metadata_row[lon_col]
 
-            # Check if verbatim column and use to determin negative or positive sign 
-            # pandas has a bug where it removes the negative using .apply()
-            if 'S' in metadata_row['verbatimLatitude']:
-                lat = float(-abs(lat))
-            if 'W' in metadata_row['verbatimLongitude']:
-                lon = float(-abs(lon))
+        # Check if verbatim column and use to determin negative or positive sign 
+        # pandas has a bug where it removes the negative using .apply()
+        if 'S' in metadata_row['verbatimLatitude']:
+            lat = float(-abs(lat))
+        if 'W' in metadata_row['verbatimLongitude']:
+            lon = float(-abs(lon))
 
-            # open the gebco dataset
-            ds = xr.open_dataset(self.gebco_file)
+        # open the gebco dataset
+        ds = xr.open_dataset(self.gebco_file)
 
-            # get the closest point in the dataset to the coordinates
-            elevation = ds.elevation.sel(lat=lat, lon=lon, method='nearest').values
+        # get the closest point in the dataset to the coordinates
+        elevation = ds.elevation.sel(lat=lat, lon=lon, method='nearest').values
 
-            # close the dataset
-            ds.close()
+        # close the dataset
+        ds.close()
 
-            # make positive value
-            return abs(elevation)
+        # make positive value
+        return abs(elevation)
 
     def fill_empty_sample_values(self, df: pd.DataFrame, default_message = "missing: not collected"):
         # fill empty values for samples after mapping over all sample data without control samples

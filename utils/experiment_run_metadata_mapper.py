@@ -8,7 +8,7 @@ import subprocess
 import re
 import hashlib
 
-# TODO: update for PCR replicates?
+# TODO: update for PCR replicates? - MAke sample name the same, change lib_id?
 # TODO: add associatedSequences functionlity after submittting to NCBI
 
 class ExperimentRunMetadataMapper(OmeFaireMapper):

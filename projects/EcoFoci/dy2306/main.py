@@ -13,7 +13,7 @@ def create_dy2306_sample_metadata():
     
     # initiate mapper
     sample_mapper = FaireSampleMetadataMapper(config_yaml='config.yaml')
-
+    
     sample_metadata_results = {}
 
     ### Add Sample Mappings ######
@@ -50,7 +50,7 @@ def create_dy2306_sample_metadata():
         # latitude and longitude need to be processed before tot_depth_water_col
         elif faire_col == 'decimalLongitude' or faire_col == 'decimalLatitude' or faire_col == 'tot_depth_water_col':
             # Format decimalLatitude first
-            latitude_cols = sample_mapper.mapping_dict(sample_mapper.related_mapping).get('decimalLatitude')
+            latitude_cols = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('decimalLatitude')
             lat_coord_cols = latitude_cols.split(' | ')
             decimal_latitude = sample_mapper.sample_metadata_df.apply(
                 lambda row: sample_mapper.map_using_two_or_three_cols_if_one_is_na_use_other(metadata_row=row, desired_col_name=lat_coord_cols[0], use_if_na_col_name=lat_coord_cols[1]),
@@ -60,7 +60,7 @@ def create_dy2306_sample_metadata():
             sample_mapper.sample_metadata_df['decimalLatitude'] = decimal_latitude
 
             # Format decimal Longitude second
-            longitude_cols =  sample_mapper.mapping_dict(sample_mapper.related_mapping).get('decimalLongitude')
+            longitude_cols =  sample_mapper.mapping_dict[sample_mapper.related_mapping].get('decimalLongitude')
             long_coord_cols = longitude_cols.split(' | ')
             decimal_longitude = sample_mapper.sample_metadata_df.apply(
                 lambda row: sample_mapper.map_using_two_or_three_cols_if_one_is_na_use_other(metadata_row=row, desired_col_name=long_coord_cols[0], use_if_na_col_name=long_coord_cols[1]),
@@ -122,13 +122,9 @@ def create_dy2306_sample_metadata():
     
     # Step 4: fill in NA with missing not collected or not applicable because they are samples
     sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))
-
-    print(sample_df)
     
     # Step 5: fill NC data frame if there is - DO THIS ONLY IF negative controls were sequenced! They were not for SKQ21
     nc_df = sample_mapper.fill_nc_metadata(final_sample_df = sample_df)
-
-    print(nc_df)
 
     # Step 6: Combine all mappings at once (add nc_df if negative controls were sequenced)
     faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df, nc_df])
