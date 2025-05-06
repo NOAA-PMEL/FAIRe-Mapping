@@ -7,8 +7,8 @@ import yaml
 import requests
 import numpy as np
 import xarray as xr
-# import matplotlib.pyplot as plt
-# from pyproj import Transformer
+import geopandas as gpd
+from shapely.geometry import Point
 from bs4 import BeautifulSoup
 from .custom_exception import NoInsdcGeoLocError
 from .lists import nc_faire_field_cols, marker_shorthand_to_pos_cont_gblcok_name
@@ -24,7 +24,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     extraction_mapping_sheet_name = "extractionMetadata"
     replicate_parent_sample_metadata_col = "replicate_parent"
     faire_lat_col_name = "decimalLatitude"
-    faire_lon_col_name = "verbatimLongitude"
+    faire_lon_col_name = "decimalLongitude"
     not_applicable_to_samp_faire_col_dict = {"neg_cont_type": "not applicable: sample group",
                                              "pos_cont_type": "not applicable: sample group"}
     gebco_file = "/home/poseidon/zalmanek/FAIRe-Mapping/utils/GEBCO_2024.nc"
@@ -105,7 +105,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
     def convert_mdy_date_to_iso8061(self, date_string: str) -> str:
         # converts from m/d/y to iso8061
-
         date_string = str(date_string).strip()
 
         # Handle both single and double digit formats
@@ -133,7 +132,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                 # convert to iso 8601 format
                 return date_obj.strftime('%Y-%m-%d')
             else:
-                raise ValueError(f"Date doesnt have two or three parts: {date_string}")
+                raise ValueError(f"Date doesn't have two or three parts: {date_string}")
         
         except Exception as e:
             print(f"Error converting {date_string}: {str(e)}")
@@ -244,7 +243,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
     def remove_extraneous_cast_no_chars(self, cast_no: str) -> int:
         # If Cast_No. is in the format of CTD001, then returns just the int
-        if pd.notna(cast_no) and 'CTD' in cast_no:
+        if pd.notna(cast_no) and isinstance(cast_no, str) and 'CTD' in cast_no:
             cast_no = int(cast_no.replace('CTD',''))
                        
         return cast_no
@@ -441,6 +440,27 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             raise NoInsdcGeoLocError(f'There is no geographic location in INSDC that matches {metadata_row[geo_loc_metadata_col]}, check sea_name and try again')
     
         return geo_loc
+    
+    def find_geo_loc_by_lat_lon(self, metadata_row: pd.Series) -> str:
+        # World Seas IHO downloaded from: https://marineregions.org/downloads.php
+
+        lat = metadata_row.get(self.faire_lat_col_name)
+        lon = metadata_row.get(self.faire_lon_col_name)
+        
+        marine_regions = gpd.read_file("/home/poseidon/zalmanek/FAIRe-Mapping/utils/World_Seas_IHO_v3/World_Seas_IHO_v3.shp")
+        # create a point object
+        point = Point(lon, lat)
+
+        # Check for which marin region contains this point
+        for idx, region in marine_regions.iterrows():
+            if region.geometry.contains(point):
+                sea = region.get('NAME')
+                geo_loc= f"USA: {sea}"
+                geo_loc_name = geo_loc.split(':')[0]
+                if geo_loc_name not in self.insdc_locations:
+                    raise NoInsdcGeoLocError(f'There is no geographic location in INSDC that matches {geo_loc_name}, check sea_name and try again')
+                else:
+                    return geo_loc
     
     def calculate_env_local_scale(self, depth: float) -> str:
         # uses the depth to assign env_local_scale

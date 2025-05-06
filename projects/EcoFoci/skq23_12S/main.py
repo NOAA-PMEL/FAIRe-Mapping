@@ -53,30 +53,37 @@ def create_skq23_12s_sample_metadata():
         # latitude and longitude need to be processed before tot_depth_water_col
         elif faire_col == 'decimalLongitude' or faire_col == 'decimalLatitude' or faire_col == 'tot_depth_water_col':
             # Format decimalLatitude first
-            latitude_cols = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('decimalLatitude')
+            latitude_cols = sample_mapper.mapping_dict[sample_mapper.related_mapping].get(sample_mapper.faire_lat_col_name)
             lat_coord_cols = latitude_cols.split(' | ')
             decimal_latitude = sample_mapper.sample_metadata_df.apply(
                 lambda row: sample_mapper.map_using_two_or_three_cols_if_one_is_na_use_other(metadata_row=row, desired_col_name=lat_coord_cols[0], use_if_na_col_name=lat_coord_cols[1]),
                 axis=1
             )
-            sample_metadata_results['decimalLatitude'] = decimal_latitude
-            sample_mapper.sample_metadata_df['decimalLatitude'] = decimal_latitude
+            
+            sample_metadata_results[sample_mapper.faire_lat_col_name] = decimal_latitude
+            sample_mapper.sample_metadata_df[sample_mapper.faire_lat_col_name] = decimal_latitude
 
             # Format decimal Longitude second
-            longitude_cols =  sample_mapper.mapping_dict[sample_mapper.related_mapping].get('decimalLongitude')
+            longitude_cols =  sample_mapper.mapping_dict[sample_mapper.related_mapping].get(sample_mapper.faire_lon_col_name)
             long_coord_cols = longitude_cols.split(' | ')
             decimal_longitude = sample_mapper.sample_metadata_df.apply(
                 lambda row: sample_mapper.map_using_two_or_three_cols_if_one_is_na_use_other(metadata_row=row, desired_col_name=long_coord_cols[0], use_if_na_col_name=long_coord_cols[1]),
                 axis=1
             )
-            sample_metadata_results['decimalLongitude'] = decimal_longitude
-            sample_mapper.sample_metadata_df['decimalLongitude'] = decimal_longitude
+            sample_metadata_results[sample_mapper.faire_lon_col_name] = decimal_longitude
+            sample_mapper.sample_metadata_df[sample_mapper.faire_lon_col_name] = decimal_longitude
 
             # Now can calculate tot_depth_water_col from processed decimalLatitude and decimalLongitude
             sample_metadata_results['tot_depth_water_col'] = sample_mapper.sample_metadata_df.apply(
-                lambda row: sample_mapper.get_tot_depth_water_col_from_lat_lon(metadata_row=row, lat_col='decimalLatitude', lon_col='decimalLongitude'),
+                lambda row: sample_mapper.get_tot_depth_water_col_from_lat_lon(metadata_row=row, lat_col=sample_mapper.faire_lat_col_name, lon_col=sample_mapper.faire_lon_col_name),
                 axis=1
             )
+
+            sample_metadata_results['geo_loc_name'] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.find_geo_loc_by_lat_lon(metadata_row=row),
+                axis=1
+            )
+
         
         # eventDate needs to be proecessed before prepped_samp_store_dur
         elif faire_col == 'eventDate' or faire_col == 'prepped_samp_store_dur':
@@ -117,55 +124,27 @@ def create_skq23_12s_sample_metadata():
         elif faire_col == 'date_ext':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(sample_mapper.convert_date_to_iso8601)
     
-    #     elif faire_col == 'geo_loc_name':
-    #         sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
-    #             lambda row: sample_mapper.format_geo_loc(metadata_row=row, geo_loc_metadata_col=metadata_col),
-    #             axis=1
-    #         )
 
     # Step 4: fill in NA with missing not collected or not applicable because they are samples
     sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))
     
     # Step 5: fill NC data frame if there is - DO THIS ONLY IF negative controls were sequenced! They were not for SKQ21
     nc_df = sample_mapper.fill_nc_metadata(final_sample_df = sample_df)
-    print(nc_df)
 
-    # # Step 6: Combine all mappings at once (add nc_df if negative controls were sequenced)
-    # faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df, nc_df])
+
+    # Step 6: Combine all mappings at once (add nc_df if negative controls were sequenced)
+    faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df, nc_df])
    
-    # # step 7: save to excel file
-    # sample_mapper.add_final_df_to_FAIRe_excel(excel_file_to_read_from=sample_mapper.faire_template_file,
-    #                                           sheet_name=sample_mapper.sample_mapping_sheet_name, 
-    #                                           faire_template_df=faire_sample_df)
+    # step 7: save to excel file
+    sample_mapper.add_final_df_to_FAIRe_excel(excel_file_to_read_from=sample_mapper.faire_template_file,
+                                              sheet_name=sample_mapper.sample_mapping_sheet_name, 
+                                              faire_template_df=faire_sample_df)
 
     return sample_mapper
 
-def create_exp_run_metadata():
-
-    exp_mapper = ExperimentRunMetadataMapper(config_yaml='config.yaml')
-    faire_exp_df = exp_mapper.generate_jv_run_metadata()
-
-    # save to excel
-    # exp_mapper.add_final_df_to_FAIRe_excel(excel_file_to_read_from=exp_mapper.faire_template_file,
-    #                                        sheet_name=exp_mapper.faire_template_exp_run_sheet_name, 
-    #                                        faire_template_df=faire_exp_df)
-
-
-    return faire_exp_df, exp_mapper
-
 def main() -> None:
 
-    # step 1: generate exp metadata - this will inform which sample get metadata
-    # exp_metadata = create_exp_run_metadata()
-    # exp_df = exp_metadata[0]
-    # exp_mapper = exp_metadata[1]
-    
-    # Get sample dictionary of associated positives
-    # samp_associated_positives = exp_mapper.rel_pos_cont_id_dict
-
-    # # create sample metadata - experiment metadata needed first
     sample_metadata = create_skq23_12s_sample_metadata()
                 
-
 if __name__ == "__main__":
     main()

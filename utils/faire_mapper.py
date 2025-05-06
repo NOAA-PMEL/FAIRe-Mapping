@@ -180,21 +180,33 @@ class OmeFaireMapper:
         # also converts strings from 5/1/2024 to 2024-01-05T00:00:00Z
         # And coverts 2024-05-01 to 2024-01-05T00:00:00Z
     
-        if "/" in date and ":" in date: # for dates in the form 2021/11/08 00:00:00
-            dt_obj = datetime.strptime(date, "%Y/%m/%d %H:%M:%S")
-        elif "/" in date and ":" not in date: # format for dates in 5/1/2024
-            dt_obj = datetime.strptime(date, "%m/%d/%Y")
-            # Add time component of midnight
-            dt_obj = dt_obj.replace(hour=0, minute=0, second=0)
-        elif "-" in date and len(date.split("-")) == 3: # Format like 2024-04-10
-            dt_obj = datetime.strptime(date, "%Y-%m-%d")
-            dt_obj = dt_obj.replace(hour=0, minute=0, second=0)
-        else:
-            raise ValueError(f"Unsupported date format: {date}")
+        has_time_component = False
+        
+        if date is not None:
+            if "/" in date and ":" in date: # for dates in the form 2021/11/08 00:00:00
+                dt_obj = datetime.strptime(date, "%Y/%m/%d %H:%M:%S")
+                has_time_component = True
+            elif "/" in date and ":" not in date: # format for dates in 5/1/2024
+                dt_obj = datetime.strptime(date, "%m/%d/%Y")
+            elif "-" in date and len(date.split("-")) == 3: # Format like 2024-04-10
+                if ':' in date:
+                    dt_obj = datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
+                    has_time_component = True
+                else:
+                    dt_obj = datetime.strptime(date, "%Y-%m-%d")
+            else:
+                raise ValueError(f"Unsupported date format: {date}")
 
-        dt_obj = dt_obj.strftime("%Y-%m-%dT%H:%M:%SZ")
-     
-        return dt_obj
+            formatted_date = dt_obj.strftime("%Y-%m-%d")
+
+            # Only add time component if it was in the original string
+            if has_time_component:
+                return dt_obj.strftime("%Y-%m-%dT%H:%M:%SZ")
+            else:
+                return formatted_date
+            
+        else:
+            return "missing: not provided"
 
     def add_final_df_to_FAIRe_excel(self, excel_file_to_read_from: str, sheet_name: str, faire_template_df: pd.DataFrame):
 
