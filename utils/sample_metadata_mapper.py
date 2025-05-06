@@ -456,7 +456,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     
     def format_dates_for_duration_calculation(self, date: str) -> datetime:
         # Handle different date formats and timezone indicators (used with calculate_date_duration function)
-
         if 'T' in date:
             if 'Z' in date:
                 # Convert 'Z' timezone to UTC offset format
@@ -467,7 +466,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         elif '/' in date and ' ' in date: #from like 2022/01/03 12:34:54
             dt = datetime.strptime(date, "%Y/%m/%d %H:%M:%S")
         elif '/' in date:
-            date = datetime.strptime(date, "%m/%d/%y")
+            try: # 05/22/92 (two digit year format)
+                date = datetime.strptime(date, "%m/%d/%y")
+            except ValueError: # 05/22/1992 (four digit format)
+                date = datetime.strptime(date, "%m/%d/%Y")
             date = date.strftime("%Y-%m-%d")
             dt = datetime.fromisoformat(date)
         else:

@@ -9,6 +9,7 @@ import pandas as pd
 # (but they exist in the extraction spreadsheet)
 # TODO: 5/5/2025 - look into extraction date problem for prepped_stor_dur
 # TODO: geo_loc_name - write function to get geo_loc_name by lat/long
+# TODO: add par as user defined field
 
 
 def create_skq23_12s_sample_metadata():
@@ -113,8 +114,8 @@ def create_skq23_12s_sample_metadata():
 
             sample_metadata_results['env_local_scale'] = sample_mapper.sample_metadata_df['FinalDepth'].apply(sample_mapper.calculate_env_local_scale)
         
-        # elif faire_col == 'date_ext':
-        #     sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(sample_mapper.convert_date_to_iso8601)
+        elif faire_col == 'date_ext':
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(sample_mapper.convert_date_to_iso8601)
     
     #     elif faire_col == 'geo_loc_name':
     #         sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
@@ -127,14 +128,15 @@ def create_skq23_12s_sample_metadata():
     
     # Step 5: fill NC data frame if there is - DO THIS ONLY IF negative controls were sequenced! They were not for SKQ21
     nc_df = sample_mapper.fill_nc_metadata(final_sample_df = sample_df)
+    print(nc_df)
 
-    # Step 6: Combine all mappings at once (add nc_df if negative controls were sequenced)
-    faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df, nc_df])
+    # # Step 6: Combine all mappings at once (add nc_df if negative controls were sequenced)
+    # faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df, nc_df])
    
-    # step 7: save to excel file
-    sample_mapper.add_final_df_to_FAIRe_excel(excel_file_to_read_from=sample_mapper.faire_template_file,
-                                              sheet_name=sample_mapper.sample_mapping_sheet_name, 
-                                              faire_template_df=faire_sample_df)
+    # # step 7: save to excel file
+    # sample_mapper.add_final_df_to_FAIRe_excel(excel_file_to_read_from=sample_mapper.faire_template_file,
+    #                                           sheet_name=sample_mapper.sample_mapping_sheet_name, 
+    #                                           faire_template_df=faire_sample_df)
 
     return sample_mapper
 
