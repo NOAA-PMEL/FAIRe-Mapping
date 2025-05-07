@@ -20,6 +20,9 @@ from .lists import nc_faire_field_cols, marker_shorthand_to_pos_cont_gblcok_name
 
 class FaireSampleMetadataMapper(OmeFaireMapper):
 
+    faire_sample_name_col = "samp_name"
+    faire_sample_category_name_col = "samp_category"
+    faire_neg_cont_type_name_col = "neg_cont_type"
     sample_mapping_sheet_name = "sampleMetadata"
     extraction_mapping_sheet_name = "extractionMetadata"
     replicate_parent_sample_metadata_col = "replicate_parent"
@@ -59,7 +62,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.replicates_dict = self.create_biological_replicates_dict()
         self.insdc_locations = self.extract_insdc_geographic_locations()
         self.mapping_dict = self.create_sample_mapping_dict()
-        self.nc_mapping_dict = self.create_nc_mapping_dict()
         # self.sample_assay_dict = self.create_assay_name_dict()
 
     def create_sample_mapping_dict(self) -> dict:
@@ -99,8 +101,20 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         return nc_mapping_dict
 
-    # def create_extraction_blank_mapping_dict(self) -> dict:
-        # Creates a mapping dict for extraction blanks
+    def create_extraction_blank_mapping_dict(self) -> dict:
+        #Creates a mapping dict for extraction blanks - mapping will be the same for only extractions faire attributes
+        extractions_mapping_df = self.load_google_sheet_as_df(google_sheet_id=self.google_sheet_mapping_file_id, sheet_name=self.extraction_mapping_sheet_name, header=1)
+
+        group_by_mapping = extractions_mapping_df.groupby(self.mapping_file_mapped_type_column)
+
+        # Create nested dictionary {exact_mapping: {faire_col: metadata_col}, narrow_mapping: {faire_col: metadta_col}, etc.}
+        mapping_dict = {}
+        for mapping_value, group in group_by_mapping:
+            column_map_dict = {k: v for k, v in zip(group[self.mapping_file_FAIRe_column], group[self.mapping_file_metadata_column]) if pd.notna(v)}
+            mapping_dict[mapping_value] = column_map_dict
+
+        return mapping_dict
+    
     # def create_assay_name_dict(self) -> dict:
     #     # Creates a dicitonary of the samples and their assays
     #     grouped = self.exp_metadata_df.groupby('samp_name')['assay_name'].apply(list).to_dict()
@@ -144,7 +158,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # For extractions, calculates the mean if more than one concentration per sample name.
 
         # Keep Below Range
-        if all(isinstance(conc, str) and ("below range" in conc.lower() or "br" == conc.lower()) for conc in extractions_df):
+        if all(isinstance(conc, str) and ("below range" in conc.lower() or "br" == conc.lower() or "bdl" == conc.lower()) for conc in extractions_df):
             return "BR"
         
         # For everything else, convert to numeric and calculate mean
@@ -166,11 +180,13 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             # Check if any in the group contains the extraction cruise key
             has_cruise_samps = group_df[self.extraction_sample_name_col].str.contains(self.extraction_cruise_key, case=False, na=False).any()
             if has_cruise_samps:
-                # find blank samples in this group
-                extraction_blank_samps = group_df[group_df[self.extraction_sample_name_col].str.contains('blank', case=False, na=False)]
+                # find blank samples in this group ('Larson NC are extraction blanks for the SKQ23 cruise)
+                extraction_blank_samps = group_df[group_df[self.extraction_sample_name_col].str.contains('blank', case=False, na=False) | group_df[self.extraction_sample_name_col].str.contains('Larson NC', case=False, na=False)]
 
                 blank_df = pd.concat([blank_df, extraction_blank_samps])
 
+        blank_df[self.extraction_conc_col_name] = blank_df[self.extraction_conc_col_name].replace("BDL", "BR").replace("Below Range", "BR").replace("br", "BR")
+        
         return blank_df
 
     def filter_cruise_avg_extraction_conc(self) -> pd.DataFrame:
@@ -242,6 +258,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # Drop rows where the sample name column value is NA. This is for cruises where samples were split up
         # e.g. PPS samples that were deployed from the DY2306 cruise. They will be a separate sample metadata file.
         metadata_df = metadata_df.dropna(subset=[self.sample_metadata_sample_name_column])
+
+        # for col in metadata_df.columns:
+        #     print(col)
+
 
         return metadata_df
 
@@ -350,9 +370,9 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         extraction_neg_control_str = 'blank'
 
         if field_neg_control_str in samp_name:
-            neg_cont_type = self.check_cv_word(value='field negative', faire_attribute='neg_cont_type')
+            neg_cont_type = self.check_cv_word(value='field negative', faire_attribute=self.faire_neg_cont_type_name_col)
         elif extraction_neg_control_str in samp_name.lower():
-            neg_cont_type = self.check_cv_word(value='extraction negative', faire_attribute='neg_cont_type')
+            neg_cont_type = self.check_cv_word(value='extraction negative', faire_attribute=self.faire_neg_cont_type_name_col)
 
         return neg_cont_type
     
@@ -580,10 +600,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # fill empty values for samples after mapping over all sample data without control samples
 
         # check if data frame is sample data frame and if so, then adds not applicable: control sample to control columns
-        if '.NC' not in df['samp_name'].iloc[0] and 'POSITIVE' not in df['samp_name'].iloc[0]:
+        if '.NC' not in df[self.faire_sample_name_col].iloc[0] and 'POSITIVE' not in df[self.faire_sample_name_col].iloc[0]:
             for col, message in self.not_applicable_to_samp_faire_col_dict.items():
                 df[col] = message
-        elif '.NC' in df['samp_name']:
+        elif '.NC' in df[self.faire_sample_name_col]:
             # for NC sample pos_cont_type is just not applicable
             df['pos_cont_type'] = "not applicable"
         
@@ -595,24 +615,26 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         return df
     
-    def fill_nc_metadata(self, final_sample_df: pd.DataFrame) -> pd.DataFrame:
+    def fill_nc_metadata(self) -> pd.DataFrame:
         # Fills the negative control data frame
-        
+
+        nc_mapping_dict = self.create_nc_mapping_dict()
+ 
         nc_results = {}
         # add exact mappings
-        for faire_col, metadata_col in self.nc_mapping_dict[self.exact_mapping].items():
+        for faire_col, metadata_col in nc_mapping_dict[self.exact_mapping].items():
             nc_results[faire_col] = self.nc_df[metadata_col].apply(
                 lambda row: self.apply_exact_mappings(metadata_row=row, faire_col=faire_col))
             
         # Step 2: Add constant mappings
-        for faire_col, static_value in self.nc_mapping_dict[self.constant_mapping].items():
+        for faire_col, static_value in nc_mapping_dict[self.constant_mapping].items():
             nc_results[faire_col] = self.apply_static_mappings(faire_col=faire_col, static_value=static_value)
 
         # Step 3. Add related mappings
         # Step 3: Add related mappings
-        for faire_col, metadata_col in self.nc_mapping_dict[self.related_mapping].items():
+        for faire_col, metadata_col in nc_mapping_dict[self.related_mapping].items():
             # Add samp_category
-            if faire_col == 'samp_category' and metadata_col == self.sample_metadata_sample_name_column:
+            if faire_col == self.faire_sample_category_name_col and metadata_col == self.sample_metadata_sample_name_column:
                 nc_results[faire_col] = self.nc_df.apply(
                     lambda row: self.add_samp_category_by_sample_name(metadata_row=row, faire_col=faire_col, metadata_col=metadata_col),
                     axis=1
@@ -627,8 +649,11 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                     )
                 else:
                     nc_results[faire_col] = metadata_col # if metadata_col = "missing: not collected, then will be value"
+
+            elif faire_col == 'date_ext':
+                nc_results[faire_col] = self.nc_df[metadata_col].apply(self.convert_date_to_iso8601)
             
-            elif faire_col == 'neg_cont_type':
+            elif faire_col == self.faire_neg_cont_type_name_col:
                 nc_results[faire_col] = self.nc_df[metadata_col].apply(self.add_neg_cont_type)
     
         # First concat with sample_faire_template to get rest of columns, 
@@ -636,43 +661,97 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # Fill na and empty values with not applicable: control sample
         nc_df = pd.concat([self.sample_faire_template_df, pd.DataFrame(nc_results)])
 
-        new_cols = [col for col in final_sample_df.columns if col not in nc_df.columns]
-        for col in new_cols: 
-            nc_df[col] = 'not applicable: control sample'
-        nc_df = self.fill_empty_sample_values(df = nc_df, default_message='not applicable: control sample')
-
         return nc_df
 
-    # def fill_seq_pos_control_metadata(self, final_sample_df: pd.DataFrame) -> pd.DataFrame:
-        #TODO: add pos_cont_type mapping
+    def finish_up_controls_df(self, final_sample_df: pd.DataFrame) -> pd.DataFrame:
 
-        # Get positive control df and only keep the sample name and assay name columns
-        positive_samp_df = self.exp_metadata_df[self.exp_metadata_df['samp_name'].str.contains('POSITIVE', case=True)][['samp_name', 'assay_name']]
+        nc_df = self.fill_nc_metadata()
+        extraction_blanks_df = self.fill_extraction_blanks_metadata()
 
-        # Update sample_category
-        positive_samp_df['samp_category'] = positive_samp_df.apply(
-            lambda row: self.add_samp_category_by_sample_name(metadata_row=row, faire_col='samp_category', metadata_col='samp_name'),
-            axis=1
-        )
+        neg_controls_df = pd.concat([nc_df, extraction_blanks_df])
 
-        positive_samp_df['neg_cont_type'] = 'not applicable'
 
-        positive_samp_df['eventDate'] = 'missing: not provided'
-
-        positive_samp_df['pos_cont_type'] = positive_samp_df['samp_name'].apply(self.add_pos_cont_type)
-
-        # fill res of empty values
-        faire_pos_df = pd.concat([self.sample_faire_template_df, positive_samp_df])
-
-        new_cols = [col for col in final_sample_df.columns if col not in faire_pos_df.columns]
+        new_cols = [col for col in final_sample_df.columns if col not in neg_controls_df.columns]
         for col in new_cols: 
-            faire_pos_df[col] = 'not applicable: control sample'
+            neg_controls_df[col] = 'not applicable: control sample'
+        neg_controls_df = self.fill_empty_sample_values(df = neg_controls_df, default_message='not applicable: control sample')
+
+        return neg_controls_df
+    
+    def fill_extraction_blanks_metadata(self) -> pd.DataFrame:
+
+        extraction_blanks_mapping_dict = self.create_extraction_blank_mapping_dict()
+
+        extract_blank_results = {}
+
+        extract_blank_results[self.faire_sample_name_col] = self.extraction_blanks_df[self.extraction_sample_name_col]
+        extract_blank_results[self.faire_sample_category_name_col] = "negative control"
+        extract_blank_results[self.faire_neg_cont_type_name_col] = "extraction negative"
         
-        faire_pos_df = self.fill_empty_sample_values(df=faire_pos_df, default_message='not applicable: control sample')
+        # Add mappings from mappings dict which is just maping from extractionMetadata sheet
+        # add exact mappings
+        for faire_col, metadata_col in extraction_blanks_mapping_dict[self.exact_mapping].items():
+            extract_blank_results[faire_col] = self.extraction_blanks_df[metadata_col].apply(
+                lambda row: self.apply_exact_mappings(metadata_row=row, faire_col=faire_col))
+            
+        # Step 2: Add constant mappings
+        for faire_col, static_value in extraction_blanks_mapping_dict[self.constant_mapping].items():
+            extract_blank_results[faire_col] = self.apply_static_mappings(faire_col=faire_col, static_value=static_value)
 
-        return faire_pos_df
+        # Step 3: Add related mappings
+        for faire_col, metadata_col in extraction_blanks_mapping_dict[self.related_mapping].items():
+            extract_blank_results[faire_col] = self.extraction_blanks_df[metadata_col].apply(self.convert_date_to_iso8601)
 
-    # def fill_extraciton_blanks_metadata(self, final_sample_df: pd.DataFrame) -> pd.DataFrame:
+        extract_blanks_df = pd.concat([self.sample_faire_template_df, pd.DataFrame(extract_blank_results)])
+
+        return extract_blanks_df
+
+    def add_field_neg_and_extraction_blanks_to_rel_cont_id(self, final_sample_df: pd.DataFrame):
+
+        # Find all samples containing .NC or Blank in their name
+        control_mask = final_sample_df[self.faire_sample_name_col].str.contains(r'\.NC|Blank|Larson NC', case=False, regex=True)
+
+        # Get the list of control sample names
+        control_samples = final_sample_df.loc[control_mask, self.faire_sample_name_col].tolist()
+
+        # Convert list to str
+        control_samples_str = ' | '.join(control_samples)
+
+        # Add string to rel_cont_id for all non_control samples
+        final_sample_df.loc[~control_mask, 'rel_cont_id'] = control_samples_str
+        print(final_sample_df)
+       
+        return final_sample_df
+    # # def fill_seq_pos_control_metadata(self, final_sample_df: pd.DataFrame) -> pd.DataFrame:
+    #     #TODO: add pos_cont_type mapping
+
+    #     # Get positive control df and only keep the sample name and assay name columns
+    #     positive_samp_df = self.exp_metadata_df[self.exp_metadata_df[self.faire_sample_name_col].str.contains('POSITIVE', case=True)][[self.faire_sample_name_col, 'assay_name']]
+
+    #     # Update sample_category
+    #     positive_samp_df[self.faire_sample_category_name_col] = positive_samp_df.apply(
+    #         lambda row: self.add_samp_category_by_sample_name(metadata_row=row, faire_col=self.faire_sample_category_name_col, metadata_col=self.faire_sample_name_col),
+    #         axis=1
+    #     )
+
+    #     positive_samp_df[self.faire_neg_cont_type_name_col] = 'not applicable'
+
+    #     positive_samp_df['eventDate'] = 'missing: not provided'
+
+    #     positive_samp_df['pos_cont_type'] = positive_samp_df[self.faire_sample_name_col].apply(self.add_pos_cont_type)
+
+    #     # fill res of empty values
+    #     faire_pos_df = pd.concat([self.sample_faire_template_df, positive_samp_df])
+
+    #     new_cols = [col for col in final_sample_df.columns if col not in faire_pos_df.columns]
+    #     for col in new_cols: 
+    #         faire_pos_df[col] = 'not applicable: control sample'
+        
+    #     faire_pos_df = self.fill_empty_sample_values(df=faire_pos_df, default_message='not applicable: control sample')
+
+    #     return faire_pos_df
+
+
 
 
                 

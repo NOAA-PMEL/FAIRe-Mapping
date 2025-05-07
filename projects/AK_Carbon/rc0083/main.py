@@ -12,7 +12,7 @@ def create_rc0083_sample_metadata():
     
     # initiate mapper
     sample_mapper = FaireSampleMetadataMapper(config_yaml='config.yaml')
-    print(sample_mapper.extraction_blanks_df)
+    print(sample_mapper.nc_df)
 
     # sample_metadata_results = {}
 
