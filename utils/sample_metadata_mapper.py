@@ -99,7 +99,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         return nc_mapping_dict
 
-    def create_extraction_blank_mapping_dict(self) -> dict:
+    # def create_extraction_blank_mapping_dict(self) -> dict:
         # Creates a mapping dict for extraction blanks
     # def create_assay_name_dict(self) -> dict:
     #     # Creates a dicitonary of the samples and their assays
@@ -672,7 +672,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         return faire_pos_df
 
-    def fill_extraciton_blanks_metadata(self, final_sample_df: pd.DataFrame) -> pd.DataFrame:
+    # def fill_extraciton_blanks_metadata(self, final_sample_df: pd.DataFrame) -> pd.DataFrame:
 
 
                 
