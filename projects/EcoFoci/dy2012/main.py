@@ -78,12 +78,18 @@ def create_dy2012_sample_metadata():
                                               sheet_name=sample_mapper.sample_mapping_sheet_name, 
                                               faire_template_df=faire_sample_df)
 
-    return sample_mapper
+    return sample_mapper, faire_sample_df
 
- 
 def main() -> None:
 
-    sample_metadata = create_dy2012_sample_metadata()
+    faire_sample_outputs = create_dy2012_sample_metadata()
+    # sample_df = faire_sample_outputs[1]
+
+    # sample_mapper = faire_sample_outputs[0]
+    # sample_mapper.save_final_df_as_csv(final_df=sample_df, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2012/data/dy2012_faire_sampleMetadata.csv')
+
+    
+
 
 if __name__ == "__main__":
     main()

@@ -34,3 +34,10 @@ otu_num_tax_assigned_files_for_run: # The files used to calculate the otu_num_ta
   'Machida18S': /home/poseidon/mcallister/eDNA_bioinformatics/Run2/REVAMP/01_originalREVAMP/Machida18S/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
   'MiFish': /home/poseidon/mcallister/eDNA_bioinformatics/Run2/REVAMP/01_originalREVAMP/MiFish/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
   'Parada16S': /home/poseidon/mcallister/eDNA_bioinformatics/Run2/REVAMP/01_originalREVAMP/Parada16S/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
+
+# path to json creds file for google sheets
+json_creds: /home/poseidon/zalmanek/FAIRe-Mapping/credentials.json
+
+# FAIRe template related
+faire_template_file: /home/poseidon/zalmanek/FAIRe-Mapping/faire_template.xlsx
+final_faire_template_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/run2/data/run2_faire.csv

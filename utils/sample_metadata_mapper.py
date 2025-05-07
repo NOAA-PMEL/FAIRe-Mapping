@@ -54,6 +54,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         self.sample_metadata_df = self.filter_metadata_dfs()[0]
         self.nc_df = self.filter_metadata_dfs()[1]
+        self.extraction_blanks_df = self.get_extraction_blanks_applicable_to_cruise_samps()
         self.sample_faire_template_df = self.load_faire_template_as_df(file_path=self.config_file['faire_template_file'], sheet_name=self.sample_mapping_sheet_name, header=self.faire_sheet_header).dropna()
         self.replicates_dict = self.create_biological_replicates_dict()
         self.insdc_locations = self.extract_insdc_geographic_locations()
@@ -98,6 +99,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         return nc_mapping_dict
 
+    def create_extraction_blank_mapping_dict(self) -> dict:
+        # Creates a mapping dict for extraction blanks
     # def create_assay_name_dict(self) -> dict:
     #     # Creates a dicitonary of the samples and their assays
     #     grouped = self.exp_metadata_df.groupby('samp_name')['assay_name'].apply(list).to_dict()
@@ -149,12 +152,33 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         return numeric_series.mean()
     
+    def get_extraction_blanks_applicable_to_cruise_samps(self):
+        # Get extraction blank df (applicable to RC0083 cruise)
+
+        extractions_df = self.load_google_sheet_as_df(google_sheet_id=self.extraction_metadata_google_sheet_id, sheet_name=self.extraction_metadata_sheet_name, header=0)
+
+        blank_df = pd.DataFrame(columns=extractions_df.columns)
+
+        # TODO: peel out 'Extraction Set' column name into config.yaml file
+        grouped = extractions_df.groupby('Extraction Set')
+
+        for extraction_set, group_df in grouped:
+            # Check if any in the group contains the extraction cruise key
+            has_cruise_samps = group_df[self.extraction_sample_name_col].str.contains(self.extraction_cruise_key, case=False, na=False).any()
+            if has_cruise_samps:
+                # find blank samples in this group
+                extraction_blank_samps = group_df[group_df[self.extraction_sample_name_col].str.contains('blank', case=False, na=False)]
+
+                blank_df = pd.concat([blank_df, extraction_blank_samps])
+
+        return blank_df
+
     def filter_cruise_avg_extraction_conc(self) -> pd.DataFrame:
         # If extractions have multiple measurements for extraction concentrations, calculates the avg.
         # and creates a column called pool_num to show the number of samples pooled
 
         extractions_df = self.load_google_sheet_as_df(google_sheet_id=self.extraction_metadata_google_sheet_id, sheet_name=self.extraction_metadata_sheet_name, header=0)
-
+        
         # Filter extractions df by cruise and calculate avg concentration
         extract_avg_df = extractions_df[extractions_df[self.extraction_sample_name_col].str.contains(self.extraction_cruise_key)].groupby(
             self.extraction_sample_name_col).agg({
@@ -441,11 +465,11 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     
         return geo_loc
     
-    def find_geo_loc_by_lat_lon(self, metadata_row: pd.Series) -> str:
+    def find_geo_loc_by_lat_lon(self, metadata_row: pd.Series, metadata_lat_col: str, metadata_lon_col: str) -> str:
         # World Seas IHO downloaded from: https://marineregions.org/downloads.php
 
-        lat = metadata_row.get(self.faire_lat_col_name)
-        lon = metadata_row.get(self.faire_lon_col_name)
+        lat = metadata_row.get(metadata_lat_col)
+        lon = metadata_row.get(metadata_lon_col)
         
         marine_regions = gpd.read_file("/home/poseidon/zalmanek/FAIRe-Mapping/utils/World_Seas_IHO_v3/World_Seas_IHO_v3.shp")
         # create a point object
@@ -648,7 +672,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         return faire_pos_df
 
-
+    def fill_extraciton_blanks_metadata(self, final_sample_df: pd.DataFrame) -> pd.DataFrame:
 
 
                 

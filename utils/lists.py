@@ -1,5 +1,4 @@
-## FAIRe sample fields that will have the same mapping as the other samples (e.g. won't be not applicable)
-
+## FAIRe sample fields that will have the same mapping as the other samples (e.g. won't be not applicable) for negative field controls
 nc_faire_field_cols = ['samp_name',
                     'samp_category',
                     'neg_cont_type',

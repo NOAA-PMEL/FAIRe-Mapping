@@ -208,6 +208,15 @@ class OmeFaireMapper:
         else:
             return "missing: not provided"
 
+    def save_final_df_as_csv(self, final_df: pd.DataFrame, csv_path: str) -> None:
+        
+        faire_template_df = pd.read_excel(self.faire_template_file, header=2)
+
+        faire_final_df = pd.concat([faire_template_df, final_df], ignore_index=True)
+
+        faire_final_df.to_csv(csv_path)
+
+    
     def add_final_df_to_FAIRe_excel(self, excel_file_to_read_from: str, sheet_name: str, faire_template_df: pd.DataFrame):
 
         # Step 1 load the workbook to preserve formatting
