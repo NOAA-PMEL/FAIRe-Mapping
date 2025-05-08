@@ -174,18 +174,28 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         blank_df = pd.DataFrame(columns=extractions_df.columns)
 
         # TODO: peel out 'Extraction Set' column name into config.yaml file
-        grouped = extractions_df.groupby('Extraction Set')
+        try:
+            # try grouping by extraction set if it exists
+            grouped = extractions_df.groupby('Extraction Set')
 
-        for extraction_set, group_df in grouped:
-            # Check if any in the group contains the extraction cruise key
-            has_cruise_samps = group_df[self.extraction_sample_name_col].str.contains(self.extraction_cruise_key, case=False, na=False).any()
-            if has_cruise_samps:
-                # find blank samples in this group ('Larson NC are extraction blanks for the SKQ23 cruise)
-                extraction_blank_samps = group_df[group_df[self.extraction_sample_name_col].str.contains('blank', case=False, na=False) | group_df[self.extraction_sample_name_col].str.contains('Larson NC', case=False, na=False)]
+            for extraction_set, group_df in grouped:
+                # Check if any in the group contains the extraction cruise key
+                has_cruise_samps = group_df[self.extraction_sample_name_col].str.contains(self.extraction_cruise_key, case=False, na=False).any()
+                if has_cruise_samps:
+                    # find blank samples in this group ('Larson NC are extraction blanks for the SKQ23 cruise)
+                    extraction_blank_samps = group_df[group_df[self.extraction_sample_name_col].str.contains('blank', case=False, na=False) | group_df[self.extraction_sample_name_col].str.contains('Larson NC', case=False, na=False)]
 
-                blank_df = pd.concat([blank_df, extraction_blank_samps])
+                    blank_df = pd.concat([blank_df, extraction_blank_samps])
 
-        blank_df[self.extraction_conc_col_name] = blank_df[self.extraction_conc_col_name].replace("BDL", "BR").replace("Below Range", "BR").replace("br", "BR")
+            blank_df[self.extraction_conc_col_name] = blank_df[self.extraction_conc_col_name].replace("BDL", "BR").replace("Below Range", "BR").replace("br", "BR")
+        except:
+            print("Warning: Extraction samples are not grouped by 'Extraction Set', double check this")
+        try:
+            # find blank samples in the whole df ('Larson NC are extraction blanks for the SKQ23 cruise)
+            extraction_blank_samps = extractions_df[extractions_df[self.extraction_sample_name_col].str.contains('blank', case=False, na=False) | group_df[self.extraction_sample_name_col].str.contains('Larson NC', case=False, na=False)]
+            blank_df = pd.concat([blank_df, extraction_blank_samps])
+        except:
+            print("There appear to be no extraction blanks")
         
         return blank_df
 
@@ -214,7 +224,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             lambda x: "One sample, but two filters were used because sample clogged. Two extractions were pooled together and average concentration calculated." if x>1 else "missing: not provided")
         
         # update samp name for DY2012 cruises (from DY20) and remove E numbers from any NC samples
-        extract_avg_df[self.extraction_sample_name_col] = extract_avg_df[self.extraction_sample_name_col].apply(self.str_replace_dy2012_cruise)
+        extract_avg_df[self.extraction_sample_name_col] = extract_avg_df[self.extraction_sample_name_col].apply(self.str_replace_for_samps)
         extract_avg_df[self.extraction_sample_name_col] = extract_avg_df[self.extraction_sample_name_col].apply(self.str_replace_nc_samps_with_E)
 
         #update dates to iso8601 TODO: may need to adjust this for ones that are already in this format

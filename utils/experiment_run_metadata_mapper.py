@@ -99,6 +99,11 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                     lambda row: self.process_asv_counts(metadata_row=row, faire_col=faire_col),
                     axis=1
                 )
+            elif faire_col == 'technical_rep_id':
+                # Get technical replicate number
+                exp_metadata_results[faire_col] = self.jv_run_metadata_df[self.jv_run_sample_name_column].apply(self._extract_technical_replicate_num)
+                exp_metadata_results[self.faire_sample_samp_name_col] = self.jv_run_metadata_df[self.jv_run_sample_name_column].apply(self._remove_pcr_from_samp_name)
+
 
         exp_df = pd.DataFrame(exp_metadata_results)
         faire_exp_df = pd.concat([self.exp_run_faire_template_df, exp_df])
@@ -140,7 +145,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             exp_df = exp_df[~exp_df[self.jv_metadata_marker_col_name].str.contains(pattern, case=True, na=False)]
       
         # if DY2012 cruise, replace strings DY20 with DY2012
-        exp_df[self.jv_run_sample_name_column] = exp_df[self.jv_run_sample_name_column].apply(self.str_replace_dy2012_cruise)
+        exp_df[self.jv_run_sample_name_column] = exp_df[self.jv_run_sample_name_column].apply(self.str_replace_for_samps)
 
         
         # Change positive control sample names
@@ -150,7 +155,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         )
 
         # Remove rows with EMPTY as sample name
-        exp_df = exp_df[exp_df[self.jv_run_sample_name_column] != 'EMPTY']
+        exp_df = exp_df[~exp_df[self.jv_run_sample_name_column].isin(['EMPTY', 'EMPTY*'])]
 
         return exp_df
     
@@ -211,7 +216,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             for filename in matching_files:
                 filepath = os.path.join(marker_dir, filename)
                 md5_checksum = self._get_md5_checksum(filepath)
-                target_dict[marker][sample_name] = {
+                target_dict[marker][sample_name.strip()] = {
                     "filename": filename,
                     "checksum": md5_checksum,
                     "filepath": filepath
@@ -228,11 +233,9 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         grouped = self.jv_run_metadata_df.groupby(self.jv_metadata_marker_col_name)
 
         for marker, group in grouped:
-            print(marker)
            # Get the raw data folder name by shorthand marker - see dict in lists.py. If 
             shorthand_marker = marker_to_shorthand_mapping.get(marker)
             marker_raw_data_dir = self.jv_raw_data_path.get(shorthand_marker)
-            print(marker_raw_data_dir)
             if os.path.exists(marker_raw_data_dir):
                 print(f"raw data for {shorthand_marker} in folder: {marker_raw_data_dir}")
             else:
@@ -243,6 +246,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
 
             # For each sample in this marker group
             for sample_name in group[self.jv_run_sample_name_column].unique():
+                sample_name = sample_name.strip() # remove white spaces from sample name - having issues with this
                 
                 self._outline_raw_data_dict(sample_name=sample_name, file_num=1, all_files=all_files, marker=marker, marker_dir=marker_raw_data_dir)
                 self._outline_raw_data_dict(sample_name=sample_name, file_num=2, all_files=all_files, marker=marker ,marker_dir=marker_raw_data_dir)
@@ -275,6 +279,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         sample_name = metadata_row[self.jv_run_sample_name_column]
 
         # Get approrpiate nested marker dict and corresponding nested sample list with dictionary of files and checksums
+        print(f"sample_name:{sample_name} and marker:{marker_name}")
         filename = raw_file_dict.get(marker_name).get(sample_name).get('filename')
 
         return filename
@@ -321,7 +326,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                 return sample_name.replace('MP_', '')
             # For regular samples
             else:
-                return sample_name.replace('MP_', '').replace('_', '.').replace('.12S', '-12S') # replace .12S to -12S for SKQ23-12S samples
+                return sample_name.replace('MP_', '').replace('_', '.').replace('.12S', '-12S') # replace .12S to -12S for SKQ23-12S samples.
         else:
             sample_name = sample_name.replace('MP_', '')
             return f'{self.run_name}.{marker}.{sample_name}' 
@@ -388,6 +393,26 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                 updated_sample_name = self._clean_asv_samp_names(sample_name=sample_name, marker=marker)
 
                 self.asv_data_dict[marker][updated_sample_name]["otu_num_tax_assigned"] = non_zero_otu_num_tax_assinged.item()
+
+    def _extract_technical_replicate_num(self, sample_name: str) -> int:
+        # For samples with .PCR in name, extract the replicate number and add to column called technical_replicate_id
+        match = re.search(r'\.PCR(\d+)', sample_name)
+
+        if match:
+            # Extract the number
+            pcr_num = match.group(1)
+            return pcr_num
+        else:
+            # If no match, return original name and "not applicable" for PCR number
+            return "not applicable"
+    
+    def _remove_pcr_from_samp_name(self, sample_name: str) -> str:
+        # Remove PCR from sample names (run only after extracting the technical replicate num - function above)
+        if 'PCR' in sample_name:
+            clean_name = re.sub(r'\.PCR\d+', '', sample_name)
+            return clean_name
+        else:
+            return sample_name
 
     def process_paired_end_fastq_files(self, metadata_row: pd.Series) -> int:
         # Process R1 FASTQ file using exact file path

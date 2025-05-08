@@ -90,11 +90,13 @@ class OmeFaireMapper:
         
         return df
     
-    def str_replace_dy2012_cruise(self, samp_name: pd.Series) -> str:
+    def str_replace_for_samps(self, samp_name: pd.Series) -> str:
         # if sample is part of the DY2012 cruise, will replace any str of DY20 with DY2012
         samp_name = str(samp_name)
         if '.DY20' in samp_name:
            samp_name = samp_name.replace('.DY20', '.DY2012')
+        if '(P10 D2)' in samp_name:
+            samp_name = samp_name.replace(' (P10 D2)', '') # for E1875.OC0723 (P10 D2) in Run2
     
         return samp_name
     
