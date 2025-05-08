@@ -9,7 +9,8 @@ def create_exp_run_metadata(config_yaml: str) -> pd.DataFrame:
     exp_mapper = ExperimentRunMetadataMapper(config_yaml=config_yaml)
     faire_exp_df = exp_mapper.generate_jv_run_metadata()
 
-    exp_mapper.save_final_df_as_csv(final_df=faire_exp_df, sheet_name = exp_mapper.faire_template_exp_run_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/runs/run4/data/run4_faire_experimentRunMetadata.csv')
+    csv_path = exp_mapper.config_file['final_faire_template_path']
+    exp_mapper.save_final_df_as_csv(final_df=faire_exp_df, sheet_name = exp_mapper.faire_template_exp_run_sheet_name, header=2, csv_path=csv_path)
 
     # save to excel
     # exp_mapper.add_final_df_to_FAIRe_excel(excel_file_to_read_from=exp_mapper.faire_template_file,
