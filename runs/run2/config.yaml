@@ -9,9 +9,8 @@ jv_raw_data_path: # The raw data path of each marker folder (a lot are in a rena
   'Machida18S': /data/raw_data/20240328_JV_Run2_OCNMS_Arctic_eDNA/renamed/Machida18S/
   'MiFish': /data/raw_data/20240328_JV_Run2_OCNMS_Arctic_eDNA/renamed/MiFish/
   'Parada16S': /data/raw_data/20240328_JV_Run2_OCNMS_Arctic_eDNA/renamed/Parada16S/
-jv_run_sample_metadata_file_id: 1fohPtESqn-7IMKxDcvx4Gs6RMOCbaDM9
+jv_run_sample_metadata_file_id: 1t_i2c0q-Oe4RHwUimBa9XuqRAlPXY1SiQ1m4dgkou9k
 google_sheet_mapping_file_id: 19E4Yl1zPVQiskGGXAR94AeQGFHWrh-uWtJ9cuJYlJ48
-run_short_cruise_name: SKQ2021 # the short cruise name in the jv run csv file to filter by cruise name
 run_name: run2 # for adding to the Positive control sample names
 revamp_blast: True # if using the revamp blast-based taxonomy assignment then set this to True, otherwise False
 ignore_markers: # Add Metabarcoding Marker name EXACTLY from run_sample_metadata_file if not submitting info for that marker

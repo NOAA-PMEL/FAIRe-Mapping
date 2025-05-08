@@ -488,6 +488,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     def find_geo_loc_by_lat_lon(self, metadata_row: pd.Series, metadata_lat_col: str, metadata_lon_col: str) -> str:
         # World Seas IHO downloaded from: https://marineregions.org/downloads.php
 
+        print(f"Getting geo_loc_name for {metadata_row[self.sample_metadata_sample_name_column]}")
         lat = metadata_row.get(metadata_lat_col)
         lon = metadata_row.get(metadata_lon_col)
         

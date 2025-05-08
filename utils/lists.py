@@ -61,6 +61,7 @@ marker_to_assay_mapping = {
     '18S Machida': 'ssu18sv8_machida',
     'MiFish 12S': 'ssu12sv5v6_mifish_u_sales',
     '16S Furhman': 'ssu16sv4v5_parada',
+    '16S Fuhrman': 'ssu16sv4v5_parada',
     '18S V4': 'ssu18sv4_stoeck',
     'ITS': 'ITS1_sterling',
 }
@@ -73,10 +74,11 @@ marker_to_shorthand_mapping = {
     '18S V9': '18Sv9',
     'Leray CO1': 'COI',
     '16S Furhman': 'Parada16S',
+    '16S Fuhrman': 'Parada16S',
     '18S Machida': 'Machida18S',
     'ITS': 'ITS1',
     'dLoop': 'dLoop',
-    '16S Kelley': 'Kelly16S' 
+    '16S Kelley': 'Kelly16S'
 }
 
 # marker shorthand to gblock name - based on this spreadsheet: https://docs.google.com/spreadsheets/d/1sdShcSBPvAcIWXBXJpCfjirv57FNjJFOfOYFd5_I3gM/edit?gid=0#gid=0

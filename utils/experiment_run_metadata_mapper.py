@@ -26,7 +26,6 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         self.faire_sample_samp_name_col = 'samp_name' # The name of the column for sample name in the 
         self.jv_raw_data_path = self.config_file['jv_raw_data_path']
         self.jv_run_sample_metadata_file_id = self.config_file['jv_run_sample_metadata_file_id']
-        # self.run_short_cruise_name = self.config_file['run_short_cruise_name']
         self.run_name = self.config_file['run_name']
         self.asv_counts_tsvs_for_run = self.config_file['asv_counts_tsvs_for_run']
         self.otu_num_tax_assigned_files_for_run = self.config_file['otu_num_tax_assigned_files_for_run']
@@ -143,9 +142,6 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         # if DY2012 cruise, replace strings DY20 with DY2012
         exp_df[self.jv_run_sample_name_column] = exp_df[self.jv_run_sample_name_column].apply(self.str_replace_dy2012_cruise)
 
-        # TODO: remove after get working for non-specific cruises
-        # # only keep rows with cruise name in sample name and Postive
-        # cruise_df = exp_df[(exp_df[self.jv_run_sample_name_column].str.contains(self.run_short_cruise_name) | (exp_df[self.jv_run_sample_name_column].str.contains('POSITIVE')))].reset_index(drop=True)
         
         # Change positive control sample names
         exp_df[self.jv_run_sample_name_column] = exp_df.apply(
@@ -232,9 +228,11 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         grouped = self.jv_run_metadata_df.groupby(self.jv_metadata_marker_col_name)
 
         for marker, group in grouped:
+            print(marker)
            # Get the raw data folder name by shorthand marker - see dict in lists.py. If 
             shorthand_marker = marker_to_shorthand_mapping.get(marker)
             marker_raw_data_dir = self.jv_raw_data_path.get(shorthand_marker)
+            print(marker_raw_data_dir)
             if os.path.exists(marker_raw_data_dir):
                 print(f"raw data for {shorthand_marker} in folder: {marker_raw_data_dir}")
             else:
@@ -346,15 +344,8 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             # Read the TSV file with pandas
             asv_df = pd.read_csv(asv_tsv_file, sep='\t')
 
-            # TODO: remove after get working for non-cruise specific columns
-            # cruise_specific_cols = [col for col in asv_df.columns if self.run_short_cruise_name in col or 'POSITIVE' in col]
-
             # set the asv column as the index
             asv_df = asv_df.set_index('x')
-
-            # TODO: remove after get working for non-cruise specific columns
-            # if not cruise_specific_cols:
-            #     print(f"No {self.run_short_cruise_name} samps found in {asv_tsv_file}")
             
             # calculate sum for each filtered column and the otu num
             for sample_name in asv_df.columns:
@@ -384,9 +375,6 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
 
             # Read the TSV file with pandas
             asv_tax_df = pd.read_csv(asv_tax_file, sep='\t')
-
-            # TODO: remove after get working for non-specific cruise columns
-            # cruise_specific_cols = [col for col in asv_tax_df.columns if self.run_short_cruise_name in col or 'POSITIVE' in col]
 
             # set the asv column as the index
             asv_tax_df = asv_tax_df.set_index('x')
