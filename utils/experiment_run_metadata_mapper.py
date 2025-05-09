@@ -279,7 +279,6 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         sample_name = metadata_row[self.jv_run_sample_name_column]
 
         # Get approrpiate nested marker dict and corresponding nested sample list with dictionary of files and checksums
-        print(f"sample_name:{sample_name} and marker:{marker_name}")
         filename = raw_file_dict.get(marker_name).get(sample_name).get('filename')
 
         return filename
