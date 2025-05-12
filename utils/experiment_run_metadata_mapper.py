@@ -99,12 +99,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                     lambda row: self.process_asv_counts(metadata_row=row, faire_col=faire_col),
                     axis=1
                 )
-            elif faire_col == 'technical_rep_id':
-                # Get technical replicate number
-                exp_metadata_results[faire_col] = self.jv_run_metadata_df[self.jv_run_sample_name_column].apply(self._extract_technical_replicate_num)
-                exp_metadata_results[self.faire_sample_samp_name_col] = self.jv_run_metadata_df[self.jv_run_sample_name_column].apply(self._remove_pcr_from_samp_name)
-
-
+           
         exp_df = pd.DataFrame(exp_metadata_results)
         faire_exp_df = pd.concat([self.exp_run_faire_template_df, exp_df])
 
@@ -154,9 +149,13 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             axis=1
         )
 
-        # Remove rows with EMPTY as sample name
-        exp_df = exp_df[~exp_df[self.jv_run_sample_name_column].isin(['EMPTY', 'EMPTY*'])]
-
+        # Remove rows with EMPTY, NA, or '' as sample name, and 'sample/primer' (for Run3 the random statistic row in the metadata file)
+        exp_df = exp_df[
+            (~exp_df[self.jv_run_sample_name_column].str.contains('EMPTY|sample/primer', case=False, na=False)) &
+            (exp_df[self.jv_run_sample_name_column].notna()) &
+            (exp_df[self.jv_run_sample_name_column] != '')
+        ].reset_index(drop=True)
+       
         return exp_df
     
     def _create_positive_samp_dict(self):
@@ -198,6 +197,9 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
 
         # Account for sample name changes in positive samples
         if 'POSITIVE' not in sample_name:
+            # Change sample name back to .DY20 to look up correct files
+            if '.DY2012' in sample_name:
+                sample_name = sample_name.replace('.DY2012', '.DY20')
             pattern = re.compile(f"^{re.escape(sample_name)}_R[{file_num}].+")
         else:
             pattern = re.compile(f"^{re.escape('POSITIVE')}_R[{file_num}].+")
@@ -216,6 +218,9 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             for filename in matching_files:
                 filepath = os.path.join(marker_dir, filename)
                 md5_checksum = self._get_md5_checksum(filepath)
+                # change sample name back for key of dict for DY2012 samps
+                if '.DY20' in sample_name:
+                    sample_name = sample_name.replace('.DY20', '.DY2012')
                 target_dict[marker][sample_name.strip()] = {
                     "filename": filename,
                     "checksum": md5_checksum,
@@ -228,13 +233,14 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
     def _create_marker_sample_raw_data_file_dicts(self):
         # Finds all matching data files by marker for each sample returns two nested dict one for forward raw data files, and one for reverse raw data files
         # {marker1: {sample1: {filename: file1.gz, checksum: 56577, filepath: eff/dsdf.fastq.gz}}
-
         # group run metadata by marker
         grouped = self.jv_run_metadata_df.groupby(self.jv_metadata_marker_col_name)
 
         for marker, group in grouped:
            # Get the raw data folder name by shorthand marker - see dict in lists.py. If 
-            shorthand_marker = marker_to_shorthand_mapping.get(marker)
+            shorthand_marker = marker_to_shorthand_mapping.get(marker, None)
+            if shorthand_marker == None:
+                raise ValueError(f"No shorthand marker exists for {marker}, please update shorthand_marker dict in lists file")
             marker_raw_data_dir = self.jv_raw_data_path.get(shorthand_marker)
             if os.path.exists(marker_raw_data_dir):
                 print(f"raw data for {shorthand_marker} in folder: {marker_raw_data_dir}")
@@ -257,7 +263,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         assay = marker_to_assay_mapping.get(marker, None)
 
         if assay == None:
-            raise NoAcceptableAssayMatch(f'The marker/assay {marker} does not match any of the {[v for v in marker_to_assay_mapping.values()]}. Try changing cutoff or normalizing.')
+            raise NoAcceptableAssayMatch(f'The marker/assay {marker} does not match any of the {[v for v in marker_to_assay_mapping.values()]}, please update marker_to_assay_mapping dict in list file.')
         else:
             return assay
 
@@ -392,26 +398,6 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                 updated_sample_name = self._clean_asv_samp_names(sample_name=sample_name, marker=marker)
 
                 self.asv_data_dict[marker][updated_sample_name]["otu_num_tax_assigned"] = non_zero_otu_num_tax_assinged.item()
-
-    def _extract_technical_replicate_num(self, sample_name: str) -> int:
-        # For samples with .PCR in name, extract the replicate number and add to column called technical_replicate_id
-        match = re.search(r'\.PCR(\d+)', sample_name)
-
-        if match:
-            # Extract the number
-            pcr_num = match.group(1)
-            return pcr_num
-        else:
-            # If no match, return original name and "not applicable" for PCR number
-            return "not applicable"
-    
-    def _remove_pcr_from_samp_name(self, sample_name: str) -> str:
-        # Remove PCR from sample names (run only after extracting the technical replicate num - function above)
-        if 'PCR' in sample_name:
-            clean_name = re.sub(r'\.PCR\d+', '', sample_name)
-            return clean_name
-        else:
-            return sample_name
 
     def process_paired_end_fastq_files(self, metadata_row: pd.Series) -> int:
         # Process R1 FASTQ file using exact file path
