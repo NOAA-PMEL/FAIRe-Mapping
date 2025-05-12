@@ -331,7 +331,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                 return sample_name.replace('MP_', '')
             # For regular samples
             else:
-                return sample_name.replace('MP_', '').replace('_', '.').replace('.12S', '-12S') # replace .12S to -12S for SKQ23-12S samples.
+                return sample_name.replace('MP_', '').replace('_', '.').replace('.12S', '-12S').replace('.DY20', '.DY2012') # replace .12S to -12S for SKQ23-12S samples.
         else:
             sample_name = sample_name.replace('MP_', '')
             return f'{self.run_name}.{marker}.{sample_name}' 
@@ -359,6 +359,11 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             
             # calculate sum for each filtered column and the otu num
             for sample_name in asv_df.columns:
+                
+                # Will be .DY20 in asv tables, but will try to search for .DY2102 based on metadata df, so need to change back temporarily to look up,
+                # will be updated back to .DY2012 in the _clean_asv_samp_names function
+                if '.DY2012' in sample_name:
+                    sample_name = sample_name.replace('.DY2012', '.DY20')
                 
                 # sum the column values for output read count
                 output_read_count = asv_df[sample_name].sum()
@@ -390,6 +395,11 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             asv_tax_df = asv_tax_df.set_index('x')
 
             for sample_name in asv_tax_df.columns:
+
+                # Will be .DY20 in asv tables, but will try to search for .DY2102 based on metadata df, so need to change back temporarily to look up,
+                # will be updated back to .DY2012 in the _clean_asv_samp_names function
+                if '.DY2012' in sample_name:
+                    sample_name = sample_name.replace('.DY2012', '.DY20')
 
                 # get the output_otu_num which is the total number asvs for each sample (non zero count number)
                 non_zero_otu_num_tax_assinged = (asv_tax_df[sample_name] > 0).sum()
