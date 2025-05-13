@@ -225,7 +225,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         
         # update samp name for DY2012 cruises (from DY20) and remove E numbers from any NC samples
         extract_avg_df[self.extraction_sample_name_col] = extract_avg_df[self.extraction_sample_name_col].apply(self.str_replace_for_samps)
-        extract_avg_df[self.extraction_sample_name_col] = extract_avg_df[self.extraction_sample_name_col].apply(self.str_replace_nc_samps_with_E)
 
         #update dates to iso8601 TODO: may need to adjust this for ones that are already in this format
         extract_avg_df[self.extraction_date_col_name] = extract_avg_df[self.extraction_date_col_name].apply(self.convert_mdy_date_to_iso8061)

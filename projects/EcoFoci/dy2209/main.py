@@ -103,7 +103,7 @@ def create_dy2209_sample_metadata():
 def create_exp_run_metadata():
 
     exp_mapper = ExperimentRunMetadataMapper(config_yaml='config.yaml')
-    faire_exp_df = exp_mapper.generate_jv_run_metadata()
+    faire_exp_df = exp_mapper.generate_run_metadata()
 
     # save to excel
     # exp_mapper.add_final_df_to_FAIRe_excel(excel_file_to_read_from=exp_mapper.faire_template_file,

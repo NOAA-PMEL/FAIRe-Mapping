@@ -10,6 +10,7 @@ import hashlib
 
 # TODO: update for PCR replicates? - MAke sample name the same, change lib_id?
 # TODO: add associatedSequences functionlity after submittting to NCBI
+# TODO: rerun all runs after code is final
 
 class ExperimentRunMetadataMapper(OmeFaireMapper):
 
@@ -20,7 +21,6 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         super().__init__(config_yaml)
 
         self.run_metadata_sample_name_column = self.config_file['run_metadata_sample_name_column']
-        self.run_metadata_index_name_col = self.config_file['run_metadata_index_name_col']
         self.run_metadata_marker_col_name = self.config_file['run_metadata_marker_col_name']
         self.run_metadata_sample_sheet_name = self.config_file['run_metadata_sample_sheet_name']
         self.faire_sample_samp_name_col = 'samp_name' # The name of the column for sample name in the 
@@ -45,7 +45,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
 
         self.exp_run_faire_template_df = self.load_faire_template_as_df(file_path=self.config_file['faire_template_file'], sheet_name=self.faire_template_exp_run_sheet_name, header=self.faire_sheet_header).dropna()
 
-    def generate_jv_run_metadata(self) -> pd.DataFrame :
+    def generate_run_metadata(self) -> pd.DataFrame :
         # Works for run2, need to check other jv runs - maybe can potentially use for OSU runs, if mapping file is generically the same?
         exp_metadata_results = {}
     
@@ -66,7 +66,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
 
             elif faire_col == 'lib_id':
                 exp_metadata_results[faire_col] = self.run_metadata_df.apply(
-                    lambda row: self.jv_create_lib_id(metadata_row=row),
+                    lambda row: self.create_lib_id(metadata_row=row),
                     axis=1
                 )
             elif faire_col == 'filename':
@@ -99,6 +99,12 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                     lambda row: self.process_asv_counts(metadata_row=row, faire_col=faire_col),
                     axis=1
                 )
+            elif faire_col == 'associatedSequences':
+                bio_accession_cols = metadata_col.split(' | ')
+                exp_metadata_results[faire_col] = self.run_metadata_df.apply(
+                    lambda row: self.get_bioaccession_nums_from_metadata(metadata_row=row, bioaccession_cols=bio_accession_cols),
+                    axis=1
+                )
            
         exp_df = pd.DataFrame(exp_metadata_results)
         faire_exp_df = pd.concat([self.exp_run_faire_template_df, exp_df])
@@ -122,13 +128,15 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
     
     def transform_pos_samp_name_in_metadata(self, metadata_row: pd.Series) -> str:
         # update positive sample names
-       
         if 'POSITIVE' in metadata_row[self.run_metadata_sample_name_column]:
             marker = marker_to_shorthand_mapping.get(metadata_row[self.run_metadata_marker_col_name])
-            return f"{self.run_name}.{marker}.POSITIVE"
+            if 'osu' not in self.run_name.lower():
+                return f"{self.run_name}.{marker}.POSITIVE"
+            else: # for osu controls that have camel and ferret in them
+                return f"{self.run_name}.{marker}.{metadata_row[self.run_metadata_sample_name_column]}"
         else:
             return metadata_row[self.run_metadata_sample_name_column]
-
+    
     def _create_experiment_metadata_df(self) -> pd.DataFrame:
         # TODO: maybe rethink th
 
@@ -148,6 +156,10 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             lambda row: self.transform_pos_samp_name_in_metadata(metadata_row=row),
             axis=1
         )
+
+        # Remove E1-23 samples from Machida in the OSU 867 and 873 runs
+        if '867' in self.run_name or '873' in self.run_name:
+            exp_df = self.drop_E1_23_Machida_samples(df=exp_df)
 
         # Remove rows with EMPTY, NA, or '' as sample name, and 'sample/primer' (for Run3 the random statistic row in the metadata file)
         exp_df = exp_df[
@@ -194,8 +206,8 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
     
     def _outline_raw_data_dict(self, sample_name: str, file_num: int, all_files: list, marker: str, marker_dir: str) -> dict:
         # outlines raw filename dictionary used by create_marker_sample_raw_data_files for filename and filename2 in FAIRe
-
         # Account for sample name changes in positive samples
+
         if 'POSITIVE' not in sample_name:
             # checks for mismatch in sample names using mismatch_sample_names_metadata_to_raw_data_files_dict
             for k, v in mismatch_sample_names_metadata_to_raw_data_files_dict.items():
@@ -229,9 +241,30 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                     "checksum": md5_checksum,
                     "filepath": filepath
                 }
+        elif not matching_files:
+            # try reformatting sample name (for osu runs mainly) and redo steps above
+            sample_name_lookup = self._try_diff_sample_name_for_raw_data_lookup(sample_name)
+            if 'camel' in sample_name.lower() or 'ferett' in sample_name.lower() or 'ferret' in sample_name.lower():
+                sample_name_lookup = sample_name_lookup.split('_')[-1]
+                pattern = re.compile(f"^{re.escape(f'MP_{sample_name_lookup}')}_R[{file_num}].+")
+            else:
+                pattern = re.compile(f"^{re.escape(sample_name_lookup)}_R[{file_num}].+")
+            matching_files = [f for f in all_files if pattern.match(f)]
 
+            if marker not in target_dict:
+                target_dict[marker] = {}
+
+            for filename in matching_files:
+                filepath = os.path.join(marker_dir, filename)
+                md5_checksum = self._get_md5_checksum(filepath)
+                # change sample name back for key of dict for DY2012 samps
+                target_dict[marker][sample_name.strip()] = {
+                    "filename": filename,
+                    "checksum": md5_checksum,
+                    "filepath": filepath
+                }
         else:
-            print(f"Warning: No matching files found for sample {sample_name} in marker {marker}, using sample lookup name {sample_name_lookup}, pattern {pattern}")
+            print(f"Warning: No matching files found for sample {sample_name} in marker {marker}, using sample lookup name {sample_name_lookup}, pattern {pattern}.")
 
     def _create_marker_sample_raw_data_file_dicts(self):
         # Finds all matching data files by marker for each sample returns two nested dict one for forward raw data files, and one for reverse raw data files
@@ -270,15 +303,13 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         else:
             return assay
 
-    def jv_create_lib_id(self, metadata_row: pd.Series) -> str:
+    def create_lib_id(self, metadata_row: pd.Series) -> str:
         # create lib_id by concatenating sample name, index, marker and run name together
-        #TODO: get rid of index name
 
-        index_name = metadata_row[self.run_metadata_index_name_col]
         sample_name = metadata_row[self.run_metadata_sample_name_column]
         shorthand_marker = marker_to_shorthand_mapping.get(metadata_row[self.run_metadata_marker_col_name])
 
-        lib_id = sample_name + "_" + index_name + "_" + shorthand_marker + "_" + self.run_name
+        lib_id = sample_name + "_" + shorthand_marker + "_" + self.run_name
 
         return lib_id
 
@@ -333,12 +364,24 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         if 'positive' not in sample_name.lower():
             if 'pool' in sample_name:
                 return sample_name.replace('MP_', '')
-            # For regular samples
-            else:
+            if 'ferret' in sample_name.lower() or 'ferett' in sample_name.lower() or 'camel' in sample_name.lower(): # for osu positive samples
+                sample_name = sample_name.replace('Ferett', 'Ferret').replace('MP_','')
+                sample_name = f'{self.run_name}.{marker}.POSITIVE.{sample_name}'
+                return sample_name
+            else: # For regular samples
                 return sample_name.replace('MP_', '').replace('_', '.').replace('.12S', '-12S').replace('.DY20', '.DY2012') # replace .12S to -12S for SKQ23-12S samples.
-        else:
+        else: # for regular positive samples (JV runs)
             sample_name = sample_name.replace('MP_', '')
             return f'{self.run_name}.{marker}.{sample_name}' 
+    
+    def _try_diff_sample_name_for_raw_data_lookup(self, sample_name: str) -> str:
+        # Transform sample names to different value and try with raw data files - for OSU runs
+        if 'POSITIVE' in sample_name:
+            sample_name = sample_name.replace('POSITIVE', '')
+            if 'ferret' in sample_name.lower():
+                sample_name = sample_name.replace('Ferret', 'Ferett')
+        sample_name = 'MP_' + sample_name.replace('.', '_').replace('DY2012', 'DY20')
+        return sample_name
     
     def _fix_sample_names_for_asv_lookup(self, sample_name: str) -> str:
         # Fixes sample names if they are mismatched in metadata spreadsheet and asv tables so they can be looked up for counts
@@ -347,7 +390,6 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         else:
             return sample_name
 
-    
     def _create_count_asv_dict(self, revamp_blast: bool = True) -> dict:
         # TODO: add functionality of revamp_bast is not True?
         # Create  a nested dictionary of marker, sample names and counts
@@ -374,7 +416,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                 
                 # fix sample names if they mismatch in metadata for asv counts look up
                 sample_name = self._fix_sample_names_for_asv_lookup(sample_name)
-                
+            
                 # sum the column values for output read count
                 output_read_count = asv_df[sample_name].sum()
 
@@ -443,7 +485,31 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
 
         return count
 
-       
+    def drop_E1_23_Machida_samples(self, df: pd.DataFrame) -> pd.DataFrame:
+        # Removes samples from metadata. For example sample E1-23 need to be removed from OUS867 and 873 runs because the had low reads
+        
+        # creates filter for df for rows that start with E followed by numbers 1-23
+        e_number_filter = df[self.run_metadata_sample_name_column].apply(lambda x: bool(re.match(r'^E(?:[1-9]|1[0-9]|2[0-3])\b', str(x))))
+        # marker filter
+        marker_filter = df[self.run_metadata_marker_col_name] == '18S Machida'
+        # Combine filters
+        rows_to_remove = e_number_filter & marker_filter
+        # keep all rows that dont' match above condition
+        df_filtered = df[~rows_to_remove]
+        return df_filtered
+
+    def get_bioaccession_nums_from_metadata(self, metadata_row: pd.Series, bioaccession_cols: list) -> str:
+        # Gets the bio accession numbers from various columns in the metadata row
+        bioaccessions = []
+        for col in bioaccession_cols:
+            bioaccession_id = metadata_row.get(col)
+            if bioaccession_id != '':
+                bioaccessions.append(bioaccession_id)
+
+        if bioaccessions:
+            formatted_bioaccessions = ' | '.join(bioaccessions)
+            return formatted_bioaccessions
+
 
         
 

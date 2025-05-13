@@ -94,6 +94,8 @@ class OmeFaireMapper:
         # Fixes sample names in the data frame
         # if sample is part of the DY2012 cruise, will replace any str of DY20 with DY2012
         samp_name = str(samp_name)
+        if '_' in samp_name: # osu samp names have _ that needs to be . For example, E62_1B_DY20
+            samp_name = samp_name.replace('_', '.')
         if '.DY20' in samp_name:
            samp_name = samp_name.replace('.DY20', '.DY2012')
         if '(P10 D2)' in samp_name:
@@ -104,16 +106,11 @@ class OmeFaireMapper:
             return samp_name.replace('E.2139.', 'E2139.') # For E239 QiavacTest, had a . between E and number in metadata
         if 'E687' in samp_name:
             return samp_name.replace('E687', 'E687.WCOA21')
+        if '.NC' in samp_name: # If an E was put in front of an NC sample (this happends in some of the extractions e.g. the SKQ21 extractions), will remove the E
+            samp_name = samp_name.replace('E.', '')
       
         return samp_name
     
-    def str_replace_nc_samps_with_E(self, samp_name: pd.Series) -> str:
-        # If an E was put in front of an NC sample (this happends in some of the extractions e.g. the SKQ21 extractions), will remove the E
-        samp_name = str(samp_name)
-        if '.NC' in samp_name:
-            samp_name = samp_name.replace('E.', '')
-
-        return samp_name
     
     def extract_controlled_vocab(self, faire_attribute: str) -> list:
         
