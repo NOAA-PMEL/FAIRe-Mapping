@@ -1,6 +1,5 @@
 # 4 Experiment Metadata RunInfo
 run_metadata_sample_name_column: Sample Name
-run_metadata_index_name_col: Index Name
 run_metadata_marker_col_name: Metabarcoding Marker
 run_metadata_sample_sheet_name: Sample Data Sheet Long
 run_raw_data_path: # The raw data path of each marker folder (a lot are in a renamed folder)
