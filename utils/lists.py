@@ -97,3 +97,13 @@ marker_shorthand_to_pos_cont_gblcok_name = {
     'dLoop': 'Obre_pos_dLoop',
     'Kelly16S': 'Dodo_pos_16SKelly'
 }
+
+# Mismatched samples metadata to raw data file matching
+# this dictionary has correct sample names (key), and the wrong sample name strings that might exist for the names in the raw data files
+mismatch_sample_names_metadata_to_raw_data_files_dict = {
+    '.DY2012': '.DY20',
+    'E265.1B.NO20': 'E265.IB.NO20',
+    'E2139.': 'E.2139.',
+    'E687.WCOA21': 'E687'
+
+}

@@ -91,13 +91,20 @@ class OmeFaireMapper:
         return df
     
     def str_replace_for_samps(self, samp_name: pd.Series) -> str:
+        # Fixes sample names in the data frame
         # if sample is part of the DY2012 cruise, will replace any str of DY20 with DY2012
         samp_name = str(samp_name)
         if '.DY20' in samp_name:
            samp_name = samp_name.replace('.DY20', '.DY2012')
         if '(P10 D2)' in samp_name:
             samp_name = samp_name.replace(' (P10 D2)', '') # for E1875.OC0723 (P10 D2) in Run2
-    
+        if '.IB' in samp_name: # for E265.1B.NO20 sample - in metadata was E265.1B.NO20
+            return samp_name.replace('.IB', '.1B')
+        if 'E.2139.' in samp_name:
+            return samp_name.replace('E.2139.', 'E2139.') # For E239 QiavacTest, had a . between E and number in metadata
+        if 'E687' in samp_name:
+            return samp_name.replace('E687', 'E687.WCOA21')
+      
         return samp_name
     
     def str_replace_nc_samps_with_E(self, samp_name: pd.Series) -> str:

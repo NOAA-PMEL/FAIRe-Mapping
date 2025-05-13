@@ -1,7 +1,9 @@
 # 4 Experiment Metadata RunInfo
-jv_run_sample_name_column: SampleName
-jv_index_name_col: Index Name
-jv_raw_data_path: # The raw data path of each marker folder (a lot are in a renamed folder)
+run_metadata_sample_name_column: SampleName
+run_metadata_index_name_col: Index Name
+run_metadata_marker_col_name: Metabarcoding Marker
+run_metadata_sample_sheet_name: Sample Data Sheet Long
+run_raw_data_path: # The raw data path of each marker folder (a lot are in a renamed folder)
   '18Sv4': /data/raw_data/20240606_JV_Run3_Arctic_WCOAbenthic_eDNA/renamed/18Sv4/
   'COI': /data/raw_data/20250107_JV_Run3_FIXED_DEMULTIPLEXING/renamed/JVB3424_UniCOI/
   'Machida18S': /data/raw_data/20240606_JV_Run3_Arctic_WCOAbenthic_eDNA/renamed/Machida18S/
@@ -9,7 +11,7 @@ jv_raw_data_path: # The raw data path of each marker folder (a lot are in a rena
   'Parada16S': /data/raw_data/20250107_JV_Run3_FIXED_DEMULTIPLEXING/renamed/JVB3424_16Sv4v5/
   'Kelly16S': /data/raw_data/20250107_JV_Run3_FIXED_DEMULTIPLEXING/renamed/JVB3424_16SKelly/
   '18Sv9': /data/raw_data/20250107_JV_Run3_FIXED_DEMULTIPLEXING/renamed/JVB3424_18Sv9/
-jv_run_sample_metadata_file_id: 1dhf8-q52newqGicKgabwtKllGiVlv4WL-SrF2o-eo0Y
+run_sample_metadata_file_id: 1dhf8-q52newqGicKgabwtKllGiVlv4WL-SrF2o-eo0Y
 google_sheet_mapping_file_id: 1Nn96kTUgTgodclmjJn7pxdOCYjysaN7hRMxM8lUs-X0
 run_name: run3 # for adding to the Positive control sample names
 revamp_blast: True # if using the revamp blast-based taxonomy assignment then set this to True, otherwise False
