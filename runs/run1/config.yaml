@@ -6,8 +6,8 @@ run_raw_data_path: # The raw data path of each marker folder (a lot are in a ren
   '18Sv9': /data/raw_data/20240208_JV236_Run1_WCOA_eDNA/renamed/18Sv9/
   'COI': /data/raw_data/20240208_JV236_Run1_WCOA_eDNA/renamed/COI/
   'Kelly16S': /data/raw_data/20240208_JV236_Run1_WCOA_eDNA/renamed/Kelly16S/
-  'MiFish': /data/raw_data/20240208_JV236_Run1_WCOA_eDNA/renamed/MiFish/Parada16S/
-  'Parada16S': /data/raw_data/20240208_JV236_Run1_WCOA_eDNA/renamed/
+  'MiFish': /data/raw_data/20240208_JV236_Run1_WCOA_eDNA/renamed/MiFish/
+  'Parada16S': /data/raw_data/20240208_JV236_Run1_WCOA_eDNA/renamed/Parada16S/
 run_sample_metadata_file_id: 16Qp9d9-18kU-rm7WEm8MDrsy6Arep_fyO4nLMOtUBAs
 google_sheet_mapping_file_id: 1QMEXopVOE314Cys7zCcUi6fOoS44bHec7ILPFzylqrY
 run_name: run1 # for adding to the Positive control sample names

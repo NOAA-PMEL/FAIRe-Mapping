@@ -206,7 +206,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
     def _outline_raw_data_dict(self, sample_name: str, file_num: int, all_files: list, marker: str, marker_dir: str) -> dict:
         # outlines raw filename dictionary used by create_marker_sample_raw_data_files for filename and filename2 in FAIRe
         # Account for sample name changes in positive samples
-
+        
         if 'POSITIVE' not in sample_name:
             # checks for mismatch in sample names using mismatch_sample_names_metadata_to_raw_data_files_dict
             for k, v in mismatch_sample_names_metadata_to_raw_data_files_dict.items():
@@ -216,9 +216,10 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                     break
                 else:
                     sample_name_lookup = sample_name
-            pattern = re.compile(f"^{re.escape(sample_name_lookup)}_R[{file_num}].+")
+            pattern = re.compile(f"^{re.escape(sample_name_lookup)}[_.]R[{file_num}].+")
+
         else:
-            pattern = re.compile(f"^{re.escape('POSITIVE')}_R[{file_num}].+")
+            pattern = re.compile(f"^{re.escape('POSITIVE')}[_.]R[{file_num}].+")
 
         matching_files = [f for f in all_files if pattern.match(f)]
 
@@ -245,15 +246,15 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             sample_name_lookup = self._try_diff_sample_name_for_raw_data_lookup(sample_name)
             if 'camel' in sample_name.lower() or 'ferett' in sample_name.lower() or 'ferret' in sample_name.lower():
                 sample_name_lookup = sample_name_lookup.split('_')[-1]
-                pattern = re.compile(f"^{re.escape(f'MP_{sample_name_lookup}')}_R[{file_num}].+")
+                pattern = re.compile(f"^{re.escape(f'MP_{sample_name_lookup}')}[_.]R[{file_num}].+")
             else:
-                pattern = re.compile(f"^{re.escape(sample_name_lookup)}_R[{file_num}].+")
+                pattern = re.compile(f"^{re.escape(sample_name_lookup)}[_.]R[{file_num}].+")
             matching_files = [f for f in all_files if pattern.match(f)]
             
             # Sometimes Ferett is oppositive of _try_diff_sample_name function :/
             if not matching_files and 'Ferett' in sample_name_lookup:
                 sample_name_lookup = sample_name_lookup.replace('Ferett', 'Ferret')
-                pattern = re.compile(f"^{re.escape(f'MP_{sample_name_lookup}')}_R[{file_num}].+")
+                pattern = re.compile(f"^{re.escape(f'MP_{sample_name_lookup}')}[_.]R[{file_num}].+")
                 matching_files = [f for f in all_files if pattern.match(f)]
 
 
@@ -322,19 +323,22 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
     def get_raw_file_names(self, metadata_row: pd.Series, raw_file_dict: dict) -> tuple:
         # Gets the name of the raw file based on sample name and marker
      
-        marker_name = metadata_row[self.run_metadata_marker_col_name]
-        sample_name = metadata_row[self.run_metadata_sample_name_column]
+        marker_name = metadata_row[self.run_metadata_marker_col_name].strip()
+        sample_name = metadata_row[self.run_metadata_sample_name_column].strip()
 
-        # Get approrpiate nested marker dict and corresponding nested sample list with dictionary of files and checksums
-        filename = raw_file_dict.get(marker_name).get(sample_name).get('filename')
+        try:
+            # Get approrpiate nested marker dict and corresponding nested sample list with dictionary of files and checksums
+            filename = raw_file_dict.get(marker_name).get(sample_name).get('filename')
+        except:
+            raise ValueError(f"sample name{sample_name} with marker {marker_name} does not appear to have a value in the raw data dict, please look into")
 
         return filename
     
     def get_cheksums(self, metadata_row: pd.Series, raw_file_dict: dict) -> tuple:
         # Gets the checksum of the raw file based on sample name and marker
      
-        marker_name = metadata_row[self.run_metadata_marker_col_name]
-        sample_name = metadata_row[self.run_metadata_sample_name_column]
+        marker_name = metadata_row[self.run_metadata_marker_col_name].strip()
+        sample_name = metadata_row[self.run_metadata_sample_name_column].strip()
 
         # Get approrpiate nested marker dict and correspongind nested sample list with dictionary of files and checksums
         checksum = raw_file_dict.get(marker_name).get(sample_name).get('checksum')
@@ -469,7 +473,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         # Process R1 FASTQ file using exact file path
 
         # Get the filepath to the 
-        r1_file_path = self.raw_filename_dict.get(metadata_row[self.run_metadata_marker_col_name]).get(metadata_row[self.run_metadata_sample_name_column]).get('filepath')
+        r1_file_path = self.raw_filename_dict.get(metadata_row[self.run_metadata_marker_col_name].strip()).get(metadata_row[self.run_metadata_sample_name_column].strip()).get('filepath')
 
         input_read_count = self._count_fastq_files_bioawk(r1_file_path)
 

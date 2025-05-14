@@ -108,6 +108,8 @@ class OmeFaireMapper:
             return samp_name.replace('E687', 'E687.WCOA21')
         if '.NC' in samp_name: # If an E was put in front of an NC sample (this happends in some of the extractions e.g. the SKQ21 extractions), will remove the E
             samp_name = samp_name.replace('E.', '')
+        if '*' in samp_name:
+            samp_name = samp_name.replace('*','')
       
         return samp_name
     
