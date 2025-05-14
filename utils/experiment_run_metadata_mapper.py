@@ -495,7 +495,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         # Removes samples from metadata. For example sample E1-23 need to be removed from OUS867 and 873 runs because the had low reads
         
         # creates filter for df for rows that start with E followed by numbers 1-23
-        e_number_filter = df[self.run_metadata_sample_name_column].apply(lambda x: bool(re.match(r'^E(?:[1-9]|1[0-9]|2[0-4])\b', str(x))))
+        e_number_filter = df[self.run_metadata_sample_name_column].apply(lambda x: bool(re.match(r'^E(?:[1-9]|1[0-9]|2[0-3])\b', str(x))))
         # marker filter
         marker_filter = df[self.run_metadata_marker_col_name] == '18S Machida'
         # Combine filters
