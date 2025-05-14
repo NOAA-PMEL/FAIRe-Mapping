@@ -620,8 +620,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # Use default message for all other empty values - handles None, Nan
         df = df.fillna(default_message)
 
-        # Handles empty strings (which might not be caught by fillna) - with default message
-        df = df.map(lambda x: default_message if x == "" else x)
+        # Handles empty strings (which might not be caught by fillna) - with default message or a -
+        df = df.map(lambda x: default_message if x == "" or x == "-" else x)
 
         return df
     
@@ -678,7 +678,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         nc_df = self.fill_nc_metadata()
         extraction_blanks_df = self.fill_extraction_blanks_metadata()
 
-        neg_controls_df = pd.concat([nc_df, extraction_blanks_df])
+        if extraction_blanks_df is not None:
+            neg_controls_df = pd.concat([nc_df, extraction_blanks_df])
+        else:
+            neg_controls_df = nc_df
 
 
         new_cols = [col for col in final_sample_df.columns if col not in neg_controls_df.columns]
@@ -694,27 +697,32 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         extract_blank_results = {}
 
-        extract_blank_results[self.faire_sample_name_col] = self.extraction_blanks_df[self.extraction_sample_name_col]
-        extract_blank_results[self.faire_sample_category_name_col] = "negative control"
-        extract_blank_results[self.faire_neg_cont_type_name_col] = "extraction negative"
-        
-        # Add mappings from mappings dict which is just maping from extractionMetadata sheet
-        # add exact mappings
-        for faire_col, metadata_col in extraction_blanks_mapping_dict[self.exact_mapping].items():
-            extract_blank_results[faire_col] = self.extraction_blanks_df[metadata_col].apply(
-                lambda row: self.apply_exact_mappings(metadata_row=row, faire_col=faire_col))
+        if not self.extraction_blanks_df.empty:
+
+            extract_blank_results[self.faire_sample_name_col] = self.extraction_blanks_df[self.extraction_sample_name_col]
+            extract_blank_results[self.faire_sample_category_name_col] = "negative control"
+            extract_blank_results[self.faire_neg_cont_type_name_col] = "extraction negative"
             
-        # Step 2: Add constant mappings
-        for faire_col, static_value in extraction_blanks_mapping_dict[self.constant_mapping].items():
-            extract_blank_results[faire_col] = self.apply_static_mappings(faire_col=faire_col, static_value=static_value)
+            # Add mappings from mappings dict which is just maping from extractionMetadata sheet
+            # add exact mappings
+            for faire_col, metadata_col in extraction_blanks_mapping_dict[self.exact_mapping].items():
+                extract_blank_results[faire_col] = self.extraction_blanks_df[metadata_col].apply(
+                    lambda row: self.apply_exact_mappings(metadata_row=row, faire_col=faire_col))
+                
+            # Step 2: Add constant mappings
+            for faire_col, static_value in extraction_blanks_mapping_dict[self.constant_mapping].items():
+                extract_blank_results[faire_col] = self.apply_static_mappings(faire_col=faire_col, static_value=static_value)
 
-        # Step 3: Add related mappings
-        for faire_col, metadata_col in extraction_blanks_mapping_dict[self.related_mapping].items():
-            extract_blank_results[faire_col] = self.extraction_blanks_df[metadata_col].apply(self.convert_date_to_iso8601)
+            # Step 3: Add related mappings
+            for faire_col, metadata_col in extraction_blanks_mapping_dict[self.related_mapping].items():
+                extract_blank_results[faire_col] = self.extraction_blanks_df[metadata_col].apply(self.convert_date_to_iso8601)
 
-        extract_blanks_df = pd.concat([self.sample_faire_template_df, pd.DataFrame(extract_blank_results)])
+            extract_blanks_df = pd.concat([self.sample_faire_template_df, pd.DataFrame(extract_blank_results)])
 
-        return extract_blanks_df
+            return extract_blanks_df
+        
+        else:
+            return None
 
     def add_field_neg_and_extraction_blanks_to_rel_cont_id(self, final_sample_df: pd.DataFrame):
 

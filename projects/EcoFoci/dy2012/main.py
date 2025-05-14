@@ -68,10 +68,11 @@ def create_dy2012_sample_metadata():
     sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))
     
     # Step 5: fill NC data frame if there is - DO THIS ONLY IF negative controls were sequenced! They were not for SKQ21
-    nc_df = sample_mapper.fill_nc_metadata(final_sample_df = sample_df)
+    # nc_df = sample_mapper.fill_nc_metadata()
+    controls_df = sample_mapper.finish_up_controls_df(final_sample_df=sample_df)
 
     # Step 6: Combine all mappings at once (add nc_df if negative controls were sequenced)
-    faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df, nc_df])
+    faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df,controls_df])
    
     # step 7: save to excel file
     sample_mapper.add_final_df_to_FAIRe_excel(excel_file_to_read_from=sample_mapper.faire_template_file,
