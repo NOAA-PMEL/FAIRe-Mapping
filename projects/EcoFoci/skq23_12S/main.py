@@ -134,6 +134,8 @@ def create_skq23_12s_sample_metadata():
 
     # Step 6: Combine all mappings at once (add nc_df if negative controls were sequenced)
     faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df,controls_df])
+    # Add rel_cont_id
+    faire_sample_df = sample_mapper.add_field_neg_and_extraction_blanks_to_rel_cont_id(final_sample_df=faire_sample_df)
 
     # step 7: save as csv:
     sample_mapper.save_final_df_as_csv(final_df=faire_sample_df, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/skq23_12S/data/skq23_12S_faire.csv')

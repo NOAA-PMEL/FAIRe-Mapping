@@ -48,9 +48,12 @@ class ProjectMapper(OmeFaireMapper):
             self.combined_seq_runs_dataframes[cruise_name] = combined_seq_df
 
             # Filter primary dataframe based on samp_name values in sequencing run dataframe
-            self._filter_samp_df_by_samp_name(cruise_samp_df, combined_seq_df)
-            # if missing_samples:
-            #     print(missing_samples)
+            filtered_samp_df, missing_samples = self._filter_samp_df_by_samp_name(cruise_samp_df, combined_seq_df)
+            if missing_samples:
+                print(f"missing samples are: {missing_samples}")
+
+            pos_samp_map = self.create_positive_sample_map(run_df=combined_seq_df, sample_df=cruise_samp_df)
+            print(pos_samp_map)
     
     def _filter_samp_df_by_samp_name(self, cruise_samp_df: pd.DataFrame, associated_seq_df: pd.DataFrame) -> pd.DataFrame:
         # filter sample dataframe to keep only rows where sample names exist in associated seq data frame
@@ -64,6 +67,25 @@ class ProjectMapper(OmeFaireMapper):
         missing_samples = [name for name in cruise_sample_samp_names if name not in valid_samp_names]
         
         filtered_df = cruise_samp_df[cruise_samp_df['samp_name'].isin(valid_samp_names)].copy()
-        print(missing_samples)
 
         return filtered_df, missing_samples
+    
+    def create_positive_sample_map(self, run_df, sample_df):
+        # Create a dictionary of positive samps: associated samps
+        positive_sample_map = {}
+        
+        grouped = run_df.groupby('assay_name')
+        
+        for assay_name, group in grouped:
+            # Find samples with positive in their name
+            positive_samples = group[group['samp_name'].str.contains('POSITIVE', case=False)]['samp_name'].unique()
+            # Get all sample names in this gropu that are also in the sample_df
+            valid_samples = group[group['samp_name'].isin(sample_df['samp_name'])]['samp_name'].unique().tolist()
+
+            # for each positive sample add an entry to dictionary
+            for pos_sample in positive_samples:
+                other_samples = [sample for sample in valid_samples if sample != pos_sample]
+                if other_samples:
+                    positive_sample_map[pos_sample] = other_samples
+
+        return positive_sample_map

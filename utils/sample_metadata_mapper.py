@@ -31,6 +31,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     faire_lon_col_name = "decimalLongitude"
     faire_samp_vol_we_dna_ext_col_name = "samp_vol_we_dna_ext"
     faire_pool_num_col_name = "pool_dna_num"
+    faire_rel_cont_id_col_name = "rel_cont_id"
     faire_nucl_acid_ext_method_additional_col_name = "nucl_acid_ext_method_additional"
     not_applicable_to_samp_faire_col_dict = {"neg_cont_type": "not applicable: sample group",
                                              "pos_cont_type": "not applicable: sample group"}
@@ -63,7 +64,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.extraction_set_grouping_col_name = self.config_file['extraction_set_grouping_col_name']
 
         # self.exp_metadata_df = exp_metadata_df
-
+        self.extraction_blank_rel_cont_dict = {}
         self.sample_metadata_df = self.filter_metadata_dfs()[0]
         self.nc_df = self.filter_metadata_dfs()[1]
         self.extraction_blanks_df = self.get_extraction_blanks_applicable_to_cruise_samps()
@@ -220,18 +221,29 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                     # find blank samples in this group ('Larson NC are extraction blanks for the SKQ23 cruise)
                     extraction_blank_samps = group_df[group_df[self.extraction_sample_name_col].str.contains(
                         'blank', case=False, na=False) | group_df[self.extraction_sample_name_col].str.contains('Larson NC', case=False, na=False)]
+                    
+                    try:
+                        # get list of samples associated with blanks and put into dict for rel_cont_id
+                        valid_samples = group_df[self.extraction_sample_name_col].tolist()
+                        for sample in valid_samples:
+                            if 'blank' in sample.lower() or 'Larson NC' in sample:
+                                other_samples = [samp for samp in valid_samples if samp != sample]
+                                self.extraction_blank_rel_cont_dict[sample] = other_samples
+                    except:
+                        raise ValueError("blank dictionary mapping not working!")
+
 
                     blank_df = pd.concat([blank_df, extraction_blank_samps])
 
             blank_df[self.extraction_conc_col_name] = blank_df[self.extraction_conc_col_name].replace(
                 "BDL", "BR").replace("Below Range", "BR").replace("br", "BR")
         except:
-            print(
-                "Warning: Extraction samples are not grouped by 'Extraction Set', double check this")
+            raise ValueError(
+                "Warning: Extraction samples are not grouped, double check this")
             # find blank samples in the whole df ('Larson NC are extraction blanks for the SKQ23 cruise)
-            extraction_blank_samps = extractions_df[extractions_df[self.extraction_sample_name_col].str.contains(
-                'blank', case=False, na=False) | group_df[self.extraction_sample_name_col].str.contains('Larson NC', case=False, na=False)]
-            blank_df = pd.concat([blank_df, extraction_blank_samps])
+            # extraction_blank_samps = extractions_df[extractions_df[self.extraction_sample_name_col].str.contains(
+            #     'blank', case=False, na=False) | group_df[self.extraction_sample_name_col].str.contains('Larson NC', case=False, na=False)]
+            # blank_df = pd.concat([blank_df, extraction_blank_samps])
 
         return blank_df
 
@@ -803,21 +815,31 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
     def add_field_neg_and_extraction_blanks_to_rel_cont_id(self, final_sample_df: pd.DataFrame):
 
-        # Find all samples containing .NC or Blank in their name
-        control_mask = final_sample_df[self.faire_sample_name_col].str.contains(
-            r'\.NC|Blank|Larson NC', case=False, regex=True)
+        # Find all samples containing .NC in their name
+        nc_samples = final_sample_df[
+            final_sample_df[self.faire_sample_name_col].str.contains('.NC', regex=False) &
+            ~final_sample_df[self.faire_sample_name_col].str.contains('Larson', regex=False) # Not larson because this is a blank and will be captured in blanks below
+            ]
+        field_negative_samples = nc_samples[self.faire_sample_name_col].tolist()
+      
 
-        # Get the list of control sample names
-        control_samples = final_sample_df.loc[control_mask,
-                                              self.faire_sample_name_col].tolist()
+        for idx, row in final_sample_df.iterrows():
+            current_samp = row[self.faire_sample_name_col]
+            related_blanks = []
 
-        # Convert list to str
-        control_samples_str = ' | '.join(control_samples)
+            for extraction_blank, associated_samples in self.extraction_blank_rel_cont_dict.items():
+                if current_samp in associated_samples:
+                    related_blanks.append(extraction_blank)
 
-        # Add string to rel_cont_id for all non_control samples
-        final_sample_df.loc[~control_mask, 'rel_cont_id'] = control_samples_str
+            controls = field_negative_samples + related_blanks
+            if controls:
+                if current_samp not in controls:
+                    final_sample_df.at[idx, self.faire_rel_cont_id_col_name] = ' | '.join(controls)
+                else:
+                    final_sample_df.at[idx, self.faire_rel_cont_id_col_name] = 'not applicable: control sample'
 
         return final_sample_df
+   
     # # def fill_seq_pos_control_metadata(self, final_sample_df: pd.DataFrame) -> pd.DataFrame:
     #     #TODO: add pos_cont_type mapping
 
