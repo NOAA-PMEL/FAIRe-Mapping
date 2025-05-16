@@ -8,5 +8,11 @@ datasets: # a list of sample_metadata.csvs and their associated experimentRun cs
         sequence_run_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/osu873/data/osu873_faire.csv
       - sequencing_run_name: run3
         sequence_run_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/run3/data/run3_faire.csv
+
+
+faire_template_file: /home/poseidon/zalmanek/FAIRe-Mapping/faire_template.xlsx
+final_faire_template_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/data/ecoFoci_faire.xlsx
+
+json_creds: /home/poseidon/zalmanek/FAIRe-Mapping/credentials.json
  
  
