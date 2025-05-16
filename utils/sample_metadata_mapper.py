@@ -18,6 +18,7 @@ from .lists import nc_faire_field_cols, marker_shorthand_to_pos_cont_gblcok_name
 # TODO: Turn nucl_acid_ext for DY20/12 into a BeBOP and change in extraction spreadsheet. Link to spreadsheet: https://docs.google.com/spreadsheets/d/1iY7Z8pNsKXHqsp6CsfjvKn2evXUPDYM2U3CVRGKUtX8/edit?gid=0#gid=0
 # TODO: continue update pos_df - add not applicable: sample to user defined fields, also add pos_cont_type
 
+
 class FaireSampleMetadataMapper(OmeFaireMapper):
 
     faire_sample_name_col = "samp_name"
@@ -28,67 +29,81 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     replicate_parent_sample_metadata_col = "replicate_parent"
     faire_lat_col_name = "decimalLatitude"
     faire_lon_col_name = "decimalLongitude"
+    faire_samp_vol_we_dna_ext_col_name = "samp_vol_we_dna_ext"
+    faire_pool_num_col_name = "pool_dna_num"
+    faire_nucl_acid_ext_method_additional_col_name = "nucl_acid_ext_method_additional"
     not_applicable_to_samp_faire_col_dict = {"neg_cont_type": "not applicable: sample group",
                                              "pos_cont_type": "not applicable: sample group"}
     gebco_file = "/home/poseidon/zalmanek/FAIRe-Mapping/utils/GEBCO_2024.nc"
-    
 
     def __init__(self, config_yaml: yaml):
-        #TODO: used to have exp_metadata_df: pd.Series as init, but removed because of abstracting out sequencing yaml. See all associated commented out portions
+        # TODO: used to have exp_metadata_df: pd.Series as init, but removed because of abstracting out sequencing yaml. See all associated commented out portions
         # May need to move this part into a separate class that combines after all sample_metadata is generated for each cruise
         super().__init__(config_yaml)
 
-        self.sample_metadata_sample_name_column = self.config_file['sample_metadata_sample_name_column']
-        self.sample_metadata_file_neg_control_col_name = self.config_file['sample_metadata_file_neg_control_col_name']
+        self.sample_metadata_sample_name_column = self.config_file[
+            'sample_metadata_sample_name_column']
+        self.sample_metadata_file_neg_control_col_name = self.config_file[
+            'sample_metadata_file_neg_control_col_name']
         self.sample_metadata_cast_no_col_name = self.config_file['sample_metadata_cast_no_col_name']
-        self.sample_metadata_bottle_no_col_name = self.config_file['sample_metadata_bottle_no_col_name']
+        self.sample_metadata_bottle_no_col_name = self.config_file[
+            'sample_metadata_bottle_no_col_name']
         self.extraction_sample_name_col = self.config_file['extraction_sample_name_col']
         self.extraction_cruise_key = self.config_file['extraction_cruise_key']
         self.extraction_conc_col_name = self.config_file['extraction_conc_col_name']
         self.extraction_date_col_name = self.config_file['extraction_date_col_name']
         self.nc_samp_mat_process = self.config_file['nc_samp_mat_process']
         self.extraction_metadata_sheet_name = self.config_file['extraction_metadata_sheet_name']
-        self.extraction_metadata_google_sheet_id = self.config_file['extraction_metadata_google_sheet_id']
+        self.extraction_metadata_google_sheet_id = self.config_file[
+            'extraction_metadata_google_sheet_id']
         self.vessel_name = self.config_file['vessel_name']
         self.faire_template_file = self.config_file['faire_template_file']
         self.google_sheet_mapping_file_id = self.config_file['google_sheet_mapping_file_id']
+        self.extraction_blank_vol_we_dna_ext = self.config_file['extraction_blank_vol_we_dna_ext']
+        self.extraction_set_grouping_col_name = self.config_file['extraction_set_grouping_col_name']
 
         # self.exp_metadata_df = exp_metadata_df
 
         self.sample_metadata_df = self.filter_metadata_dfs()[0]
         self.nc_df = self.filter_metadata_dfs()[1]
         self.extraction_blanks_df = self.get_extraction_blanks_applicable_to_cruise_samps()
-        self.sample_faire_template_df = self.load_faire_template_as_df(file_path=self.config_file['faire_template_file'], sheet_name=self.sample_mapping_sheet_name, header=self.faire_sheet_header).dropna()
+        self.sample_faire_template_df = self.load_faire_template_as_df(
+            file_path=self.config_file['faire_template_file'], sheet_name=self.sample_mapping_sheet_name, header=self.faire_sheet_header).dropna()
         self.replicates_dict = self.create_biological_replicates_dict()
         self.insdc_locations = self.extract_insdc_geographic_locations()
         self.mapping_dict = self.create_sample_mapping_dict()
         # self.sample_assay_dict = self.create_assay_name_dict()
 
     def create_sample_mapping_dict(self) -> dict:
-            # creates a mapping dictionary and saves as self.mapping_dict
+        # creates a mapping dictionary and saves as self.mapping_dict
 
-            # First concat sample_mapping_df with extractions_mapping_df
-            sample_mapping_df = self.load_google_sheet_as_df(google_sheet_id=self.google_sheet_mapping_file_id, sheet_name=self.sample_mapping_sheet_name, header=0)
-            extractions_mapping_df = self.load_google_sheet_as_df(google_sheet_id=self.google_sheet_mapping_file_id, sheet_name=self.extraction_mapping_sheet_name, header=1)
-            mapping_df = pd.concat([sample_mapping_df, extractions_mapping_df])
+        # First concat sample_mapping_df with extractions_mapping_df
+        sample_mapping_df = self.load_google_sheet_as_df(
+            google_sheet_id=self.google_sheet_mapping_file_id, sheet_name=self.sample_mapping_sheet_name, header=0)
+        extractions_mapping_df = self.load_google_sheet_as_df(
+            google_sheet_id=self.google_sheet_mapping_file_id, sheet_name=self.extraction_mapping_sheet_name, header=1)
+        mapping_df = pd.concat([sample_mapping_df, extractions_mapping_df])
 
-            # Group by the mapping type
-            group_by_mapping = mapping_df.groupby(self.mapping_file_mapped_type_column)
+        # Group by the mapping type
+        group_by_mapping = mapping_df.groupby(
+            self.mapping_file_mapped_type_column)
 
-            # Create nested dictionary {exact_mapping: {faire_col: metadata_col}, narrow_mapping: {faire_col: metadta_col}, etc.}
-            mapping_dict = {}
-            for mapping_value, group in group_by_mapping:
-                column_map_dict = {k: v for k, v in zip(group[self.mapping_file_FAIRe_column], group[self.mapping_file_metadata_column]) if pd.notna(v)}
-                mapping_dict[mapping_value] = column_map_dict
-    
-            return mapping_dict
-    
+        # Create nested dictionary {exact_mapping: {faire_col: metadata_col}, narrow_mapping: {faire_col: metadta_col}, etc.}
+        mapping_dict = {}
+        for mapping_value, group in group_by_mapping:
+            column_map_dict = {k: v for k, v in zip(
+                group[self.mapping_file_FAIRe_column], group[self.mapping_file_metadata_column]) if pd.notna(v)}
+            mapping_dict[mapping_value] = column_map_dict
+
+        return mapping_dict
+
     def create_nc_mapping_dict(self) -> dict:
-        
+
         nc_mapping_dict = {}
         for mapping_type, col_dict in self.mapping_dict.items():
             if isinstance(col_dict, dict):
-                filtered_nested = {k: v for k, v in col_dict.items() if k in nc_faire_field_cols}
+                filtered_nested = {
+                    k: v for k, v in col_dict.items() if k in nc_faire_field_cols}
                 nc_mapping_dict[mapping_type] = filtered_nested
 
         # change values that will be differenct for NC's
@@ -102,19 +117,34 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         return nc_mapping_dict
 
     def create_extraction_blank_mapping_dict(self) -> dict:
-        #Creates a mapping dict for extraction blanks - mapping will be the same for only extractions faire attributes
-        extractions_mapping_df = self.load_google_sheet_as_df(google_sheet_id=self.google_sheet_mapping_file_id, sheet_name=self.extraction_mapping_sheet_name, header=1)
+        # Creates a mapping dict for extraction blanks - mapping will be the same for only extractions faire attributes
+        extractions_mapping_df = self.load_google_sheet_as_df(
+            google_sheet_id=self.google_sheet_mapping_file_id, sheet_name=self.extraction_mapping_sheet_name, header=1)
 
-        group_by_mapping = extractions_mapping_df.groupby(self.mapping_file_mapped_type_column)
+        group_by_mapping = extractions_mapping_df.groupby(
+            self.mapping_file_mapped_type_column)
 
         # Create nested dictionary {exact_mapping: {faire_col: metadata_col}, narrow_mapping: {faire_col: metadta_col}, etc.}
         mapping_dict = {}
         for mapping_value, group in group_by_mapping:
-            column_map_dict = {k: v for k, v in zip(group[self.mapping_file_FAIRe_column], group[self.mapping_file_metadata_column]) if pd.notna(v)}
+            column_map_dict = {k: v for k, v in zip(
+                group[self.mapping_file_FAIRe_column], group[self.mapping_file_metadata_column]) if pd.notna(v)}
             mapping_dict[mapping_value] = column_map_dict
 
+        # If there is an exact mapping for samp_vol_we_dna_ext then remove and put constant value base on config file value
+        if self.extraction_blank_vol_we_dna_ext:
+            del mapping_dict[self.exact_mapping][self.faire_samp_vol_we_dna_ext_col_name]
+            mapping_dict[self.constant_mapping][self.faire_samp_vol_we_dna_ext_col_name] = self.extraction_blank_vol_we_dna_ext
+
+        # If pool_dna_num in exact mapping automatically make constant mapping of 1 (may need to change if blanks are ever pooled for some reason)
+        if self.faire_pool_num_col_name in mapping_dict[self.exact_mapping]:
+            del mapping_dict[self.exact_mapping][self.faire_pool_num_col_name]
+            del mapping_dict[self.exact_mapping][self.faire_nucl_acid_ext_method_additional_col_name]
+            mapping_dict[self.constant_mapping][self.faire_pool_num_col_name] = 1
+            mapping_dict[self.constant_mapping][self.faire_nucl_acid_ext_method_additional_col_name] = "missing: not provided"
+
         return mapping_dict
-    
+
     # def create_assay_name_dict(self) -> dict:
     #     # Creates a dicitonary of the samples and their assays
     #     grouped = self.exp_metadata_df.groupby('samp_name')['assay_name'].apply(list).to_dict()
@@ -143,14 +173,15 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                 month, year = parts
                 formatted_date = f"{int(month):02d}/01/{year}"
 
-                #parse date string
+                # parse date string
                 date_obj = datetime.strptime(formatted_date, "%m/%d/%Y")
 
                 # convert to iso 8601 format
                 return date_obj.strftime('%Y-%m-%d')
             else:
-                raise ValueError(f"Date doesn't have two or three parts: {date_string}")
-        
+                raise ValueError(
+                    f"Date doesn't have two or three parts: {date_string}")
+
         except Exception as e:
             print(f"Error converting {date_string}: {str(e)}")
 
@@ -160,93 +191,105 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # Keep Below Range
         if all(isinstance(conc, str) and ("below range" in conc.lower() or "br" == conc.lower() or "bdl" == conc.lower()) for conc in extractions_df):
             return "BR"
-        
+
         # For everything else, convert to numeric and calculate mean
-        numeric_series = pd.to_numeric(extractions_df, errors='coerce') #Non numeric becomes NaN
+        numeric_series = pd.to_numeric(
+            extractions_df, errors='coerce')  # Non numeric becomes NaN
 
         return numeric_series.mean()
-    
+
     def get_extraction_blanks_applicable_to_cruise_samps(self):
         # Get extraction blank df (applicable to RC0083 cruise)
 
-        extractions_df = self.load_google_sheet_as_df(google_sheet_id=self.extraction_metadata_google_sheet_id, sheet_name=self.extraction_metadata_sheet_name, header=0)
+        extractions_df = self.load_google_sheet_as_df(
+            google_sheet_id=self.extraction_metadata_google_sheet_id, sheet_name=self.extraction_metadata_sheet_name, header=0)
 
         blank_df = pd.DataFrame(columns=extractions_df.columns)
 
         # TODO: peel out 'Extraction Set' column name into config.yaml file
-        try:
             # try grouping by extraction set if it exists
-            grouped = extractions_df.groupby('Extraction Set')
+        grouped = extractions_df.groupby(
+            self.extraction_set_grouping_col_name)
 
+        try:
             for extraction_set, group_df in grouped:
                 # Check if any in the group contains the extraction cruise key
-                has_cruise_samps = group_df[self.extraction_sample_name_col].str.contains(self.extraction_cruise_key, case=False, na=False).any()
+                has_cruise_samps = group_df[self.extraction_sample_name_col].str.contains(
+                    self.extraction_cruise_key, case=False, na=False).any()
                 if has_cruise_samps:
                     # find blank samples in this group ('Larson NC are extraction blanks for the SKQ23 cruise)
-                    extraction_blank_samps = group_df[group_df[self.extraction_sample_name_col].str.contains('blank', case=False, na=False) | group_df[self.extraction_sample_name_col].str.contains('Larson NC', case=False, na=False)]
+                    extraction_blank_samps = group_df[group_df[self.extraction_sample_name_col].str.contains(
+                        'blank', case=False, na=False) | group_df[self.extraction_sample_name_col].str.contains('Larson NC', case=False, na=False)]
 
                     blank_df = pd.concat([blank_df, extraction_blank_samps])
 
-            blank_df[self.extraction_conc_col_name] = blank_df[self.extraction_conc_col_name].replace("BDL", "BR").replace("Below Range", "BR").replace("br", "BR")
+            blank_df[self.extraction_conc_col_name] = blank_df[self.extraction_conc_col_name].replace(
+                "BDL", "BR").replace("Below Range", "BR").replace("br", "BR")
         except:
-            print("Warning: Extraction samples are not grouped by 'Extraction Set', double check this")
-        try:
+            print(
+                "Warning: Extraction samples are not grouped by 'Extraction Set', double check this")
             # find blank samples in the whole df ('Larson NC are extraction blanks for the SKQ23 cruise)
-            extraction_blank_samps = extractions_df[extractions_df[self.extraction_sample_name_col].str.contains('blank', case=False, na=False) | group_df[self.extraction_sample_name_col].str.contains('Larson NC', case=False, na=False)]
+            extraction_blank_samps = extractions_df[extractions_df[self.extraction_sample_name_col].str.contains(
+                'blank', case=False, na=False) | group_df[self.extraction_sample_name_col].str.contains('Larson NC', case=False, na=False)]
             blank_df = pd.concat([blank_df, extraction_blank_samps])
-        except:
-            print("There appear to be no extraction blanks")
-        
+
         return blank_df
 
     def filter_cruise_avg_extraction_conc(self) -> pd.DataFrame:
         # If extractions have multiple measurements for extraction concentrations, calculates the avg.
         # and creates a column called pool_num to show the number of samples pooled
 
-        extractions_df = self.load_google_sheet_as_df(google_sheet_id=self.extraction_metadata_google_sheet_id, sheet_name=self.extraction_metadata_sheet_name, header=0)
-        
+        extractions_df = self.load_google_sheet_as_df(
+            google_sheet_id=self.extraction_metadata_google_sheet_id, sheet_name=self.extraction_metadata_sheet_name, header=0)
+
         # Filter extractions df by cruise and calculate avg concentration
         extract_avg_df = extractions_df[extractions_df[self.extraction_sample_name_col].str.contains(self.extraction_cruise_key)].groupby(
             self.extraction_sample_name_col).agg({
-                self.extraction_conc_col_name:self.extraction_avg_aggregation,
+                self.extraction_conc_col_name: self.extraction_avg_aggregation,
                 **{col: 'first' for col in extractions_df.columns if col != self.extraction_sample_name_col and col != self.extraction_conc_col_name}
             }).reset_index()
-            
+
         # Add pool_num column that shows how many samples were averaged for each group
         sample_counts = extractions_df[extractions_df[self.extraction_sample_name_col].str.contains(self.extraction_cruise_key)].groupby(
             self.extraction_sample_name_col).size().reset_index(name='pool_num')
-        
+
         # merge sample_counts into dataframe
-        extract_avg_df = extract_avg_df.merge(sample_counts, on=self.extraction_sample_name_col, how='left')
+        extract_avg_df = extract_avg_df.merge(
+            sample_counts, on=self.extraction_sample_name_col, how='left')
 
         # Add extraction_method_additional for samples that pooled more than one extract
         extract_avg_df['extraction_method_additional'] = extract_avg_df['pool_num'].apply(
-            lambda x: "One sample, but two filters were used because sample clogged. Two extractions were pooled together and average concentration calculated." if x>1 else "missing: not provided")
-        
-        # update samp name for DY2012 cruises (from DY20) and remove E numbers from any NC samples
-        extract_avg_df[self.extraction_sample_name_col] = extract_avg_df[self.extraction_sample_name_col].apply(self.str_replace_for_samps)
+            lambda x: "One sample, but two filters were used because sample clogged. Two extractions were pooled together and average concentration calculated." if x > 1 else "missing: not provided")
 
-        #update dates to iso8601 TODO: may need to adjust this for ones that are already in this format
-        extract_avg_df[self.extraction_date_col_name] = extract_avg_df[self.extraction_date_col_name].apply(self.convert_mdy_date_to_iso8061)
-        
+        # update samp name for DY2012 cruises (from DY20) and remove E numbers from any NC samples
+        extract_avg_df[self.extraction_sample_name_col] = extract_avg_df[self.extraction_sample_name_col].apply(
+            self.str_replace_for_samps)
+
+        # update dates to iso8601 TODO: may need to adjust this for ones that are already in this format
+        extract_avg_df[self.extraction_date_col_name] = extract_avg_df[self.extraction_date_col_name].apply(
+            self.convert_mdy_date_to_iso8061)
+
         return extract_avg_df
-    
+
     def transform_metadata_df(self):
         # Converts sample metadata to a data frame and checks to make sure NC samples have NC in the name (dy2206 had this problem)
         # Also fixes sample names for SKQ23 cruise where sample metadata has _, but extraction metadata has -
-        samp_metadata_df = self.load_csv_as_df(file_path=Path(self.config_file['sample_metadata_file']))
+        samp_metadata_df = self.load_csv_as_df(
+            file_path=Path(self.config_file['sample_metadata_file']))
 
         # Add .NC to sample name if the Negative Control column is True and its missing (in DY2206 cruise)
         samp_metadata_df[self.sample_metadata_sample_name_column] = samp_metadata_df.apply(
             lambda row: self._check_nc_samp_name_has_nc(metadata_row=row),
             axis=1)
-        
+
         # Fix sample names that have _ with -. For SKQ23 cruises where run and extraction metadata has -, and sample metadata has _
-        samp_metadata_df[self.sample_metadata_sample_name_column] = samp_metadata_df[self.sample_metadata_sample_name_column].apply(self._fix_samp_names)
+        samp_metadata_df[self.sample_metadata_sample_name_column] = samp_metadata_df[self.sample_metadata_sample_name_column].apply(
+            self._fix_samp_names)
 
         # Remove 'CTD' from Cast_No. value if present
-        samp_metadata_df[self.sample_metadata_cast_no_col_name] = samp_metadata_df[self.sample_metadata_cast_no_col_name].apply(self.remove_extraneous_cast_no_chars)
-        
+        samp_metadata_df[self.sample_metadata_cast_no_col_name] = samp_metadata_df[self.sample_metadata_cast_no_col_name].apply(
+            self.remove_extraneous_cast_no_chars)
+
         return samp_metadata_df
 
     def join_sample_and_extract_df(self):
@@ -257,20 +300,20 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         samp_df = self.transform_metadata_df()
 
         metadata_df = pd.merge(
-            left = extract_df,
-            right = samp_df,
-            left_on = self.extraction_sample_name_col,
-            right_on = self.sample_metadata_sample_name_column,
+            left=extract_df,
+            right=samp_df,
+            left_on=self.extraction_sample_name_col,
+            right_on=self.sample_metadata_sample_name_column,
             how='left'
         )
 
         # Drop rows where the sample name column value is NA. This is for cruises where samples were split up
         # e.g. PPS samples that were deployed from the DY2306 cruise. They will be a separate sample metadata file.
-        metadata_df = metadata_df.dropna(subset=[self.sample_metadata_sample_name_column])
+        metadata_df = metadata_df.dropna(
+            subset=[self.sample_metadata_sample_name_column])
 
         # for col in metadata_df.columns:
         #     print(col)
-
 
         return metadata_df
 
@@ -297,8 +340,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     def remove_extraneous_cast_no_chars(self, cast_no: str) -> int:
         # If Cast_No. is in the format of CTD001, then returns just the int
         if pd.notna(cast_no) and isinstance(cast_no, str) and 'CTD' in cast_no:
-            cast_no = int(cast_no.replace('CTD',''))
-                       
+            cast_no = int(cast_no.replace('CTD', ''))
+
         return cast_no
 
     def filter_metadata_dfs(self):
@@ -311,25 +354,27 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         # filter samp_df to keep only rows with sample names that exist in the exp_sample_names
         # samp_df_filtered = samp_df[samp_df[self.sample_metadata_sample_name_column].isin(exp_sample_names)]
-        
+
         try:
-            nc_mask = samp_df[self.sample_metadata_sample_name_column].astype(str).str.contains('.NC', case=True)
+            nc_mask = samp_df[self.sample_metadata_sample_name_column].astype(
+                str).str.contains('.NC', case=True)
             nc_df = samp_df[nc_mask].copy()
             samp_df_filtered = samp_df[~nc_mask].copy()
             return samp_df_filtered, nc_df
         except:
-            print("Looks like there are no negatives in the sample df, returning an empty nc_df")
+            print(
+                "Looks like there are no negatives in the sample df, returning an empty nc_df")
             nc_df = pd.DataFrame()
             return samp_df_filtered, nc_df
-    
+
     def extract_insdc_geographic_locations(self) -> list:
 
         url = 'https://www.insdc.org/submitting-standards/geo_loc_name-qualifier-vocabulary/'
-        
+
         response = requests.get(url)
-        response.raise_for_status() # Raise an exception for HTTP errors
+        response.raise_for_status()  # Raise an exception for HTTP errors
         html_content = response.text
-        
+
         soup = BeautifulSoup(html_content, 'html.parser')
 
         # Get all elements that fall under the class name
@@ -343,34 +388,38 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                 locations.append(li.get_text(strip=True))
 
         return locations
-    
+
     def extract_replicate_sample_parent(self, sample_name):
-            # Extracts the E number in the sample name
-            if pd.notna(sample_name):
-                return sample_name.split('.')[0]
-    
+        # Extracts the E number in the sample name
+        if pd.notna(sample_name):
+            return sample_name.split('.')[0]
+
     def create_biological_replicates_dict(self) -> dict:
         # Creates a dictionary of the parent E number as a key and the replicate sample names as the values
         # e.g. {'E26': ['E26.2B.DY2012', 'E26.1B.NC.DY2012']}
 
         # Extract the parent E number and add to column called replicate_parent
         # Uses set() to remove any technical replicates (they will have the same)
-        self.sample_metadata_df[self.replicate_parent_sample_metadata_col] = self.sample_metadata_df[self.sample_metadata_sample_name_column].apply(self.extract_replicate_sample_parent)
+        self.sample_metadata_df[self.replicate_parent_sample_metadata_col] = self.sample_metadata_df[self.sample_metadata_sample_name_column].apply(
+            self.extract_replicate_sample_parent)
         # Group by replicate parent
-        replicate_dict = self.sample_metadata_df.groupby(self.replicate_parent_sample_metadata_col)[self.sample_metadata_sample_name_column].apply(set).to_dict()
+        replicate_dict = self.sample_metadata_df.groupby(self.replicate_parent_sample_metadata_col)[
+            self.sample_metadata_sample_name_column].apply(set).to_dict()
         # remove any key, value pairs where there aren't replicates and convert back to list
-        replicate_dict = {replicate_parent: list(set(sample_name)) for replicate_parent, sample_name in replicate_dict.items() if len(sample_name) > 1}
+        replicate_dict = {replicate_parent: list(set(
+            sample_name)) for replicate_parent, sample_name in replicate_dict.items() if len(sample_name) > 1}
 
         return replicate_dict
-    
+
     def add_biological_replicates(self, metadata_row: pd.Series, faire_missing_val: str) -> dict:
 
         if self.replicates_dict.get(metadata_row.get(self.replicate_parent_sample_metadata_col)):
-            replicates = ' | '.join(self.replicates_dict.get(metadata_row[self.replicate_parent_sample_metadata_col], None))
+            replicates = ' | '.join(self.replicates_dict.get(
+                metadata_row[self.replicate_parent_sample_metadata_col], None))
             return replicates
         else:
             return faire_missing_val
-        
+
     def add_neg_cont_type(self, samp_name: str) -> dict:
         # Adds the negative control type to the neg_cont_type column of the FAIRe template based on strings in the sample name
         # TODO: Add error if it snot an field negative or extraction negative
@@ -379,18 +428,21 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         extraction_neg_control_str = 'blank'
 
         if field_neg_control_str in samp_name:
-            neg_cont_type = self.check_cv_word(value='field negative', faire_attribute=self.faire_neg_cont_type_name_col)
+            neg_cont_type = self.check_cv_word(
+                value='field negative', faire_attribute=self.faire_neg_cont_type_name_col)
         elif extraction_neg_control_str in samp_name.lower():
-            neg_cont_type = self.check_cv_word(value='extraction negative', faire_attribute=self.faire_neg_cont_type_name_col)
+            neg_cont_type = self.check_cv_word(
+                value='extraction negative', faire_attribute=self.faire_neg_cont_type_name_col)
 
         return neg_cont_type
-    
-    def add_pos_cont_type(self, pos_cont_sample_name:str) -> str:
-        
+
+    def add_pos_cont_type(self, pos_cont_sample_name: str) -> str:
+
         # Get the marker from the positive control sample name (e.g. run2.ITS1.POSITIVE - this will give you ITS1)
         shorthand_marker = pos_cont_sample_name.split('.')[1]
 
-        g_block = marker_shorthand_to_pos_cont_gblcok_name.get(shorthand_marker)
+        g_block = marker_shorthand_to_pos_cont_gblcok_name.get(
+            shorthand_marker)
 
         pos_cont_type = f"PCR positive of synthetic DNA. Gblock name: {g_block}"
 
@@ -400,7 +452,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # TODO: double check logic for negative controls: blanks = extraction negatives, .NC = field negatives. Waiting on Zack and Sean's run metadata?
         # TODO: create add_pos_con_type for positive controls (same as neg_cont_type is handled)
         # Adds the FAIRe samp_category based on strings in the Sample Name and the Negative Control column
-        
+
         pos_control_str = 'POSITIVE'
 
         # If Negative Control column of the metadata is True. Try because metadata_file_neg_control_col_name will not be present if positive control
@@ -412,14 +464,15 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         except:
             if pos_control_str in metadata_row[metadata_col]:
                 return self.check_cv_word(value='positive control', faire_attribute=faire_col)
-        
+
     def add_material_sample_id(self, metadata_row) -> str:
-        # Formats MaterialSampleID to be numerical (discussed with Sean) - double check if this needs to be updated for three digit cast numbers 
+        # Formats MaterialSampleID to be numerical (discussed with Sean) - double check if this needs to be updated for three digit cast numbers
         # can also be used for sample_derived_from if no other in between parent samples
-     
+
         cast_int = int(metadata_row.get(self.sample_metadata_cast_no_col_name))
-        btl_int = int(metadata_row.get(self.sample_metadata_bottle_no_col_name))
-        
+        btl_int = int(metadata_row.get(
+            self.sample_metadata_bottle_no_col_name))
+
         formatted_cast = f'{cast_int:02d}'
         formatted_btl = f'{btl_int:02d}'
 
@@ -427,22 +480,23 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         return material_sample_id
 
-    def add_rel_cont_id(self, metadata_row: pd.Series, samp_seq_pos_controls_dict: dict) -> str:
-        # Adds the rel_cont_id
-        sample_name = metadata_row[self.sample_metadata_sample_name_column]
-        
-        # Get positive controls
-        control_samps = samp_seq_pos_controls_dict.get(sample_name)
+    # def add_rel_cont_id(self, metadata_row: pd.Series, samp_seq_pos_controls_dict: dict) -> str:
+    #     # Adds the rel_cont_id
+    #     sample_name = metadata_row[self.sample_metadata_sample_name_column]
 
-        # Get field negative sample names in a list and add to associated_seq_pos
-        if not self.nc_df.empty:
-            nc_samples = self.nc_df[self.sample_metadata_sample_name_column].tolist()
-            control_samps.extend(nc_samples)
+    #     # Get positive controls
+    #     control_samps = samp_seq_pos_controls_dict.get(sample_name)
 
-        # join with | 
-        rel_cont_id = ' | '.join(control_samps)
+    #     # Get field negative sample names in a list and add to associated_seq_pos
+    #     if not self.nc_df.empty:
+    #         nc_samples = self.nc_df[self.sample_metadata_sample_name_column].tolist(
+    #         )
+    #         control_samps.extend(nc_samples)
 
-        return rel_cont_id 
+    #     # join with |
+    #     rel_cont_id = ' | '.join(control_samps)
+
+    #     return rel_cont_id
 
     def add_assay_name(self, sample_name: str) -> str:
         # Uses the sample name to look up assays from the sample_assay_dict (generated from the exp_run_metadata_df)
@@ -452,15 +506,17 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
     def convert_wind_degrees_to_direction(self, degree_metadata_row: pd.Series) -> str:
         # converts wind direction  to cardinal directions
-        
+
         if pd.isna(degree_metadata_row) or degree_metadata_row is None:
             return "missing: not collected"
         else:
-            direction_labels = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
-            ix  = np.round(degree_metadata_row / (360. / len(direction_labels))).astype('i')
+            direction_labels = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE",
+                                "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
+            ix = np.round(degree_metadata_row /
+                          (360. / len(direction_labels))).astype('i')
 
             return direction_labels[ix % 16]
-    
+
     def convert_min_depth_from_minus_one_meter(self, metadata_row: pd.Series, max_depth_col_name: str):
         # Subtracts 1 from the max depth to calculate min depth (niskin bottle is ~1 m)
         max_depth = float(metadata_row[max_depth_col_name])
@@ -469,20 +525,22 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         else:
             min_depth = max_depth
         return min_depth
-        
+
     def format_geo_loc(self, metadata_row: str, geo_loc_metadata_col: str) -> dict:
         # TODO: add if statement for Arctic OCean? SKQ21-12S?
-     
-        # For use cases that have the sea in the 
+
+        # For use cases that have the sea in the
         if 'sea' in metadata_row[geo_loc_metadata_col].lower():
             # Typos in geo_loc for dy2206
             if 'Beiring' in metadata_row[geo_loc_metadata_col]:
-                sea = metadata_row[geo_loc_metadata_col].replace('Beiring', 'Bering')
+                sea = metadata_row[geo_loc_metadata_col].replace(
+                    'Beiring', 'Bering')
             else:
                 sea = metadata_row[geo_loc_metadata_col]
             geo_loc = 'USA: ' + sea
-        else: geo_loc = metadata_row[geo_loc_metadata_col]
-    
+        else:
+            geo_loc = metadata_row[geo_loc_metadata_col]
+
         # check that geo_loc_name (first string before first :) is an acceptes insdc word
         if ':' in geo_loc:
             geo_loc_name = geo_loc.split(':')[0]
@@ -490,18 +548,21 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         else:
             geo_loc_name = metadata_row[geo_loc_metadata_col]
         if geo_loc_name not in self.insdc_locations:
-            raise NoInsdcGeoLocError(f'There is no geographic location in INSDC that matches {metadata_row[geo_loc_metadata_col]}, check sea_name and try again')
-    
+            raise NoInsdcGeoLocError(
+                f'There is no geographic location in INSDC that matches {metadata_row[geo_loc_metadata_col]}, check sea_name and try again')
+
         return geo_loc
-    
+
     def find_geo_loc_by_lat_lon(self, metadata_row: pd.Series, metadata_lat_col: str, metadata_lon_col: str) -> str:
         # World Seas IHO downloaded from: https://marineregions.org/downloads.php
 
-        print(f"Getting geo_loc_name for {metadata_row[self.sample_metadata_sample_name_column]}")
+        print(
+            f"Getting geo_loc_name for {metadata_row[self.sample_metadata_sample_name_column]}")
         lat = metadata_row.get(metadata_lat_col)
         lon = metadata_row.get(metadata_lon_col)
-        
-        marine_regions = gpd.read_file("/home/poseidon/zalmanek/FAIRe-Mapping/utils/World_Seas_IHO_v3/World_Seas_IHO_v3.shp")
+
+        marine_regions = gpd.read_file(
+            "/home/poseidon/zalmanek/FAIRe-Mapping/utils/World_Seas_IHO_v3/World_Seas_IHO_v3.shp")
         # create a point object
         point = Point(lon, lat)
 
@@ -509,13 +570,14 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         for idx, region in marine_regions.iterrows():
             if region.geometry.contains(point):
                 sea = region.get('NAME')
-                geo_loc= f"USA: {sea}"
+                geo_loc = f"USA: {sea}"
                 geo_loc_name = geo_loc.split(':')[0]
                 if geo_loc_name not in self.insdc_locations:
-                    raise NoInsdcGeoLocError(f'There is no geographic location in INSDC that matches {geo_loc_name}, check sea_name and try again')
+                    raise NoInsdcGeoLocError(
+                        f'There is no geographic location in INSDC that matches {geo_loc_name}, check sea_name and try again')
                 else:
                     return geo_loc
-    
+
     def calculate_env_local_scale(self, depth: float) -> str:
         # uses the depth to assign env_local_scale
         aphotic = "marine aphotic zone [ENVO:00000210]"
@@ -527,7 +589,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             env_local_scale = aphotic
 
         return env_local_scale
-    
+
     def format_dates_for_duration_calculation(self, date: str) -> datetime:
         # Handle different date formats and timezone indicators (used with calculate_date_duration function)
         if 'T' in date:
@@ -537,12 +599,12 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                 # Create datetime and strip timezone info
                 dt = datetime.fromisoformat(date).replace(tzinfo=None)
         # To account for dates in form 9/5/20 - may need to refactor
-        elif '/' in date and ' ' in date: #from like 2022/01/03 12:34:54
+        elif '/' in date and ' ' in date:  # from like 2022/01/03 12:34:54
             dt = datetime.strptime(date, "%Y/%m/%d %H:%M:%S")
         elif '/' in date:
-            try: # 05/22/92 (two digit year format)
+            try:  # 05/22/92 (two digit year format)
                 date = datetime.strptime(date, "%m/%d/%y")
-            except ValueError: # 05/22/1992 (four digit format)
+            except ValueError:  # 05/22/1992 (four digit format)
                 date = datetime.strptime(date, "%m/%d/%Y")
             date = date.strftime("%Y-%m-%d")
             dt = datetime.fromisoformat(date)
@@ -550,7 +612,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             dt = datetime.fromisoformat(date)
 
         return dt
-    
+
     def calculate_date_duration(self, metadata_row: pd.Series, start_date_col: str, end_date_col: str) -> datetime:
         # takes two dates and calcualtes the difference to find the duration of time in ISO 8601 format
         # Handles both simple date format (2021-04-01) and dattime format (2020-09-05T02:50:00Z)
@@ -559,21 +621,23 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         end_date = metadata_row[end_date_col]
 
         if pd.notna(start_date) and pd.notna(end_date):
-            start_date = self.format_dates_for_duration_calculation(date=metadata_row[start_date_col])
-            end_date= self.format_dates_for_duration_calculation(date=metadata_row[end_date_col])
-    
-            #Calculate the difference
+            start_date = self.format_dates_for_duration_calculation(
+                date=metadata_row[start_date_col])
+            end_date = self.format_dates_for_duration_calculation(
+                date=metadata_row[end_date_col])
+
+            # Calculate the difference
             duration = end_date - start_date
 
             # Convert to ISO 8061
             iso_duration = isodate.duration_isoformat(duration)
 
             return iso_duration
-        
+
         else:
             # if start date or end date is NA will return missing: not collected
             return "missing: not collected "
-    
+
     def get_tot_depth_water_col_from_lat_lon(self, metadata_row: pd.Series, lat_col: float, lon_col: float, exact_map_col: str = None) -> float:
 
         try:
@@ -587,7 +651,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                 lat = metadata_row[lat_col]
                 lon = metadata_row[lon_col]
 
-        # Check if verbatim column and use to determin negative or positive sign 
+        # Check if verbatim column and use to determin negative or positive sign
         # pandas has a bug where it removes the negative using .apply()
         if 'S' in metadata_row['verbatimLatitude']:
             lat = float(-abs(lat))
@@ -606,7 +670,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # make positive value
         return abs(elevation)
 
-    def fill_empty_sample_values(self, df: pd.DataFrame, default_message = "missing: not collected"):
+    def fill_empty_sample_values(self, df: pd.DataFrame, default_message="missing: not collected"):
         # fill empty values for samples after mapping over all sample data without control samples
 
         # check if data frame is sample data frame and if so, then adds not applicable: control sample to control columns
@@ -616,7 +680,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         elif '.NC' in df[self.faire_sample_name_col]:
             # for NC sample pos_cont_type is just not applicable
             df['pos_cont_type'] = "not applicable"
-        
+
         # Use default message for all other empty values - handles None, Nan
         df = df.fillna(default_message)
 
@@ -624,21 +688,22 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         df = df.map(lambda x: default_message if x == "" or x == "-" else x)
 
         return df
-    
+
     def fill_nc_metadata(self) -> pd.DataFrame:
         # Fills the negative control data frame
 
         nc_mapping_dict = self.create_nc_mapping_dict()
- 
+
         nc_results = {}
         # add exact mappings
         for faire_col, metadata_col in nc_mapping_dict[self.exact_mapping].items():
             nc_results[faire_col] = self.nc_df[metadata_col].apply(
                 lambda row: self.apply_exact_mappings(metadata_row=row, faire_col=faire_col))
-            
+
         # Step 2: Add constant mappings
         for faire_col, static_value in nc_mapping_dict[self.constant_mapping].items():
-            nc_results[faire_col] = self.apply_static_mappings(faire_col=faire_col, static_value=static_value)
+            nc_results[faire_col] = self.apply_static_mappings(
+                faire_col=faire_col, static_value=static_value)
 
         # Step 3. Add related mappings
         # Step 3: Add related mappings
@@ -646,32 +711,40 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             # Add samp_category
             if faire_col == self.faire_sample_category_name_col and metadata_col == self.sample_metadata_sample_name_column:
                 nc_results[faire_col] = self.nc_df.apply(
-                    lambda row: self.add_samp_category_by_sample_name(metadata_row=row, faire_col=faire_col, metadata_col=metadata_col),
+                    lambda row: self.add_samp_category_by_sample_name(
+                        metadata_row=row, faire_col=faire_col, metadata_col=metadata_col),
                     axis=1
                 )
-            
+
             elif faire_col == 'prepped_samp_store_dur':
                 if metadata_col != 'missing: not collected':
                     date_col_names = metadata_col.split(' | ')
                     nc_results[faire_col] = self.nc_df.apply(
-                        lambda row: self.calculate_date_duration(metadata_row=row, start_date_col=date_col_names[0], end_date_col=date_col_names[1]),
+                        lambda row: self.calculate_date_duration(
+                            metadata_row=row, start_date_col=date_col_names[0], end_date_col=date_col_names[1]),
                         axis=1
                     )
                 else:
-                    nc_results[faire_col] = metadata_col # if metadata_col = "missing: not collected, then will be value"
+                    # if metadata_col = "missing: not collected, then will be value"
+                    nc_results[faire_col] = metadata_col
 
             elif faire_col == 'date_ext':
-                nc_results[faire_col] = self.nc_df[metadata_col].apply(self.convert_date_to_iso8601)
-            
+                nc_results[faire_col] = self.nc_df[metadata_col].apply(
+                    self.convert_date_to_iso8601)
+
             elif faire_col == self.faire_neg_cont_type_name_col:
-                nc_results[faire_col] = self.nc_df[metadata_col].apply(self.add_neg_cont_type)
-    
-        # First concat with sample_faire_template to get rest of columns, 
+                nc_results[faire_col] = self.nc_df[metadata_col].apply(
+                    self.add_neg_cont_type)
+
+        # First concat with sample_faire_template to get rest of columns,
         # # and add user_defined columnsthen
         # Fill na and empty values with not applicable: control sample
-        nc_df = pd.concat([self.sample_faire_template_df, pd.DataFrame(nc_results)])
-
-        return nc_df
+        try:
+            nc_df = pd.concat(
+                [self.sample_faire_template_df, pd.DataFrame(nc_results)])
+            return nc_df
+        except: # If empty just return empty dataframe
+            return self.sample_faire_template_df
 
     def finish_up_controls_df(self, final_sample_df: pd.DataFrame) -> pd.DataFrame:
 
@@ -683,14 +756,15 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         else:
             neg_controls_df = nc_df
 
-
-        new_cols = [col for col in final_sample_df.columns if col not in neg_controls_df.columns]
-        for col in new_cols: 
+        new_cols = [
+            col for col in final_sample_df.columns if col not in neg_controls_df.columns]
+        for col in new_cols:
             neg_controls_df[col] = 'not applicable: control sample'
-        neg_controls_df = self.fill_empty_sample_values(df = neg_controls_df, default_message='not applicable: control sample')
+        neg_controls_df = self.fill_empty_sample_values(
+            df=neg_controls_df, default_message='not applicable: control sample')
 
         return neg_controls_df
-    
+
     def fill_extraction_blanks_metadata(self) -> pd.DataFrame:
 
         extraction_blanks_mapping_dict = self.create_extraction_blank_mapping_dict()
@@ -702,43 +776,47 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             extract_blank_results[self.faire_sample_name_col] = self.extraction_blanks_df[self.extraction_sample_name_col]
             extract_blank_results[self.faire_sample_category_name_col] = "negative control"
             extract_blank_results[self.faire_neg_cont_type_name_col] = "extraction negative"
-            
+
             # Add mappings from mappings dict which is just maping from extractionMetadata sheet
             # add exact mappings
             for faire_col, metadata_col in extraction_blanks_mapping_dict[self.exact_mapping].items():
                 extract_blank_results[faire_col] = self.extraction_blanks_df[metadata_col].apply(
                     lambda row: self.apply_exact_mappings(metadata_row=row, faire_col=faire_col))
-                
+
             # Step 2: Add constant mappings
             for faire_col, static_value in extraction_blanks_mapping_dict[self.constant_mapping].items():
-                extract_blank_results[faire_col] = self.apply_static_mappings(faire_col=faire_col, static_value=static_value)
+                extract_blank_results[faire_col] = self.apply_static_mappings(
+                    faire_col=faire_col, static_value=static_value)
 
             # Step 3: Add related mappings
             for faire_col, metadata_col in extraction_blanks_mapping_dict[self.related_mapping].items():
-                extract_blank_results[faire_col] = self.extraction_blanks_df[metadata_col].apply(self.convert_date_to_iso8601)
+                extract_blank_results[faire_col] = self.extraction_blanks_df[metadata_col].apply(
+                    self.convert_date_to_iso8601)
 
-            extract_blanks_df = pd.concat([self.sample_faire_template_df, pd.DataFrame(extract_blank_results)])
+            extract_blanks_df = pd.concat(
+                [self.sample_faire_template_df, pd.DataFrame(extract_blank_results)])
 
             return extract_blanks_df
-        
+
         else:
             return None
 
     def add_field_neg_and_extraction_blanks_to_rel_cont_id(self, final_sample_df: pd.DataFrame):
 
         # Find all samples containing .NC or Blank in their name
-        control_mask = final_sample_df[self.faire_sample_name_col].str.contains(r'\.NC|Blank|Larson NC', case=False, regex=True)
+        control_mask = final_sample_df[self.faire_sample_name_col].str.contains(
+            r'\.NC|Blank|Larson NC', case=False, regex=True)
 
         # Get the list of control sample names
-        control_samples = final_sample_df.loc[control_mask, self.faire_sample_name_col].tolist()
+        control_samples = final_sample_df.loc[control_mask,
+                                              self.faire_sample_name_col].tolist()
 
         # Convert list to str
         control_samples_str = ' | '.join(control_samples)
 
         # Add string to rel_cont_id for all non_control samples
         final_sample_df.loc[~control_mask, 'rel_cont_id'] = control_samples_str
-        print(final_sample_df)
-       
+
         return final_sample_df
     # # def fill_seq_pos_control_metadata(self, final_sample_df: pd.DataFrame) -> pd.DataFrame:
     #     #TODO: add pos_cont_type mapping
@@ -762,17 +840,9 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     #     faire_pos_df = pd.concat([self.sample_faire_template_df, positive_samp_df])
 
     #     new_cols = [col for col in final_sample_df.columns if col not in faire_pos_df.columns]
-    #     for col in new_cols: 
+    #     for col in new_cols:
     #         faire_pos_df[col] = 'not applicable: control sample'
-        
+
     #     faire_pos_df = self.fill_empty_sample_values(df=faire_pos_df, default_message='not applicable: control sample')
 
     #     return faire_pos_df
-
-
-
-
-                
-
-
-

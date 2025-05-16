@@ -14,6 +14,8 @@ extraction_sample_name_col: FINAL Sample NAME
 extraction_conc_col_name: Qubit Conc.  (ng/μL) #to calculate average of extraction concentration
 extraction_date_col_name: Extraction Date (Local)
 extraction_metadata_sheet_name: Extraction Sheets
+extraction_blank_vol_we_dna_ext: 1000 # The volume or mass of blanks extracted if there are blanks extracted
+extraction_set_grouping_col_name: 'Extraction Set' # The name of the column that groups the samples together if they were extracted together
 
 # mapping file related
 google_sheet_mapping_file_id: 1cKlckX2MNusrEHrhjRlVDFYjZtTaWw49cYDMMvEcEKY

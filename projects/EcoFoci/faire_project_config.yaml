@@ -1,0 +1,12 @@
+datasets: # a list of sample_metadata.csvs and their associated experimentRun csvs
+  - cruise_name: dy2012
+    faire_sample_metadata_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2012/data/dy2012_faire.csv
+    associated_sequencing_csvs:
+      - sequencing_run_name: osu867
+        sequence_run_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/osu867/data/osu867_faire.csv
+      - sequencing_run_name: osu873
+        sequence_run_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/osu873/data/osu873_faire.csv
+      - sequencing_run_name: run3
+        sequence_run_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/run3/data/run3_faire.csv
+ 
+ 

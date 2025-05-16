@@ -98,21 +98,26 @@ def create_skq21_12S_sample_metadata():
         elif faire_col == 'date_ext':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(sample_mapper.convert_date_to_iso8601)
    
-   # Step 4: fill in NA with missing not collected or not applicable because they are samples
+    # Step 4: fill in NA with missing not collected or not applicable because they are samples
     sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))
     
     # Step 5: fill NC data frame if there is - DO THIS ONLY IF negative controls were sequenced! They were not for SKQ21
-    nc_df = sample_mapper.fill_nc_metadata(final_sample_df = sample_df)
+    # nc_df = sample_mapper.fill_nc_metadata()
+    controls_df = sample_mapper.finish_up_controls_df(final_sample_df=sample_df)
 
     # Step 6: Combine all mappings at once (add nc_df if negative controls were sequenced)
-    faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df, nc_df])
+    faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df,controls_df])
+
+    # step 7: save as csv:
+    sample_mapper.save_final_df_as_csv(final_df=faire_sample_df, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/skq21_12S/data/skq21_12S_faire.csv')
+
    
     # step 7: save to excel file
     sample_mapper.add_final_df_to_FAIRe_excel(excel_file_to_read_from=sample_mapper.faire_template_file,
                                               sheet_name=sample_mapper.sample_mapping_sheet_name, 
                                               faire_template_df=faire_sample_df)
 
-    return faire_sample_df, sample_mapper
+    return sample_mapper, faire_sample_df
 
 def main() -> None:
 
