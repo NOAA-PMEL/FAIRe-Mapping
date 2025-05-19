@@ -448,18 +448,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         return neg_cont_type
 
-    def add_pos_cont_type(self, pos_cont_sample_name: str) -> str:
-
-        # Get the marker from the positive control sample name (e.g. run2.ITS1.POSITIVE - this will give you ITS1)
-        shorthand_marker = pos_cont_sample_name.split('.')[1]
-
-        g_block = marker_shorthand_to_pos_cont_gblcok_name.get(
-            shorthand_marker)
-
-        pos_cont_type = f"PCR positive of synthetic DNA. Gblock name: {g_block}"
-
-        return pos_cont_type
-
     def add_samp_category_by_sample_name(self, metadata_row: pd.Series, faire_col: str, metadata_col: str) -> dict:
         # TODO: double check logic for negative controls: blanks = extraction negatives, .NC = field negatives. Waiting on Zack and Sean's run metadata?
         # TODO: create add_pos_con_type for positive controls (same as neg_cont_type is handled)
@@ -822,6 +810,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             if 'NC' not in row[self.faire_sample_name_col] and 'blank' not in row[self.faire_sample_name_col].lower():
                 final_sample_df.at[idx, 'rel_cont_id'] = ' | '.join(nc_samps)
 
+        
+
         return final_sample_df
     
     def add_extraction_blanks_to_rel_cont_id(self, final_sample_df: pd.DataFrame):
@@ -842,6 +832,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                 all_related_ids = related_ids + related_blanks
             else:
                 all_related_ids = related_blanks
+            
+            # remove any "not applicable" if there are other ids in all_related_ids
             final_sample_df.at[idx, self.faire_rel_cont_id_col_name] = ' | '.join(all_related_ids)
               
        
