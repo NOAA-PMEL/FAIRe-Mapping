@@ -16,8 +16,8 @@ datasets: # a list of sample_metadata.csvs and their associated experimentRun cs
       sample_metadata_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/no201/data/no201_faire.csv
     - cruise_name: skq21_12S
       sample_metadata_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/skq21_12S/data/skq21_12S_faire.csv
-    # - cruise_name: skq23_12S
-    #   sample_metadata_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/skq23_12S/data/skq23_12S_faire.csv
+    - cruise_name: skq23_12S
+      sample_metadata_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/skq23_12S/data/skq23_12S_faire.csv
   associated_sequencing_csvs:
     - sequencing_run_name: osu867
       sequence_run_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/osu867/data/osu867_faire.csv
@@ -32,32 +32,32 @@ datasets: # a list of sample_metadata.csvs and their associated experimentRun cs
     - sequencing_run_name: run4
       sequence_run_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/run4/data/run4_faire.csv
 
+#pooled samples dict - all pooled samples applicable to this project and the subsamples they make up
+pooled_samps:
+  RC0083_NC_pool: 
+    - E1573.NC.RC0083
+    - E1451.NC.RC0083
+    - E1500.NC.RC0083
+  BlankAlaskaSet_NC_pool:
+    - Blank.Alaska.Set7
+    - BlankAlaska.Set9
+    - Blank.Alaska.Set11
+    - Blank.Alaska.Set11
+  Dyson_NC_pool:
+    - E1717.NC.DY2306
+    - E1157.NC.DY2206
+  SKQ23_NC_pool:
+    - E2028.NC.SKQ23-12S
+    - E2030.NC.SKQ23-12S
+  SKQ_NC_pool:
+    - Larson NC2
+    - Larson NC3
+    - Larson NC5
+  NC4:
+    - Larson NC4
+   
 
 
-
-
-
-  # - cruise_name: dy2012
-  #   faire_sample_metadata_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2012/data/dy2012_faire.csv
-  #   associated_sequencing_csvs:
-  #     - sequencing_run_name: osu867
-  #       sequence_run_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/osu867/data/osu867_faire.csv
-  #     - sequencing_run_name: osu873
-  #       sequence_run_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/osu873/data/osu873_faire.csv
-  #     - sequencing_run_name: run3
-  #       sequence_run_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/run3/data/run3_faire.csv
-  
-  # - cruise_name: dy2206
-  #   faire_sample_metadata_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2206/data/dy2206_faire.csv
-  #   associated_sequencing_csvs:
-  #     - sequencing_run_name: run4
-  #       sequence_run_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/run4/data/run4_faire.csv
-
-  # - cruise_name: dy2209
-  #   faire_sample_metadata_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2209/data/dy2209_faire.csv
-  #   associated_sequencing_csvs:
-  #     - sequencing_run_name: run4
-  #       sequence_run_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/run4/data/run4_faire.csv
 
 
 faire_template_file: /home/poseidon/zalmanek/FAIRe-Mapping/faire_template.xlsx
