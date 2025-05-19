@@ -94,7 +94,7 @@ def create_dy2209_sample_metadata():
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(
                 sample_mapper.convert_date_to_iso8601)
 
-     # Step 4: fill in NA with missing not collected or not applicable because they are samples
+    # Step 4: fill in NA with missing not collected or not applicable because they are samples and adds NC to rel_cont_id
     sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))
     
     # Step 5: fill NC data frame if there is - DO THIS ONLY IF negative controls were sequenced! They were not for SKQ21
@@ -104,18 +104,15 @@ def create_dy2209_sample_metadata():
     # Step 6: Combine all mappings at once (add nc_df if negative controls were sequenced)
     faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df,controls_df])
     # Add rel_cont_id
-    faire_sample_df = sample_mapper.add_field_neg_and_extraction_blanks_to_rel_cont_id(final_sample_df=faire_sample_df)
+    faire_sample_df_updated = sample_mapper.add_extraction_blanks_to_rel_cont_id(final_sample_df=faire_sample_df)
 
     # step 7: save as csv:
-    sample_mapper.save_final_df_as_csv(final_df=faire_sample_df, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2012/data/dy2012_faire.csv')
-   
-    # step 7: save as csv:
-    sample_mapper.save_final_df_as_csv(final_df=faire_sample_df, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2209/data/dy2209_faire.csv')
+    sample_mapper.save_final_df_as_csv(final_df=faire_sample_df_updated, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2209/data/dy2209_faire.csv')
    
     # step 7: save to excel file
     sample_mapper.add_final_df_to_FAIRe_excel(excel_file_to_read_from=sample_mapper.faire_template_file,
                                               sheet_name=sample_mapper.sample_mapping_sheet_name, 
-                                              faire_template_df=faire_sample_df)
+                                              faire_template_df=faire_sample_df_updated)
 
     return sample_mapper, faire_sample_df
 

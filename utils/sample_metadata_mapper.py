@@ -813,15 +813,20 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         else:
             return None
 
-    def add_field_neg_and_extraction_blanks_to_rel_cont_id(self, final_sample_df: pd.DataFrame):
+    def add_nc_rel_cont_id_to_samp_df(self, final_sample_df: pd.DataFrame) -> pd.DataFrame:
+        # Adds the .NC samples to the rel_cont_id of all other samples.
+        # get list of nc samples. Uses metadatA_sample_name_column because this happens before nc_df is transformed
+        nc_samps = self.nc_df[self.sample_metadata_sample_name_column].tolist()
+        
+        for idx, row in final_sample_df.iterrows():
+            if 'NC' not in row[self.faire_sample_name_col] and 'blank' not in row[self.faire_sample_name_col].lower():
+                final_sample_df.at[idx, 'rel_cont_id'] = ' | '.join(nc_samps)
 
-        # Find all samples containing .NC in their name
-        nc_samples = final_sample_df[
-            final_sample_df[self.faire_sample_name_col].str.contains('.NC', regex=False) &
-            ~final_sample_df[self.faire_sample_name_col].str.contains('Larson', regex=False) # Not larson because this is a blank and will be captured in blanks below
-            ]
-        field_negative_samples = nc_samples[self.faire_sample_name_col].tolist()
-      
+        return final_sample_df
+    
+    def add_extraction_blanks_to_rel_cont_id(self, final_sample_df: pd.DataFrame):
+
+        final_sample_df = self.add_nc_rel_cont_id_to_samp_df(final_sample_df=final_sample_df)
 
         for idx, row in final_sample_df.iterrows():
             current_samp = row[self.faire_sample_name_col]
@@ -831,15 +836,31 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                 if current_samp in associated_samples:
                     related_blanks.append(extraction_blank)
 
-            controls = field_negative_samples + related_blanks
-            if controls:
-                if current_samp not in controls:
-                    final_sample_df.at[idx, self.faire_rel_cont_id_col_name] = ' | '.join(controls)
-                else:
-                    final_sample_df.at[idx, self.faire_rel_cont_id_col_name] = 'not applicable: control sample'
-
+            # get already existing rel_cont_id and add to blanks related ids
+            if row['rel_cont_id']:
+                related_ids = row['rel_cont_id'].split(' | ')
+                all_related_ids = related_ids + related_blanks
+            else:
+                all_related_ids = related_blanks
+            final_sample_df.at[idx, self.faire_rel_cont_id_col_name] = ' | '.join(all_related_ids)
+              
+       
         return final_sample_df
    
+    # def add_nc_samps_to_rel_cont_id(self, final_sample_df: pd.DataFrame):
+
+    #     try:
+    #         # get list of samples associated with NC samps into dict for rel_cont_id
+    #         valid_samples = final_sample_df[self.faire_sample_name_col].tolist()
+    #         for sample in valid_samples:
+    #             if '.NC' in sample:
+    #                 other_samples = [samp for samp in valid_samples if samp != sample and '.NC' not in samp]
+    #                 self.rel_cont_dict[sample] = other_samples
+    #     except:
+    #         raise ValueError("Adding NC samps to rel_cont_dict not working!")
+    #     print(self.rel_cont_dict)
+    
+    
     # # def fill_seq_pos_control_metadata(self, final_sample_df: pd.DataFrame) -> pd.DataFrame:
     #     #TODO: add pos_cont_type mapping
 
