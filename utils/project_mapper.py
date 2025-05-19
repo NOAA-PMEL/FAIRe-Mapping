@@ -4,6 +4,7 @@ import pandas as pd
 import re
 
 # TODO: Filter experiment run metadata to remove samples not in any of the sample_metadata (after sample_metadata is appropriatey filtered and new samples added)
+# TODO: add pooled samples to sample metadata and and sample_compose_of fo rthe samples they include (filter ^ after this step?)
 class ProjectMapper(OmeFaireMapper):
     
     faire_sample_name_col = "samp_name"
