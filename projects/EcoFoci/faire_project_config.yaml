@@ -32,29 +32,54 @@ datasets: # a list of sample_metadata.csvs and their associated experimentRun cs
     - sequencing_run_name: run4
       sequence_run_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/run4/data/run4_faire.csv
 
+# Add samples that have mismatching names between the Sample Metadata and the Experiment Run Metadata
+# Add sample metadata name as key, and experiment run metadata name as value
+mismatch_sample_names: 
+  Larson NC1: NC1
+  Larson NC2: NC2
+  Larson NC3: NC3
+  Larson NC4: NC4 # this one is really the only once that matters being changed, because the rest get pooled, but I still wanted them to match
+  Larson NC5: NC5
+
 #pooled samples dict - all pooled samples applicable to this project and the subsamples they make up
+# if sample names are in the mismatch - add the updated sample name as the value here.
 pooled_samps:
-  RC0083_NC_pool: 
+  - pooled_samp_name: RC0083_NC_pool
+    samps_that_were_pooled:
     - E1573.NC.RC0083
     - E1451.NC.RC0083
     - E1500.NC.RC0083
-  BlankAlaskaSet_NC_pool:
+    sample_category: negative control
+    cont_type: field negative
+  - pooled_samp_name: BlankAlaskaSet_NC_pool
+    samps_that_were_pooled:
     - Blank.Alaska.Set7
     - BlankAlaska.Set9
     - Blank.Alaska.Set11
     - Blank.Alaska.Set11
-  Dyson_NC_pool:
+    sample_category: negative control
+    cont_type: extraction negative
+  - pooled_samp_name: Dyson_NC_pool
+    samps_that_were_pooled:
     - E1717.NC.DY2306
     - E1157.NC.DY2206
-  SKQ23_NC_pool:
+    sample_category: negative control
+    cont_type: field negative
+  - pooled_samp_name: SKQ23_NC_pool
+    samps_that_were_pooled:
     - E2028.NC.SKQ23-12S
     - E2030.NC.SKQ23-12S
-  SKQ_NC_pool:
-    - Larson NC2
-    - Larson NC3
-    - Larson NC5
-  NC4:
-    - Larson NC4
+    sample_category: negative control
+    cont_type: field negative
+  - pooled_samp_name: SKQ_NC_pool
+    samps_that_were_pooled:
+    - NC2
+    - NC3
+    - NC5
+    sample_category: negative control
+    cont_type: extraction negative
+
+
    
 
 
