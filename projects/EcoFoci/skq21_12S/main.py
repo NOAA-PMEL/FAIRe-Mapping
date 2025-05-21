@@ -12,6 +12,7 @@ def create_skq21_12S_sample_metadata():
     
     # initiate mapper
     sample_mapper = FaireSampleMetadataMapper(config_yaml='config.yaml')
+    print(sample_mapper.nc_df)
 
     sample_metadata_results = {}
 

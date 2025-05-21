@@ -319,6 +319,9 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             how='left'
         )
 
+        for i, r in metadata_df.iterrows():
+            print(r[self.sample_metadata_sample_name_column])
+
         # Drop rows where the sample name column value is NA. This is for cruises where samples were split up
         # e.g. PPS samples that were deployed from the DY2306 cruise. They will be a separate sample metadata file.
         metadata_df = metadata_df.dropna(

@@ -3,10 +3,11 @@ from .lists import marker_shorthand_to_pos_cont_gblcok_name
 import pandas as pd
 import re
 
-# TODO: Filter experiment run metadata to remove samples not in any of the sample_metadata (after sample_metadata is appropriatey filtered and new samples added)
-# TODO: add pooled samples to sample metadata and and sample_compose_of fo rthe samples they include (filter ^ after this step?)
-# TODO: uncomment the code in add_positive_samps_to_samp_df function when ready to fully run, or just fix ahead of time before next pandas release
-# TODO: Add code to add_pooled_samps_to_sample_metadata to add in not applicable to empty values for pooled samples
+# TODO: add assay_name to sampleMetadata
+# TODO: create PCR rows in sampleMetadata 
+# TODO: Find what happend to the Mid.NC.SKQ21 sample (in SampleMetadataMapper)
+# TODO: Check 'Arctic Ocean' geo_loc for E1082.SKQ2021, E1083.SKQ2021, E1084.SKQ2021 and maybe other values
+
 class ProjectMapper(OmeFaireMapper):
     
     faire_sample_metadata_sheet_name = "sampleMetadata"
@@ -25,11 +26,8 @@ class ProjectMapper(OmeFaireMapper):
         self.config_file = self.load_config(config_yaml)
         self.mismatch_samp_names_dict = self.config_file['mismatch_sample_names']
         self.pooled_samps_dict = self.config_file['pooled_samps']
-        # self.samp_metadata_dataframes = {} # store all loaded sample metadata dataframes
-        self.combined_seq_runs_dataframes = {} # store all dataframes whose sequencing runs are combined (E.g. for cruises on multiple runs)
-        self.filtered_samp_dataframes = {} # store all filtered sample dataframes
 
-    def process_whole_project_and_save_to_csv(self):
+    def process_whole_project_and_save_to_excel(self):
 
         sample_metadata_df, experiment_run_metadata_df = self.process_sample_run_data()
 
@@ -43,7 +41,7 @@ class ProjectMapper(OmeFaireMapper):
     def process_sample_run_data(self):
         # Process all csv sets defined in the config file.
         # 1. Combine all sample metadata spreadsheets into one and combine all experiment run metadata spreadsheets into one
-        # 2. f
+
 
         combined_sample_metadata_df = self.create_sample_metadata_df()
         combined_exp_run_df = self.create_exp_run_metadata_df()
@@ -65,10 +63,10 @@ class ProjectMapper(OmeFaireMapper):
         updated_pos_samp_df = self.add_positive_samps_to_samp_df(samp_df=sample_metadata_with_pooled, positive_sample_map=pos_samp_map)
 
         # Add PCR samples to sample_composed_of
-        compose_of_updated_df = self.add_pcr_samps_to_composed_of(sample_df=updated_pos_samp_df, exp_run_df=combined_exp_run_df)
+        pcr_updated_df = self.add_pcr_rows_to_samp_df(sample_df=updated_pos_samp_df, exp_run_df=combined_exp_run_df)
     
         # Filter primary dataframe based on samp_name values in sequencing run dataframe
-        filtered_samp_df, missing_samples = self._filter_samp_df_by_samp_name(samp_df=compose_of_updated_df, associated_seq_df=combined_exp_run_df)
+        filtered_samp_df, missing_samples = self._filter_samp_df_by_samp_name(samp_df=pcr_updated_df, associated_seq_df=combined_exp_run_df)
         if missing_samples:
             print(f"samples that will be eliminated from sample metadata/missing from experiment run metadata: {missing_samples}")
 
@@ -78,6 +76,8 @@ class ProjectMapper(OmeFaireMapper):
         # Filter experiment run metadata to drop rows with sample names missing from SampleMetadata
         final_exp_df, dropped_exp_run_samples = self.filter_exp_run_metadata(final_sample_df=final_sample_metadata_df, exp_run_df=combined_exp_run_df)
         print(f"samples dropped from experiment run metadata are {dropped_exp_run_samples}, double check these samples are not in the corresponding project")
+
+        self.save_final_df_as_csv(final_df=final_sample_metadata_df, sheet_name='sampleMetadata', header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/sample_metadata.csv') 
 
         return final_sample_metadata_df, final_exp_df
             
@@ -96,8 +96,6 @@ class ProjectMapper(OmeFaireMapper):
 
         combined_sample_metadata_df = pd.DataFrame()
         combined_sample_metadata_df = pd.concat(samp_metadata_dfs, ignore_index=True)
-
-        print(combined_sample_metadata_df)
 
         return combined_sample_metadata_df
    
@@ -218,16 +216,7 @@ class ProjectMapper(OmeFaireMapper):
                     other_valid_samps.add(samp)
 
         # combine valid samps
-        valid_samp_names_raw = exp_valid_samps | other_valid_samps
-
-        # Remove .PCR so they can match appropriately
-        valid_samp_names = set()
-        for name in valid_samp_names_raw:
-            if '.PCR' in name:
-                subbed_name = re.sub(r'\.PCR\d*$', '', name)
-                valid_samp_names.add(subbed_name)
-            else:
-                valid_samp_names.add(name)
+        valid_samp_names = exp_valid_samps | other_valid_samps
 
         # Identify missing sample names (those in primary but not in associated seq runs)
         cruise_sample_samp_names = samp_df['samp_name'].unique()
@@ -321,30 +310,37 @@ class ProjectMapper(OmeFaireMapper):
 
         return updated_samp_df_with_pos
 
-    def add_pcr_samps_to_composed_of(self, sample_df: pd.DataFrame, exp_run_df: pd.DataFrame) -> pd.DataFrame:
-    # def remove_ids_from_rel_cont_id_that_dont_exist(self, samp_df: pd.DataFrame)
-        results_df = sample_df.copy()
+    def add_pcr_rows_to_samp_df(self, sample_df: pd.DataFrame, exp_run_df: pd.DataFrame) -> pd.DataFrame:
+    # Add PCR rows to sample df and duplicates data
+        
+        # Extract the sample base name
+        for i, r in exp_run_df.iterrows():
+            sample_name = r[self.faire_sample_name_col]
+            if '.PCR' in sample_name:
+                exp_run_df.at[i, 'base_samp_name'] = sample_name.split('.PCR')[0]
 
-        pcr_samp_map_dict = {}
-        for samp in exp_run_df[self.faire_sample_name_col]:
-            if 'PCR' in samp:
-                #extract the base name by Removin PCR suffix
-                base_samp_name = re.sub(r'\.PCR\d*$', '', samp)
-                if base_samp_name not in pcr_samp_map_dict:
-                    pcr_samp_map_dict[base_samp_name] = {samp}
-                else:
-                    pcr_samp_map_dict[base_samp_name].add(samp)
+        # Find which rows in sample_df need to be expanded to be duplicated because of PCR replicates
+        transform_dict = {}
+        for base_name in sample_df[self.faire_sample_name_col]:
+            matches = exp_run_df[exp_run_df['base_samp_name'] == base_name][self.faire_sample_name_col].tolist()
+            if matches:
+                transform_dict[base_name] = set(matches)
+       
+        # Add to the sample_df data frame
+        transformed_rows = []
+        for i, r in sample_df.iterrows():
+            base_name = r[self.faire_sample_name_col]
+            if base_name in transform_dict:
+                for extended_name in transform_dict[base_name]:
+                    new_row = r.copy()
+                    new_row[self.faire_sample_name_col] = extended_name
+                    transformed_rows.append(new_row)
+            else:
+                transformed_rows.append(r)
 
-
-        for idx, row in results_df.iterrows():
-            sample_name = row[self.faire_sample_name_col]
-            if sample_name in pcr_samp_map_dict:
-                samp_composed_of = list(pcr_samp_map_dict.get(sample_name))
-                samp_composed_of.sort() # sort so PCRs are in order 1, 2, 3
-                sample_composed_of = (' | ').join(samp_composed_of)
-                results_df.at[idx, self.faire_sample_composed_of_col_name] = sample_composed_of
-
-        return results_df
+        samp_df_updated_for_pcr = pd.DataFrame(transformed_rows)
+        
+        return samp_df_updated_for_pcr
     
     def fill_empty_vals_for_pooled_and_pos_samps(self, df: pd.DataFrame):
         modified_df = df.copy()
@@ -362,19 +358,13 @@ class ProjectMapper(OmeFaireMapper):
         # Filters the experiment run metadata df to remove rows with samples that don't exist in the sample Metadata
         # This should be done at the very end of processing sample and experiment run metadata because the sample metadata first needs to be filtered
         # by comparing to the experiment run metadata. This step removes rows of samples from other projects (E.g. RC0083 of EcoFoci) that has a run shared with EcoFoci cruises (run1 ,2 and 3)
-        
-        def is_match(sample_name, reference_names):
-            if '.PCR' in sample_name:
-                base_name = sample_name.split('.PCR')[0]
-                return base_name in reference_names
-            else:
-                return sample_name in reference_names
+
         
         # Get list of reference names
         reference_names = set(final_sample_df[self.faire_sample_name_col].unique())
 
         # Create mask of rows to keep
-        mask = exp_run_df[self.faire_sample_name_col].apply(lambda x: is_match(x, reference_names))
+        mask = exp_run_df[self.faire_sample_name_col].isin(reference_names)
 
         # filter exp_run_df
         exp_run_df_filtered = exp_run_df[mask]
