@@ -9,6 +9,9 @@ import re
 # TODO: Add code to add_pooled_samps_to_sample_metadata to add in not applicable to empty values for pooled samples
 class ProjectMapper(OmeFaireMapper):
     
+    faire_sample_metadata_sheet_name = "sampleMetadata"
+    faire_experiment_run_metadata_sheet_name = "experimentRunMetadata"
+
     faire_sample_name_col = "samp_name"
     faire_rel_cont_id_col_name = "rel_cont_id"
     faire_pos_cont_type_col = 'pos_cont_type'
@@ -26,6 +29,17 @@ class ProjectMapper(OmeFaireMapper):
         self.combined_seq_runs_dataframes = {} # store all dataframes whose sequencing runs are combined (E.g. for cruises on multiple runs)
         self.filtered_samp_dataframes = {} # store all filtered sample dataframes
 
+    def process_whole_project_and_save_to_csv(self):
+
+        sample_metadata_df, experiment_run_metadata_df = self.process_sample_run_data()
+
+        # Save sample metadata first to excel file, and then use that excel file and save experimentRunMetadata df
+        self.add_final_df_to_FAIRe_excel(excel_file_to_read_from=self.faire_template_file, sheet_name=self.faire_sample_metadata_sheet_name, faire_template_df=sample_metadata_df)
+        self.add_final_df_to_FAIRe_excel(excel_file_to_read_from=self.final_faire_template_path, sheet_name=self.faire_experiment_run_metadata_sheet_name, faire_template_df=experiment_run_metadata_df)
+
+        print(f"Excel file saved to {self.final_faire_template_path}")
+
+        # self.save_final_df_as_csv(final_df=final_sample_metadata_df, sheet_name='sampleMetadata', header=2, csv_path = '/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/ecoFoci_sampleMetadata.csv')
     def process_sample_run_data(self):
         # Process all csv sets defined in the config file.
         # 1. Combine all sample metadata spreadsheets into one and combine all experiment run metadata spreadsheets into one
@@ -58,7 +72,14 @@ class ProjectMapper(OmeFaireMapper):
         if missing_samples:
             print(f"samples that will be eliminated from sample metadata/missing from experiment run metadata: {missing_samples}")
 
-        self.save_final_df_as_csv(final_df=filtered_samp_df, sheet_name='sampleMetadata', header=2, csv_path = '/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/ecoFoci_sampleMetadata.csv')
+        # Fill empty values for POSITIVE and pool samples with "not applicable: control sample"
+        final_sample_metadata_df = self.fill_empty_vals_for_pooled_and_pos_samps(df=filtered_samp_df)
+
+        # Filter experiment run metadata to drop rows with sample names missing from SampleMetadata
+        final_exp_df, dropped_exp_run_samples = self.filter_exp_run_metadata(final_sample_df=final_sample_metadata_df, exp_run_df=combined_exp_run_df)
+        print(f"samples dropped from experiment run metadata are {dropped_exp_run_samples}, double check these samples are not in the corresponding project")
+
+        return final_sample_metadata_df, final_exp_df
             
     def create_sample_metadata_df(self) -> pd.DataFrame:
    
@@ -75,6 +96,8 @@ class ProjectMapper(OmeFaireMapper):
 
         combined_sample_metadata_df = pd.DataFrame()
         combined_sample_metadata_df = pd.concat(samp_metadata_dfs, ignore_index=True)
+
+        print(combined_sample_metadata_df)
 
         return combined_sample_metadata_df
    
@@ -254,6 +277,8 @@ class ProjectMapper(OmeFaireMapper):
         else:
             filtered_list = rel_cont_ids
 
+        # Remove any nans from list - this is true for pooled samples that were added and no rel_cont_id existed
+        filtered_list.remove('nan') if 'nan' in filtered_list else filtered_list
         # rejoin into format
         rel_cont_ids = ' | '.join(filtered_list)
         
@@ -294,13 +319,6 @@ class ProjectMapper(OmeFaireMapper):
             # add positive samples to samp df
             updated_samp_df_with_pos = pd.concat([samp_df, new_df], ignore_index=True)
 
-        # update positive sample empty values with "not applicable: control sample"
-        # pos_mask = updated_samp_df_with_pos[self.faire_sample_category_col_name].str.contains('positive control', case=False, na=False)
-
-        # # update other columns to be "not applicable: control sample" for positive controls
-        # for col in updated_samp_df_with_pos.columns:
-        #     updated_samp_df_with_pos.loc[pos_mask & updated_samp_df_with_pos[col].isna(), col] = 'not applicable: control sample'
-
         return updated_samp_df_with_pos
 
     def add_pcr_samps_to_composed_of(self, sample_df: pd.DataFrame, exp_run_df: pd.DataFrame) -> pd.DataFrame:
@@ -327,3 +345,42 @@ class ProjectMapper(OmeFaireMapper):
                 results_df.at[idx, self.faire_sample_composed_of_col_name] = sample_composed_of
 
         return results_df
+    
+    def fill_empty_vals_for_pooled_and_pos_samps(self, df: pd.DataFrame):
+        modified_df = df.copy()
+
+        mask = df[self.faire_sample_name_col].str.contains('POSITIVE|pool', case=False, na=False)
+
+        # fill only empty/NaN/None values with 'not applicable'
+        for col in df.columns:
+            empty_cells = mask & df[col].isna() | (df[col] == '') | (df[col].astype(str) == 'nan')
+            modified_df.loc[empty_cells, col] = 'not applicable: control sample'
+
+        return modified_df
+    
+    def filter_exp_run_metadata(self, final_sample_df: pd.DataFrame, exp_run_df: pd.DataFrame) -> pd.DataFrame:
+        # Filters the experiment run metadata df to remove rows with samples that don't exist in the sample Metadata
+        # This should be done at the very end of processing sample and experiment run metadata because the sample metadata first needs to be filtered
+        # by comparing to the experiment run metadata. This step removes rows of samples from other projects (E.g. RC0083 of EcoFoci) that has a run shared with EcoFoci cruises (run1 ,2 and 3)
+        
+        def is_match(sample_name, reference_names):
+            if '.PCR' in sample_name:
+                base_name = sample_name.split('.PCR')[0]
+                return base_name in reference_names
+            else:
+                return sample_name in reference_names
+        
+        # Get list of reference names
+        reference_names = set(final_sample_df[self.faire_sample_name_col].unique())
+
+        # Create mask of rows to keep
+        mask = exp_run_df[self.faire_sample_name_col].apply(lambda x: is_match(x, reference_names))
+
+        # filter exp_run_df
+        exp_run_df_filtered = exp_run_df[mask]
+
+        # Get dropped samples
+        dropped_samples = exp_run_df.loc[~mask, self.faire_sample_name_col].unique()
+        
+        return exp_run_df_filtered, dropped_samples
+        

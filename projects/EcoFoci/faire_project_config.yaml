@@ -56,7 +56,6 @@ pooled_samps:
     - Blank.Alaska.Set7
     - BlankAlaska.Set9
     - Blank.Alaska.Set11
-    - Blank.Alaska.Set11
     sample_category: negative control
     cont_type: extraction negative
   - pooled_samp_name: Dyson_NC_pool
@@ -78,12 +77,6 @@ pooled_samps:
     - NC5
     sample_category: negative control
     cont_type: extraction negative
-
-
-   
-
-
-
 
 faire_template_file: /home/poseidon/zalmanek/FAIRe-Mapping/faire_template.xlsx
 final_faire_template_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/data/ecoFoci_faire.xlsx
