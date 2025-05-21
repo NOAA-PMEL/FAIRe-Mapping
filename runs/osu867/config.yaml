@@ -1,0 +1,24 @@
+run_metadata_sample_name_column: Sample
+run_metadata_marker_col_name: Marker
+run_metadata_sample_sheet_name: run_OSU867
+run_raw_data_path: # The raw data path of each marker folder (a lot are in a renamed folder)
+  'Machida18S': /home/poseidon/mcallister/eDNA_bioinformatics/OSU/OSU867_DY20_Vents_lane1/reads_dir_18S/
+  'Parada16S': /home/poseidon/mcallister/eDNA_bioinformatics/OSU/OSU867_DY20_Vents_lane1/reads_dir_16S/
+run_sample_metadata_file_id: 117syeIuu1_4DDapE-b72MKFzjA26zzgG09VynNjU1Pw
+google_sheet_mapping_file_id: 13qmPw5LFkTIy8bwLeQcMuWBDP87o9XrZVkN9eKDhqPs
+run_name: osu867 # for adding to the Positive control sample names
+revamp_blast: True # if using the revamp blast-based taxonomy assignment then set this to True, otherwise False
+ignore_markers: # Add Metabarcoding Marker name EXACTLY from run_sample_metadata_file if not submitting info for that marker
+asv_counts_tsvs_for_run: #dloop left out because Sean said dLoop did not work for Run2, keys match metabarcoding marker in metadata spreadsheet
+  'Machida18S': /home/poseidon/mcallister/eDNA_bioinformatics/Run3/Machida18S_REVAMP_out_COMBINEALL/dada2/ASVs_counts.tsv
+  'Parada16S': /home/poseidon/mcallister/eDNA_bioinformatics/Run3_rerun/Parada16S_REVAMP_merged/dada2/ASVs_counts.tsv
+otu_num_tax_assigned_files_for_run: # The files used to calculate the otu_num_tax_assigned - Sean said it depends on the version of taxonomy we are using
+  'Machida18S': /home/poseidon/mcallister/eDNA_bioinformatics/Run3/Machida18S_REVAMP_out_COMBINEALL/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
+  'Parada16S': /home/poseidon/mcallister/eDNA_bioinformatics/Run3_rerun/Parada16S_REVAMP_merged/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
+
+# path to json creds file for google sheets
+json_creds: /home/poseidon/zalmanek/FAIRe-Mapping/credentials.json
+
+# FAIRe template related
+faire_template_file: /home/poseidon/zalmanek/FAIRe-Mapping/faire_template.xlsx
+final_faire_template_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/osu867/data/osu867_faire.csv

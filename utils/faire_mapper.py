@@ -90,21 +90,29 @@ class OmeFaireMapper:
         
         return df
     
-    def str_replace_dy2012_cruise(self, samp_name: pd.Series) -> str:
+    def str_replace_for_samps(self, samp_name: pd.Series) -> str:
+        # Fixes sample names in the data frame
         # if sample is part of the DY2012 cruise, will replace any str of DY20 with DY2012
         samp_name = str(samp_name)
+        if '_' in samp_name: # osu samp names have _ that needs to be . For example, E62_1B_DY20
+            samp_name = samp_name.replace('_', '.')
         if '.DY20' in samp_name:
            samp_name = samp_name.replace('.DY20', '.DY2012')
-    
-        return samp_name
-    
-    def str_replace_nc_samps_with_E(self, samp_name: pd.Series) -> str:
-        # If an E was put in front of an NC sample (this happends in some of the extractions e.g. the SKQ21 extractions), will remove the E
-        samp_name = str(samp_name)
-        if '.NC' in samp_name:
+        if '(P10 D2)' in samp_name:
+            samp_name = samp_name.replace(' (P10 D2)', '') # for E1875.OC0723 (P10 D2) in Run2
+        if '.IB' in samp_name: # for E265.1B.NO20 sample - in metadata was E265.1B.NO20
+            return samp_name.replace('.IB', '.1B')
+        if 'E.2139.' in samp_name:
+            return samp_name.replace('E.2139.', 'E2139.') # For E239 QiavacTest, had a . between E and number in metadata
+        if 'E687' in samp_name:
+            return samp_name.replace('E687', 'E687.WCOA21')
+        if '.NC' in samp_name: # If an E was put in front of an NC sample (this happends in some of the extractions e.g. the SKQ21 extractions), will remove the E
             samp_name = samp_name.replace('E.', '')
-
+        if '*' in samp_name:
+            samp_name = samp_name.replace('*','')
+      
         return samp_name
+    
     
     def extract_controlled_vocab(self, faire_attribute: str) -> list:
         
@@ -246,12 +254,23 @@ class OmeFaireMapper:
         
         # Write the data frame data to the sheet (starting at row 4)
         for row_idx, row_data in enumerate(faire_template_df.values, 4): 
-            for col_idx, value in enumerate(row_data, 1):
-                sheet.cell(row=row_idx, column=col_idx).value = value
+            for col_name, col_idx in zip(faire_template_df.columns, range(len(faire_template_df.columns))):
+                # Find the column index in the excel sheet by column name
+                excel_col_idx = None
+                for idx, cell in enumerate(sheet[3], 1):
+                    if cell.value == col_name:
+                        excel_col_idx = idx
+                        break
+
+                if excel_col_idx is not None:
+                    value = row_data[col_idx]
+                    sheet.cell(row=row_idx, column=excel_col_idx).value = value
+            # for col_idx, value in enumerate(row_data, 1):
+            #     sheet.cell(row=row_idx, column=col_idx).value = value
 
         # step 4 save the workbook preserved with headers
         workbook.save(self.final_faire_template_path)
-        print(f"saved to {self.final_faire_template_path}!")
+        print(f"sheet {sheet_name} saved to {self.final_faire_template_path}!")
        
 
 

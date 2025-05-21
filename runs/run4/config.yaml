@@ -1,16 +1,16 @@
 # 4 Experiment Metadata RunInfo
-jv_run_sample_name_column: Sample Name
-jv_index_name_col: Index Name
-jv_raw_data_path: # The raw data path of each marker folder (a lot are in a renamed folder)
+run_metadata_sample_name_column: Sample Name
+run_metadata_marker_col_name: Metabarcoding Marker
+run_metadata_sample_sheet_name: Sample Data Sheet Long
+run_raw_data_path: # The raw data path of each marker folder (a lot are in a renamed folder)
   '18Sv4': /data/raw_data/20250118_JV_Run4_Arctic_eDNA/renamed/JVB4314_18Sv4/
   'COI': /data/raw_data/20250118_JV_Run4_Arctic_eDNA/renamed/JVB4314_UniCOI/
   'ITS1': /data/raw_data/20250118_JV_Run4_Arctic_eDNA/renamed/JVB4314_ITS1_diatom/
   'Machida18S': /data/raw_data/20250118_JV_Run4_Arctic_eDNA/renamed/JVB4314_18SMachida/
   'MiFish': /data/raw_data/20250118_JV_Run4_Arctic_eDNA/renamed/JVB4314_MiFishU_F2/
   'Parada16S': /data/raw_data/20250118_JV_Run4_Arctic_eDNA/renamed/JVB4314_16Sv4v5/
-jv_run_sample_metadata_file_id: 1XWUAaidPfeRdAsCI-NRAzRIz4QK6OxGg4FGWCxuPkTg
+run_sample_metadata_file_id: 1XWUAaidPfeRdAsCI-NRAzRIz4QK6OxGg4FGWCxuPkTg
 google_sheet_mapping_file_id: 1z_On8iNWaFHoELm1E0aaAosgb0qJwGuEJ6QT86U04mc
-run_short_cruise_name: DY2209 # the short cruise name in the jv run csv file to filter by cruise name
 run_name: run4 # for adding to the Positive control sample names
 revamp_blast: True # if using the revamp blast-based taxonomy assignment then set this to True, otherwise False
 ignore_markers: # Add Metabarcoding Marker name EXACTLY from run_sample_metadata_file if not submitting info for that marker
