@@ -4,7 +4,6 @@ import pandas as pd
 import re
 
 # TODO: add assay_name to sampleMetadata
-# TODO: create PCR rows in sampleMetadata 
 # TODO: Find what happend to the Mid.NC.SKQ21 sample (in SampleMetadataMapper)
 # TODO: Check 'Arctic Ocean' geo_loc for E1082.SKQ2021, E1083.SKQ2021, E1084.SKQ2021 and maybe other values
 

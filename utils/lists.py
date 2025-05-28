@@ -59,10 +59,10 @@ marker_to_assay_mapping = {
     '16S Kelley': 'lsu16s_2434-2571_kelly',
     'Kelly 16S': 'lsu16s_2434-2571_kelly',
     'Leray CO1': 'COI_1835-2198_lerayfolmer', #geller and folmer is same region
-    '18S Machida': 'ssu18sv8_machida',
+    '18S Machida': ['ssu18sv8_machida', 'ssu18sv8_machida_OSUmod'],
     'MiFish 12S': 'ssu12sv5v6_mifish_u_sales',
-    '16S Furhman': 'ssu16sv4v5_parada',
-    '16S Fuhrman': 'ssu16sv4v5_parada',
+    '16S Furhman': ['ssu16sv4v5_parada', 'ssu16sv4v5_parada_OSUmod'],
+    '16S Fuhrman': ['ssu16sv4v5_parada', 'ssu16sv4v5_parada_OSUmod'],
     '16S Furhman/Parada': 'ssu16sv4v5_parada',
     '18S V4': 'ssu18sv4_stoeck',
     'ITS': 'ITS1_sterling',

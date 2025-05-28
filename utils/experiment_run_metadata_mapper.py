@@ -303,12 +303,19 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
     def convert_assay_to_standard(self, marker: str) -> str:
         # matches the marker to the corresponding assay and returns standardized assay name
         
-        assay = marker_to_assay_mapping.get(marker, None)
-
-        if assay == None:
-            raise NoAcceptableAssayMatch(f'The marker/assay {marker} does not match any of the {[v for v in marker_to_assay_mapping.values()]}, please update marker_to_assay_mapping dict in list file.')
+        potential_assays = marker_to_assay_mapping.get(marker, None)
+        if 'osu' in self.run_name.lower():
+            for assay in potential_assays:
+                if 'osu' in assay.lower():
+                    return assay
+                else:
+                    raise NoAcceptableAssayMatch(f'The marker/assay {marker} does not match any of the {[v for v in marker_to_assay_mapping.values()]}, please update marker_to_assay_mapping dict in list file.')
         else:
-            return assay
+            assay = potential_assays
+            if assay == None:
+                raise NoAcceptableAssayMatch(f'The marker/assay {marker} does not match any of the {[v for v in marker_to_assay_mapping.values()]}, please update marker_to_assay_mapping dict in list file.')
+            else:
+                return assay
 
     def create_lib_id(self, metadata_row: pd.Series) -> str:
         # create lib_id by concatenating sample name, index, marker and run name together
