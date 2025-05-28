@@ -283,3 +283,11 @@ ncbi_faire_to_ncbi_column_mappings_exact = {
     "source_material_id": "materialSampleID",
     "tidal_stage": "tidal_stage"
 }
+
+# For faire_column as keys and ncbit sra columns as values
+ncbi_faire_sra_column_mappings_exact = {
+    "samp_name": "sample_name",
+    "lib_id": "library_ID",
+    "filename": "filename",
+    "filename2": "filename2"
+}

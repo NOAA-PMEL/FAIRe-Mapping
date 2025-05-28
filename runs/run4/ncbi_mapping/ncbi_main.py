@@ -17,8 +17,10 @@ def main() -> None:
 
     ncbi_mapper = NCBIMapper(final_faire_sample_metadata_df=sample_metadata_df, 
                              final_faire_experiment_run_metadata_df=experiment_run_metadata_df,
-                             ncbi_sample_excel_template_path='/home/poseidon/zalmanek/FAIRe-Mapping/MIMARKS.survey.water.6.0.xlsx')
-    ncbi_mapper.create_ncbi_sample_submission()
+                             ncbi_sample_excel_save_path='/home/poseidon/zalmanek/FAIRe-Mapping/runs/run4/ncbi_mapping/ncbi_submission_data/run4_MIMARKS.survey.water.6.0.xlsx',
+                             ncbi_sra_excel_save_path = '/home/poseidon/zalmanek/FAIRe-Mapping/runs/run4/ncbi_mapping/ncbi_submission_data/run4_SRA_metadata.xlsx',
+                             library_prep_bebop_path='/home/poseidon/zalmanek/BeBOPs/LibraryPrepBeBops/Jonah-Ventures-Library-Preparation/Jonah-Ventures-Library-Preparation-BeBOP.md')
+    ncbi_mapper.create_ncbi_submission()
 
 if __name__ == "__main__":
     main()
