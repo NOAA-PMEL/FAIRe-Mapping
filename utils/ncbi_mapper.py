@@ -5,6 +5,7 @@ from .lists import faire_to_ncbi_units, ncbi_faire_to_ncbi_column_mappings_exact
 from openpyxl import load_workbook
 
 # TODO: add title to get_sra_df method once hear back from Sean
+# TODO: drop control samples (pooled and positives too)
 # TODO: Figure out what is going on when submitting PCR samples - added a custom column to differentiate them and the submitter isn't recognizing it.
 # TODO: check on pos_cont_type and neg_cont_type, and sample_Title in ncbi sample mappings stuff?
 # TODO: figure out title for SRA mappings - need to ask Sean and Zack
@@ -78,11 +79,9 @@ class NCBIMapper:
     
     def clean_samp_df(self, df:pd.DataFrame):
         # removes all FAIRe missing values and returns empty values
-        # And removes all rows that are not 'sample' for samp_category (so removed positive and negative controls)
         
         df_clean = df.replace(self.faire_missing_values, '')
-        df_filtered = df_clean[df_clean['samp_category'] == 'sample']
-        return df_filtered
+        return df_clean
     
     def get_ncbi_sample_df(self):
         
