@@ -283,8 +283,3 @@ ncbi_faire_to_ncbi_column_mappings_exact = {
     "source_material_id": "materialSampleID",
     "tidal_stage": "tidal_stage"
 }
-
-# A list of ncbi columns that are related to faire cols - will need to write custom methods in NCBI mapper for these
-ncbi_sample_cols_related = [
-        "sample_title", "*depth", "*lat_lon"
-    ]

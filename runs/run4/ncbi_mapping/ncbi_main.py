@@ -18,7 +18,7 @@ def main() -> None:
     ncbi_mapper = NCBIMapper(final_faire_sample_metadata_df=sample_metadata_df, 
                              final_faire_experiment_run_metadata_df=experiment_run_metadata_df,
                              ncbi_sample_excel_template_path='/home/poseidon/zalmanek/FAIRe-Mapping/MIMARKS.survey.water.6.0.xlsx')
-    print(ncbi_mapper.ncbi_sample_template_df)
+    ncbi_mapper.create_ncbi_sample_submission()
 
 if __name__ == "__main__":
     main()
