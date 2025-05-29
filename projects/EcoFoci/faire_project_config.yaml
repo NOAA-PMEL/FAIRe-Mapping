@@ -81,86 +81,8 @@ pooled_samps:
 bioinformatics_bebop_path: /home/poseidon/zalmanek/BeBOPs/BioinformticsBeBops/NOAA-PMEL-OME-Bioinformatics-Metabarcoding-Protocol-BeBOP/NOAA-PMEL-OME-Bioinformatics-Metabarcoding-Protocol-BEBOP.md
 bebop_config_file_google_sheet_id: 1BCZXpU0mIpWJsi-zM0l8D9DuPBvNOWBWH0zt-9r_If0 # Google sheet ID of config file that has fields that differ in BeBOP per anlaysis
 bioinformatics_software_name: REVAMP # For adding to the analysis run name
-# analysis_run_name: # names of analyises and their associated assay names
-#   run2_REVAMP_18Sv4: 
-#     assay_name: "ssu18sv4_stoeck" 
-#   run2_REVAMP_18Sv9:
-#     assay_name: "ssu18sv9_amaralzettler"
-#   run2_REVAMP_COI:
-#     assay_name: "COI_1835-2198_lerayfolmer"
-#   run2_REVAMP_ITS1:
-#     assay_name: "ITS1_sterling"
-#   run2_REVAMP_Kelly16S:
-#     assay_name: "lsu16s_2434-2571_kelly"
-#   run2_REVAMP_Machida18S:
-#     assay_name: "ssu18sv8_machida"
-#   run2_REVAMP_MiFish:
-#     assay_name: "ssu12sv5v6_mifish_u_sales"
-#   run2_REVAMP_Parada16S:
-#     assay_name: "ssu16sv4v5_parada"
-  
-#   run3_REVAMP_18Sv4:
-#     assay_name: "ssu18sv4_stoeck"
-#   run3_REVAMP_18Sv9:
-#     assay_name: "ssu18sv9_amaralzettler"
-#   run3_REVAMP_COI:
-#     assay_name: "COI_1835-2198_lerayfolmer"
-#   run3_REVAMP_Kelly16S:
-#     assay_name: "lsu16s_2434-2571_kelly"
-#   run3_REVAMP_MiFish:
-#     assay_name: "ssu12sv5v6_mifish_u_sales"
-#   run3_REVAMP_Parada16S:
-#     assay_name: "ssu16sv4v5_parada"
-#   run3_REVAMP_Machida18S:
-#     assay_name: "ssu18sv8_machida" 
- 
-#   run4_REVAMP_18Sv4:
-#     assay_name: "ssu18sv4_stoeck"
-#   run4_rerun_REVAMP_COI:
-#     assay_name: "COI_1835-2198_lerayfolmer"
-#   run4_REVAMP_ITS1:
-#     assay_name: "ITS1_sterling"
-#   run4_REVAMP_Machida18S:
-#     assay_name: "ssu18sv8_machida"
-#   run4_REVAMP_MiFish:
-#     assay_name: "ssu12sv5v6_mifish_u_sales"
-#   run4_REVAMP_Parada16S:
-#     assay_name: "ssu16sv4v5_parada"
-
-#   osu867_REVAMP_Parada16S:
-#     assay_name: "ssu16sv4v5_parada"
-#   osu867_REVAMP_Machida18S:
-#     assay_name: "ssu18sv8_machida"
-  
-#   osu873_REVAMP_Parada16S:
-#     assay_name: "ssu16sv4v5_parada"
-#   osu873_REVAMP_Machida18S:
-#     assay_name: "ssu18sv8_machida"
-  
-#   osu876_REVAMP_Parada16S:
-#     assay_name: "ssu16sv4v5_parada"
-#   osu876_REVAMP_Machida18S:
-#     assay_name: "ssu18sv8_machida"
-  
-#   osu894_REVAMP_Parada16S:
-#     assay_name: "ssu16sv4v5_parada"
-#   osu894_REVAMP_Machida18S:
-#     assay_name: "ssu18sv8_machida"
-  
-#   osu1034_REVAMP_Parada16S:
-#     assay_name: "ssu16sv4v5_parada"
-#   osu1034_REVAMP_Machida18S:
-#     assay_name: "ssu18sv8_machida"
-  
-#   osu1037_REVAMP_Parada16S:
-#     assay_name: "ssu16sv4v5_parada"
-#   osu1037_REVAMP_Machida18S:
-#     assay_name: "ssu18sv8_machida"
-  
-#   osu1089_REVAMP_Parada16S:
-#     assay_name: "ssu16sv4v5_parada"
-#   osu1089_REVAMP_Machida18S:
-#     assay_name: "ssu18sv8_machida"
+bebop_config_run_col_name: Run
+bebop_config_marker_col_name: Marker
 
 faire_template_file: /home/poseidon/zalmanek/FAIRe-Mapping/faire_template.xlsx
 final_faire_template_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/data/ecoFoci_faire.xlsx

@@ -31,6 +31,8 @@ class ProjectMapper(OmeFaireMapper):
         self.bioinformatics_bebop_path = self.config_file['bioinformatics_bebop_path']
         self.bebop_config_file_google_sheet_id = self.config_file['bebop_config_file_google_sheet_id']
         self.bioinformatics_software_name = self.config_file['bioinformatics_software_name']
+        self.bebop_config_run_col_name = self.config_file['bebop_config_run_col_name']
+        self.bebop_config_marker_col_name = self.config_file['bebop_config_marker_col_name']
 
     def process_whole_project_and_save_to_excel(self):
 
@@ -95,8 +97,11 @@ class ProjectMapper(OmeFaireMapper):
                                                   bioinformatics_bebop_path=self.bioinformatics_bebop_path,
                                                   bioinformatics_config_google_sheet_id=self.bebop_config_file_google_sheet_id,
                                                   experiment_run_metadata_df=final_exp_run_df,
-                                                  bioinformatics_software_name=self.bioinformatics_software_name, 
+                                                  bioinformatics_software_name=self.bioinformatics_software_name,
+                                                  bebop_config_run_col_name = self.bebop_config_run_col_name,
+                                                  bebop_config_marker_col_name = self.bebop_config_marker_col_name,
                                                   project_id=project_id)  
+        analysis_creator.fill_out_analysis_metadata()
         
     
     def create_sample_metadata_df(self) -> pd.DataFrame:
