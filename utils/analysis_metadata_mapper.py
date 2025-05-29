@@ -1,4 +1,7 @@
 import pandas as pd
+import openpyxl
+import copy
+from openpyxl.styles import PatternFill
 from .faire_mapper import OmeFaireMapper
 
 # TODO: change 'config file' not in value in fill_out_analysis_metadata() method when BeBOP is finished an we know what it will say to reference config file
@@ -24,6 +27,10 @@ class AnalysisMetadataMapper(OmeFaireMapper):
         self.bebop_config_marker_col_name = bebop_config_marker_col_name
         self.analysis_run_dict = self.create_analysis_run_dict()
 
+    def process_analysis_metadata(self):
+        analysis_metadata_df = self.fill_out_analysis_metadata()
+        self.save_to_excel(final_analysis_metadata_df=analysis_metadata_df, excel_file_to_save_to=self.final_faire_template_path)
+
     def load_analyis_metadata_df(self):
         df = self.load_faire_template_as_df(file_path=self.faire_template_file,sheet_name=self.faire_template_analysis_sheet_name, header=0)
         cols = df['term_name'].tolist()
@@ -40,12 +47,29 @@ class AnalysisMetadataMapper(OmeFaireMapper):
 
     def query_config_file_by_run_and_marker_for_attribute(self, marker: str, run_name: str, faire_attribute: str) -> pd.DataFrame:
         # Searches config file by marker and run name and faire attribute to return the value
-
+        matching_cols = [col for col in self.bioinformatics_config_df.columns if faire_attribute in col]
+        
         # Cast columns in lower case
         self.bioinformatics_config_df[self.bebop_config_run_col_name] = self.bioinformatics_config_df[self.bebop_config_run_col_name].str.lower()
         self.bioinformatics_config_df[self.bebop_config_marker_col_name] = self.bioinformatics_config_df[self.bebop_config_marker_col_name].str.lower()
         
-        value = self.bioinformatics_config_df.query(f"{self.bebop_config_run_col_name} == @run_name & {self.bebop_config_marker_col_name} == @marker")[faire_attribute].iloc[0]
+        query_str = f"{self.bebop_config_run_col_name} == @run_name & {self.bebop_config_marker_col_name} == @marker"
+        filtered_df = self.bioinformatics_config_df.query(query_str)
+
+        result_parts = []
+        for col in matching_cols:
+            # Get the first part of the column name (before first semicolon)
+            first_part = col.split(';')[0]
+
+            # Get the column value from the filtered row
+            col_value = filtered_df[col].iloc[0]
+
+            # Format as "first_part: val"
+            result_parts.append(f"{first_part}: {col_value}")
+        
+        result = " | ".join(result_parts)
+        return result
+        
         return value
 
     def fill_out_analysis_metadata(self):
@@ -71,11 +95,55 @@ class AnalysisMetadataMapper(OmeFaireMapper):
                         run_name = analysis_run_name.split('_')[2].lower()
                         try:
                             row_dict[faire_attribute] = self.query_config_file_by_run_and_marker_for_attribute(marker=marker, run_name=run_name, faire_attribute=faire_attribute)
-                            print(row_dict)
+                            
                         except:
-                            print(f"faire_attribute {faire_attribute} does not seem to exist in config file, though it says config_file in bebop")
-            rows_data.append(row_dict)
+                            print(f"faire_attribute {faire_attribute} does not seem to exist in config file, though it says 'config file' in bebop")
+                rows_data.append(row_dict)
+       
         final_analysis_df = pd.DataFrame(rows_data)
-
         
-            
+        return final_analysis_df
+        
+    def save_to_excel(self, final_analysis_metadata_df: pd.DataFrame, excel_file_to_save_to: str):
+        # Save analysisMetadata df rows to their own excel file sheets
+        
+        # for formatting
+        template_wb = openpyxl.load_workbook(self.faire_template_file)
+        template_sheet = template_wb[self.faire_template_analysis_sheet_name] 
+        
+        # Create new workbook
+        new_wb = openpyxl.load_workbook(excel_file_to_save_to)
+        
+        for idx, data_row in final_analysis_metadata_df.iterrows():
+            sheet_name = f'analysisMetadata_{data_row[self.analysis_run_name_col]}'
+
+            new_sheet = new_wb.create_sheet(title=sheet_name)
+
+            # Copy all cells and formatting from template
+            for row in template_sheet.iter_rows():
+                for cell in row:
+                    new_cell = new_sheet.cell(row=cell.row, column = cell.column)
+                    new_cell.value = cell.value
+
+                    # Copy formatting
+                    if cell.fill:
+                        new_cell.fill = copy.copy(cell.fill)
+                    if cell.font:
+                        new_cell.font = copy.copy(cell.font)
+                    if cell.alignment:
+                        new_cell.alignment = copy.copy(cell.alignment)
+                    if cell.border:
+                        new_cell.border = copy.copy(cell.border)
+                    if cell.number_format:
+                        new_cell.number_format = copy.copy(cell.number_format)
+
+            for row in new_sheet.iter_rows(min_row=2):
+                #skip header row
+                term_name_cell = row[2]
+                values_cell = row[3]
+                
+                if term_name_cell.value and term_name_cell.value in final_analysis_metadata_df.columns:
+                    values_cell.value = data_row[term_name_cell.value]
+
+            new_wb.save(excel_file_to_save_to)
+            template_wb.close()

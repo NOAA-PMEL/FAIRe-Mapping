@@ -44,6 +44,7 @@ class ProjectMapper(OmeFaireMapper):
 
         # print(f"Excel file saved to {self.final_faire_template_path}")
 
+        # Add analysisMetadata
         self.process_analysis_metadata(project_id='EcoFOCI_eDNA_2020-23', final_exp_run_df=experiment_run_metadata_df)
 
         # self.save_final_df_as_csv(final_df=final_sample_metadata_df, sheet_name='sampleMetadata', header=2, csv_path = '/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/ecoFoci_sampleMetadata.csv')
@@ -100,8 +101,9 @@ class ProjectMapper(OmeFaireMapper):
                                                   bioinformatics_software_name=self.bioinformatics_software_name,
                                                   bebop_config_run_col_name = self.bebop_config_run_col_name,
                                                   bebop_config_marker_col_name = self.bebop_config_marker_col_name,
-                                                  project_id=project_id)  
-        analysis_creator.fill_out_analysis_metadata()
+                                                  project_id=project_id,
+                                                  )  
+        analysis_creator.process_analysis_metadata()
         
     
     def create_sample_metadata_df(self) -> pd.DataFrame:
