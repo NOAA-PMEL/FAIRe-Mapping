@@ -1,5 +1,6 @@
 from pathlib import Path
 import openpyxl
+import frontmatter
 from openpyxl.utils import get_column_letter
 from datetime import datetime
 import pandas as pd
@@ -90,6 +91,12 @@ class OmeFaireMapper:
         
         return df
     
+    def load_beBop_yaml_terms(self, path_to_bebop: str):
+        # read BeBOP yaml terms
+        with open(path_to_bebop, 'r', encoding='utf-8') as f:
+            post = frontmatter.load(f)
+            return post
+        
     def str_replace_for_samps(self, samp_name: pd.Series) -> str:
         # Fixes sample names in the data frame
         # if sample is part of the DY2012 cruise, will replace any str of DY20 with DY2012

@@ -63,7 +63,7 @@ marker_to_assay_mapping = {
     'MiFish 12S': 'ssu12sv5v6_mifish_u_sales',
     '16S Furhman': ['ssu16sv4v5_parada', 'ssu16sv4v5_parada_OSUmod'],
     '16S Fuhrman': ['ssu16sv4v5_parada', 'ssu16sv4v5_parada_OSUmod'],
-    '16S Furhman/Parada': 'ssu16sv4v5_parada',
+    '16S Furhman/Parada': ['ssu16sv4v5_parada', 'ssu16sv4v5_parada_OSUmod'],
     '18S V4': 'ssu18sv4_stoeck',
     'ITS': 'ITS1_sterling',
 }

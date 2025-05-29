@@ -1,8 +1,10 @@
 from .faire_mapper import OmeFaireMapper
+from .analysis_metadata_mapper import AnalysisMetadataMapper
 from .lists import marker_shorthand_to_pos_cont_gblcok_name
 import pandas as pd
 import re
 
+# TODO: add project_id to process_whole_project_and_save_to_excel when calling process_analysis_metadata when extracted from projectMetadata input
 # TODO: add assay_name to sampleMetadata
 # TODO: Find what happend to the Mid.NC.SKQ21 sample (in SampleMetadataMapper)
 # TODO: Check 'Arctic Ocean' geo_loc for E1082.SKQ2021, E1083.SKQ2021, E1084.SKQ2021 and maybe other values
@@ -22,21 +24,28 @@ class ProjectMapper(OmeFaireMapper):
 
         super().__init__(config_yaml)
 
+        self.config_yaml = config_yaml
         self.config_file = self.load_config(config_yaml)
         self.mismatch_samp_names_dict = self.config_file['mismatch_sample_names']
         self.pooled_samps_dict = self.config_file['pooled_samps']
+        self.bioinformatics_bebop_path = self.config_file['bioinformatics_bebop_path']
+        self.bebop_config_file_google_sheet_id = self.config_file['bebop_config_file_google_sheet_id']
+        self.bioinformatics_software_name = self.config_file['bioinformatics_software_name']
 
     def process_whole_project_and_save_to_excel(self):
 
         sample_metadata_df, experiment_run_metadata_df = self.process_sample_run_data()
 
-        # Save sample metadata first to excel file, and then use that excel file and save experimentRunMetadata df
-        self.add_final_df_to_FAIRe_excel(excel_file_to_read_from=self.faire_template_file, sheet_name=self.faire_sample_metadata_sheet_name, faire_template_df=sample_metadata_df)
-        self.add_final_df_to_FAIRe_excel(excel_file_to_read_from=self.final_faire_template_path, sheet_name=self.faire_experiment_run_metadata_sheet_name, faire_template_df=experiment_run_metadata_df)
+        # # Save sample metadata first to excel file, and then use that excel file and save experimentRunMetadata df
+        # self.add_final_df_to_FAIRe_excel(excel_file_to_read_from=self.faire_template_file, sheet_name=self.faire_sample_metadata_sheet_name, faire_template_df=sample_metadata_df)
+        # self.add_final_df_to_FAIRe_excel(excel_file_to_read_from=self.final_faire_template_path, sheet_name=self.faire_experiment_run_metadata_sheet_name, faire_template_df=experiment_run_metadata_df)
 
-        print(f"Excel file saved to {self.final_faire_template_path}")
+        # print(f"Excel file saved to {self.final_faire_template_path}")
+
+        self.process_analysis_metadata(project_id='EcoFOCI_eDNA_2020-23', final_exp_run_df=experiment_run_metadata_df)
 
         # self.save_final_df_as_csv(final_df=final_sample_metadata_df, sheet_name='sampleMetadata', header=2, csv_path = '/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/ecoFoci_sampleMetadata.csv')
+    
     def process_sample_run_data(self):
         # Process all csv sets defined in the config file.
         # 1. Combine all sample metadata spreadsheets into one and combine all experiment run metadata spreadsheets into one
@@ -79,7 +88,17 @@ class ProjectMapper(OmeFaireMapper):
         self.save_final_df_as_csv(final_df=final_sample_metadata_df, sheet_name='sampleMetadata', header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/sample_metadata.csv') 
 
         return final_sample_metadata_df, final_exp_df
-            
+
+    def process_analysis_metadata(self, project_id: str, final_exp_run_df: pd.DataFrame): 
+        # Process analysis metadata using AnalyisMetadata class
+        analysis_creator = AnalysisMetadataMapper(config_yaml=self.config_yaml,
+                                                  bioinformatics_bebop_path=self.bioinformatics_bebop_path,
+                                                  bioinformatics_config_google_sheet_id=self.bebop_config_file_google_sheet_id,
+                                                  experiment_run_metadata_df=final_exp_run_df,
+                                                  bioinformatics_software_name=self.bioinformatics_software_name, 
+                                                  project_id=project_id)  
+        
+    
     def create_sample_metadata_df(self) -> pd.DataFrame:
    
         sample_metadata_datasets = self.config_file['datasets']['sample_metadata_csvs']

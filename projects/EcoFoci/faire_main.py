@@ -2,6 +2,7 @@ import sys
 sys.path.append("../..")
 
 from utils.project_mapper import ProjectMapper
+from utils.analysis_metadata_mapper import AnalysisMetadataMapper
 import pandas as pd
 
 def main() -> None:
