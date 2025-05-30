@@ -1,18 +1,19 @@
 from .faire_mapper import OmeFaireMapper
 from .analysis_metadata_mapper import AnalysisMetadataMapper
 from .lists import marker_shorthand_to_pos_cont_gblcok_name, project_pcr_library_prep_mapping_dict
+from datetime import date
 import pandas as pd
 import re
 import requests
 import base64
 import tempfile
 import openpyxl
-from openpyxl.utils import get_column_letter
 
 # TODO: add project_id to process_whole_project_and_save_to_excel when calling process_analysis_metadata when extracted from projectMetadata input
 # TODO: add assay_name to sampleMetadata
 # TODO: Find what happend to the Mid.NC.SKQ21 sample (in SampleMetadataMapper)
 # TODO: Check 'Arctic Ocean' geo_loc for E1082.SKQ2021, E1083.SKQ2021, E1084.SKQ2021 and maybe other values
+# TODO: Add assay1, assay2, etc. to column headers in projectMetadata
 
 class ProjectMapper(OmeFaireMapper):
     
@@ -28,6 +29,7 @@ class ProjectMapper(OmeFaireMapper):
     faire_assay_name_col = 'assay_name'
     project_sheet_term_name_col_num = 3
     project_sheet_assay_start_col_num = 5
+    project_sheet_project_level_col_num = 4
     
     def __init__(self, config_yaml: str):
 
@@ -49,22 +51,20 @@ class ProjectMapper(OmeFaireMapper):
 
     def process_whole_project_and_save_to_excel(self):
 
-
         sample_metadata_df, experiment_run_metadata_df = self.process_sample_run_data()
 
-        # Add assays to projectMetadata
-        self.map_pcr_and_lib_to_project(final_exp_run_df=experiment_run_metadata_df)
+        # Save sample metadata first to excel file, and then use that excel file and save experimentRunMetadata df
+        self.add_final_df_to_FAIRe_excel(excel_file_to_read_from=self.faire_template_file, sheet_name=self.faire_sample_metadata_sheet_name, faire_template_df=sample_metadata_df)
+        self.add_final_df_to_FAIRe_excel(excel_file_to_read_from=self.final_faire_template_path, sheet_name=self.faire_experiment_run_metadata_sheet_name, faire_template_df=experiment_run_metadata_df)
 
-        # # Save sample metadata first to excel file, and then use that excel file and save experimentRunMetadata df
-        # self.add_final_df_to_FAIRe_excel(excel_file_to_read_from=self.faire_template_file, sheet_name=self.faire_sample_metadata_sheet_name, faire_template_df=sample_metadata_df)
-        # self.add_final_df_to_FAIRe_excel(excel_file_to_read_from=self.final_faire_template_path, sheet_name=self.faire_experiment_run_metadata_sheet_name, faire_template_df=experiment_run_metadata_df)
-
-        # print(f"Excel file saved to {self.final_faire_template_path}")
+        # Add projectMetadata, first project_level metadata then assay level metadata
+        self.load_project_level_metadata_to_excel()
+        self.load_assay_level_metadata_to_excel(final_exp_run_df=experiment_run_metadata_df)
+       
+        print(f"Excel file saved to {self.final_faire_template_path}")
 
         # Add analysisMetadata
         # self.process_analysis_metadata(project_id='EcoFOCI_eDNA_2020-23', final_exp_run_df=experiment_run_metadata_df)
-
-        # self.save_final_df_as_csv(final_df=final_sample_metadata_df, sheet_name='sampleMetadata', header=2, csv_path = '/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/ecoFoci_sampleMetadata.csv')
     
     def process_sample_run_data(self):
         # Process all csv sets defined in the config file.
@@ -105,7 +105,9 @@ class ProjectMapper(OmeFaireMapper):
         final_exp_df, dropped_exp_run_samples = self.filter_exp_run_metadata(final_sample_df=final_sample_metadata_df, exp_run_df=combined_exp_run_df)
         print(f"samples dropped from experiment run metadata are {dropped_exp_run_samples}, double check these samples are not in the corresponding project")
 
-        self.save_final_df_as_csv(final_df=final_sample_metadata_df, sheet_name='sampleMetadata', header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/sample_metadata.csv') 
+        # Add assay name to final_sample_df
+        final_sample_df = self.add_assay_name_to_samp_df(samp_df=final_sample_metadata_df, exp_run_df=final_exp_df)
+        self.save_final_df_as_csv(final_df=final_sample_df, sheet_name='sampleMetadata', header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/sample_metadata.csv') 
 
         return final_sample_metadata_df, final_exp_df
 
@@ -380,9 +382,29 @@ class ProjectMapper(OmeFaireMapper):
                 transformed_rows.append(r)
 
         samp_df_updated_for_pcr = pd.DataFrame(transformed_rows)
+
+        # remove base_samp_name column
+        samp_df_updated_for_pcr.drop('base_samp_name', axis=1)
         
         return samp_df_updated_for_pcr
     
+    def add_assay_name_to_samp_df(self, samp_df: pd.DataFrame, exp_run_df: pd.DataFrame) -> pd.DataFrame:
+        # Gets a list of assays related to each sample and adds to assay_name in samp_df
+
+        samp_assay_dict = exp_run_df.groupby(self.faire_sample_name_col)[self.faire_assay_name_col].agg(lambda x: ' | '.join(list(x.unique()))).to_dict()
+
+        # Account for pooled samps - add the same assays as their pooled parent sample
+        for pooled_info in self.pooled_samps_dict:
+            if pooled_info['pooled_samp_name'] in samp_assay_dict:
+                assays = samp_assay_dict.get(pooled_info['pooled_samp_name'])
+                for samp in pooled_info['samps_that_were_pooled']:
+                    samp_assay_dict[samp] = assays
+
+        samp_df[self.faire_assay_name_col] = samp_df[self.faire_sample_name_col].map(samp_assay_dict)
+
+        return samp_df
+
+
     def fill_empty_vals_for_pooled_and_pos_samps(self, df: pd.DataFrame):
         modified_df = df.copy()
 
@@ -438,7 +460,7 @@ class ProjectMapper(OmeFaireMapper):
             print(f"Error fetching bebop: {e}")
             return None
     
-    def map_pcr_and_lib_to_project(self, final_exp_run_df: pd.DataFrame) -> None:
+    def load_assay_level_metadata_to_excel(self, final_exp_run_df: pd.DataFrame) -> None:
 
         # create list of assays from experiment_run_metadata so only grabbing assays that are actually in the project
         assays_in_proj = final_exp_run_df[self.faire_assay_name_col].unique().tolist()
@@ -465,9 +487,8 @@ class ProjectMapper(OmeFaireMapper):
             else:
                 print(f"assay {assay} is not in this project - skipping adding it to ProjectMetadata")
             
-    
     def map_pcr_library_prep_to_excel(self, pcr_bebop_dict: dict, library_prep_bebop_dict: dict, assay_col_num: int) -> None:
-        # TODO: check that assay actually exists in exeriment run metadata first (maybe do this in create_pcr_library_prep_dict function)
+        # maps assay and library prep to projectMetadata sheet and saves in excel
         workbook = openpyxl.load_workbook(self.final_faire_template_path)
         worksheet = workbook[self.faire_project_metadata_sheet_name]
 
@@ -486,6 +507,34 @@ class ProjectMapper(OmeFaireMapper):
             if term_name and term_name in library_prep_bebop_dict:
                 lib_prep_cell = worksheet.cell(row=row, column=assay_col_num)
                 lib_prep_cell.value = library_prep_bebop_dict[term_name]
+
+        workbook.save(self.final_faire_template_path)
+        workbook.close()
+
+    def load_project_level_metadata_to_excel(self) -> None:
+        # Maps the project level metadata to the projectMetadata excel sheet
+        
+        project_dict = dict(zip(self.project_info_df['faire_field'], self.project_info_df['value']))
+        
+        # Add mod_date to be date code is ran
+        today = date.today()
+        today_str = today.strftime('%Y-%m-%d')
+        project_dict['mod_date'] = today_str
+
+        workbook = openpyxl.load_workbook(self.final_faire_template_path)
+        worksheet = workbook[self.faire_project_metadata_sheet_name]
+
+         # Get the column numbers
+        max_row = worksheet.max_row
+
+        # Map dictionary to excel
+        for row in range(2, max_row + 1):
+            term_name_cell = worksheet.cell(row=row, column=self.project_sheet_term_name_col_num)
+            term_name = term_name_cell.value
+
+            if term_name and term_name in project_dict:
+                pcr_cell = worksheet.cell(row=row, column=self.project_sheet_project_level_col_num)
+                pcr_cell.value = project_dict[term_name]
 
         workbook.save(self.final_faire_template_path)
         workbook.close()

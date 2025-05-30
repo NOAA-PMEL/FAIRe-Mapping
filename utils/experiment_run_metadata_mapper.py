@@ -516,11 +516,26 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         return df_filtered
 
     def get_bioaccession_nums_from_metadata(self, metadata_row: pd.Series, bioaccession_cols: list) -> str:
+
+        srr_url = 'https://www.ncbi.nlm.nih.gov/sra/' #run (SRR)
+        samn_url = 'https://www.ncbi.nlm.nih.gov/biosample/' #biosample (SAMN)
+        prjna_url = 'https://www.ncbi.nlm.nih.gov/bioproject/' #bioproject (PRJNA)
+
         # Gets the bio accession numbers from various columns in the metadata row
         bioaccessions = []
         for col in bioaccession_cols:
             bioaccession_id = metadata_row.get(col)
             if bioaccession_id != '':
+                # prepend url to id
+                if 'SRR' in bioaccession_id:
+                    bioaccession_id = srr_url + bioaccession_id
+                elif 'SAMN' in bioaccession_id:
+                    bioaccession_id = samn_url + bioaccession_id
+                elif 'PRJNA' in bioaccession_id:
+                    bioaccession_id = prjna_url + bioaccession_id
+                else:
+                    raise ValueError(f"bioaccession id {bioaccession_id} does not seem to have SRR, SAMN, or PRJNA in its name, so can't prepend urls")
+                
                 bioaccessions.append(bioaccession_id)
 
         if bioaccessions:
