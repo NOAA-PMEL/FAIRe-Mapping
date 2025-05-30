@@ -108,6 +108,129 @@ mismatch_sample_names_metadata_to_raw_data_files_dict = {
 
 }
 
+# Dictionary with assay_name as keys and links to associated pcr library preparation bebops
+project_pcr_library_prep_mapping_dict = {
+    'ssu18sv9_amaralzettler': {
+        'pcr_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'NOAA-PMEL-OME-AmaralZettler-phytoplankton-18S-V9-PCR-Protocol-BeBOP',
+            'file_path': 'NOAA-PMEL-OME-AmaralZettler-phytoplankton-18S-V9-PCR-Protocol-BeBOP.md'
+        },
+        'library_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'Jonah-Ventures-Library-Preparation',
+            'file_path': 'Jonah-Ventures-Library-Preparation-BeBOP.md'
+        }
+    },
+    'lsu16s_2434-2571_kelly': {
+        'pcr_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'NOAA-PMEL-OME-Kelly-Metazoan-16S-PCR-Protocol-BeBOP-',
+            'file_path': 'NOAA-PMEL-OME-Kelly-Metazoan-16S-PCR-Protocol-BeBOP.md'
+        },
+        'library_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'Jonah-Ventures-Library-Preparation',
+            'file_path': 'Jonah-Ventures-Library-Preparation-BeBOP.md'
+        }
+    },
+    'COI_1835-2198_lerayfolmer': {
+        'pcr_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'NOAA-PMEL-OME-LF-metazoan-COI-PCR-Protocol-BeBOP',
+            'file_path': 'NOAA-PMEL-OME-LF-metazoan-COI-PCR-Protocol-BeBOP.md'
+        },
+        'library_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'Jonah-Ventures-Library-Preparation',
+            'file_path': 'Jonah-Ventures-Library-Preparation-BeBOP.md'
+        }
+    },
+    'ssu18sv8_machida': {
+        'pcr_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'NOAA-PMEL-OME-Machida-Metazoan-18S-V8-PCR-Protocol-BeBOP',
+            'file_path': 'NOAA-PMEL-OME-Machida-Metazoan-18S-V8-PCR-Protocol-BeBOP.md'
+        },
+        'library_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'Jonah-Ventures-Library-Preparation',
+            'file_path': 'Jonah-Ventures-Library-Preparation-BeBOP.md'
+        }
+    },
+    'ssu18sv8_machida_OSUmod': {
+        'pcr_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'OSU-Machida-metazoan-18S-V8-PCR',
+            'file_path': 'NOAA-PMEL-OME-OSU-Machida-Metazoan-18S-V8-PCR-Protocol-BeBOP.md'
+        },
+         'library_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'OSU-Library-Preparation-Sequencing',
+            'file_path': 'OSU-Library-Preparation-Sequencing-BeBOP.md'
+        }
+    },
+    'ssu12sv5v6_mifish_u_sales': {
+        'pcr_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'NOAA-PMEL-OME-MiFish-mod-Universal-Teleost-12S-PCR-Protocol-BeBOP',
+            'file_path': 'NOAA-PMEL-OME-MiFish-mod-Universal-Teleost-12S-PCR-Protocol-BeBOP.md'
+        },
+        'library_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'Jonah-Ventures-Library-Preparation',
+            'file_path': 'Jonah-Ventures-Library-Preparation-BeBOP.md'
+        }
+    },
+    'ssu16sv4v5_parada': {
+        'pcr_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'NOAA-PMEL-OME-Parada-universal-16S-PCR-Protocol-BeBOP',
+            'file_path': 'NOAA-PMEL-OME-Parada-universal-16S-PCR-Protocol-BeBOP.md'
+        },
+        'library_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'Jonah-Ventures-Library-Preparation',
+            'file_path': 'Jonah-Ventures-Library-Preparation-BeBOP.md'
+        }
+    },
+    'ssu16sv4v5_parada_OSUmod': {
+        'pcr_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'OSU-Parada-universal-16S-PCR',
+            'file_path': 'NOAA-PMEL-OME-OSU-Parada-universal-16S-PCR-Protocol-BeBOP copy.md'
+        },
+         'library_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'OSU-Library-Preparation-Sequencing',
+            'file_path': 'OSU-Library-Preparation-Sequencing-BeBOP.md'
+        }
+    },
+    'ssu18sv4_stoeck': {
+        'pcr_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'NOAA-PMEL-OME-Stoeck-phytoplankton-18S-V4-PCR-Protocol-BeBOP',
+            'file_path': 'NOAA-PMEL-OME-Stoeck-NCOG-phytoplankton-18S-V4-PCR-Protocol-BeBOP.md'
+        },
+        'library_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'Jonah-Ventures-Library-Preparation',
+            'file_path': 'Jonah-Ventures-Library-Preparation-BeBOP.md'
+        }
+    },
+    'ITS1_sterling': {
+        'pcr_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'NOAA-PMEL-OME-WhiteSterling-phytoplankton-ITS1-PCR-Protocol-BeBOP',
+            'file_path': 'NOAA-PMEL-OME-WhiteSterling-phytoplankton-ITS1-PCR-Protocol-BeBOP.md'
+        },
+        'library_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'Jonah-Ventures-Library-Preparation',
+            'file_path': 'Jonah-Ventures-Library-Preparation-BeBOP.md'
+        }
+    }
+}
 # NCBI sample column name as key and faire columns ask nested values with units
 faire_to_ncbi_units = {
     "alkalinity": {

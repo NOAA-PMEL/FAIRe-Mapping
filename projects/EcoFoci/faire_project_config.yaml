@@ -1,4 +1,6 @@
-#TODO: add OSU876, OSU894, OSU1034, and OSU1037 to associated_sequencing_runs after Sean gets this info to you
+#TODO: add OSU876, OSU894, OSU1034, and OSU1037 to associated_sequencing_runs after Sean gets this info to you for datasets
+project_info_goole_sheet_id: 1E8fHmfnTQA1CV8GTVuFoOXlgeUwTaVy9uXao9mUzG1Q # google sheet id for where project and data management metadata are.
+
 datasets: # a list of sample_metadata.csvs and their associated experimentRun csvs
   sample_metadata_csvs:
     - cruise_name: dy2012

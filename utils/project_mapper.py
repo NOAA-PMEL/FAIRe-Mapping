@@ -1,8 +1,13 @@
 from .faire_mapper import OmeFaireMapper
 from .analysis_metadata_mapper import AnalysisMetadataMapper
-from .lists import marker_shorthand_to_pos_cont_gblcok_name
+from .lists import marker_shorthand_to_pos_cont_gblcok_name, project_pcr_library_prep_mapping_dict
 import pandas as pd
 import re
+import requests
+import base64
+import tempfile
+import openpyxl
+from openpyxl.utils import get_column_letter
 
 # TODO: add project_id to process_whole_project_and_save_to_excel when calling process_analysis_metadata when extracted from projectMetadata input
 # TODO: add assay_name to sampleMetadata
@@ -13,12 +18,16 @@ class ProjectMapper(OmeFaireMapper):
     
     faire_sample_metadata_sheet_name = "sampleMetadata"
     faire_experiment_run_metadata_sheet_name = "experimentRunMetadata"
+    faire_project_metadata_sheet_name = "projectMetadata"
 
     faire_sample_name_col = "samp_name"
     faire_rel_cont_id_col_name = "rel_cont_id"
     faire_pos_cont_type_col = 'pos_cont_type'
     faire_sample_category_col_name = "samp_category"
     faire_sample_composed_of_col_name = "sample_composed_of"
+    faire_assay_name_col = 'assay_name'
+    project_sheet_term_name_col_num = 3
+    project_sheet_assay_start_col_num = 5
     
     def __init__(self, config_yaml: str):
 
@@ -26,6 +35,8 @@ class ProjectMapper(OmeFaireMapper):
 
         self.config_yaml = config_yaml
         self.config_file = self.load_config(config_yaml)
+        self.project_info_goole_sheet_id = self.config_file['project_info_goole_sheet_id']
+        self.project_info_df = self.load_google_sheet_as_df(google_sheet_id=self.project_info_goole_sheet_id, sheet_name='Sheet1', header=0)
         self.mismatch_samp_names_dict = self.config_file['mismatch_sample_names']
         self.pooled_samps_dict = self.config_file['pooled_samps']
         self.bioinformatics_bebop_path = self.config_file['bioinformatics_bebop_path']
@@ -34,9 +45,15 @@ class ProjectMapper(OmeFaireMapper):
         self.bebop_config_run_col_name = self.config_file['bebop_config_run_col_name']
         self.bebop_config_marker_col_name = self.config_file['bebop_config_marker_col_name']
 
+        self.pcr_library_dict = {}
+
     def process_whole_project_and_save_to_excel(self):
 
+
         sample_metadata_df, experiment_run_metadata_df = self.process_sample_run_data()
+
+        # Add assays to projectMetadata
+        self.map_pcr_and_lib_to_project(final_exp_run_df=experiment_run_metadata_df)
 
         # # Save sample metadata first to excel file, and then use that excel file and save experimentRunMetadata df
         # self.add_final_df_to_FAIRe_excel(excel_file_to_read_from=self.faire_template_file, sheet_name=self.faire_sample_metadata_sheet_name, faire_template_df=sample_metadata_df)
@@ -45,7 +62,7 @@ class ProjectMapper(OmeFaireMapper):
         # print(f"Excel file saved to {self.final_faire_template_path}")
 
         # Add analysisMetadata
-        self.process_analysis_metadata(project_id='EcoFOCI_eDNA_2020-23', final_exp_run_df=experiment_run_metadata_df)
+        # self.process_analysis_metadata(project_id='EcoFOCI_eDNA_2020-23', final_exp_run_df=experiment_run_metadata_df)
 
         # self.save_final_df_as_csv(final_df=final_sample_metadata_df, sheet_name='sampleMetadata', header=2, csv_path = '/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/ecoFoci_sampleMetadata.csv')
     
@@ -104,7 +121,6 @@ class ProjectMapper(OmeFaireMapper):
                                                   project_id=project_id,
                                                   )  
         analysis_creator.process_analysis_metadata()
-        
     
     def create_sample_metadata_df(self) -> pd.DataFrame:
    
@@ -398,4 +414,78 @@ class ProjectMapper(OmeFaireMapper):
         dropped_samples = exp_run_df.loc[~mask, self.faire_sample_name_col].unique()
         
         return exp_run_df_filtered, dropped_samples
+    
+    def retrive_github_bebop(self, owner: str, repo: str, file_path: str):
+        url = f"https://api.github.com/repos/{owner}/{repo}/contents/{file_path}"
+
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            data = response.json()
+
+            if 'content' in data:
+                # Decode base64 to get the raw markdown file
+                base64_content = data['content'].replace('\n', '').replace(' ', '')
+                markdown_content = base64.b64decode(base64_content).decode('utf-8')
+                
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=True, encoding='utf-8') as temp_file:
+                    temp_file.write(markdown_content)
+                    temp_file_path = temp_file.name
+                    post = self.load_beBop_yaml_terms(path_to_bebop=temp_file_path)
+                    return post.metadata
         
+        except requests.exceptions.RequestException as e:
+            print(f"Error fetching bebop: {e}")
+            return None
+    
+    def map_pcr_and_lib_to_project(self, final_exp_run_df: pd.DataFrame) -> None:
+
+        # create list of assays from experiment_run_metadata so only grabbing assays that are actually in the project
+        assays_in_proj = final_exp_run_df[self.faire_assay_name_col].unique().tolist()
+
+        col_index = 0
+        for assay, bebops in project_pcr_library_prep_mapping_dict.items():
+            if assay in assays_in_proj:
+                # Get pcr be bop_dict
+                pcr_owner = bebops['pcr_bebop']['owner']
+                pcr_repo = bebops['pcr_bebop']['repo']
+                pcr_file_path = bebops['pcr_bebop']['file_path']
+                pcr_bebop = self.retrive_github_bebop(owner=pcr_owner, repo=pcr_repo, file_path=pcr_file_path)
+            
+                # Get library preparation bebop dict
+                lib_owner = bebops['library_bebop']['owner']
+                lib_repo = bebops['library_bebop']['repo']
+                lib_file_path = bebops['library_bebop']['file_path']
+                lib_bebop = self.retrive_github_bebop(owner=lib_owner, repo=lib_repo, file_path=lib_file_path)
+                
+                assay_col_num = self.project_sheet_assay_start_col_num + col_index
+                self.map_pcr_library_prep_to_excel(pcr_bebop, lib_bebop, assay_col_num)
+                col_index = col_index + 1
+                print(f"Saved assay {assay} to projectMetadata!")
+            else:
+                print(f"assay {assay} is not in this project - skipping adding it to ProjectMetadata")
+            
+    
+    def map_pcr_library_prep_to_excel(self, pcr_bebop_dict: dict, library_prep_bebop_dict: dict, assay_col_num: int) -> None:
+        # TODO: check that assay actually exists in exeriment run metadata first (maybe do this in create_pcr_library_prep_dict function)
+        workbook = openpyxl.load_workbook(self.final_faire_template_path)
+        worksheet = workbook[self.faire_project_metadata_sheet_name]
+
+        # Get the column numbers
+        max_row = worksheet.max_row
+
+        # Map dictionaries to excel
+        for row in range(2, max_row + 1):
+            term_name_cell = worksheet.cell(row=row, column=self.project_sheet_term_name_col_num)
+            term_name = term_name_cell.value
+
+            if term_name and term_name in pcr_bebop_dict:
+                pcr_cell = worksheet.cell(row=row, column=assay_col_num)
+                pcr_cell.value = pcr_bebop_dict[term_name]
+
+            if term_name and term_name in library_prep_bebop_dict:
+                lib_prep_cell = worksheet.cell(row=row, column=assay_col_num)
+                lib_prep_cell.value = library_prep_bebop_dict[term_name]
+
+        workbook.save(self.final_faire_template_path)
+        workbook.close()

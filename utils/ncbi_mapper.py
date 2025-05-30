@@ -8,6 +8,7 @@ from openpyxl import load_workbook
 # TODO: Figure out what is going on when submitting PCR samples - added a custom column to differentiate them and the submitter isn't recognizing it.
 # TODO: check on pos_cont_type and neg_cont_type, and sample_Title in ncbi sample mappings stuff?
 # TODO: figure out title for SRA mappings - need to ask Sean and Zack
+# TODO: switch out manually loading library prep bebop to use the github method (see ProjectMapper method)
 
 class NCBIMapper:
 
