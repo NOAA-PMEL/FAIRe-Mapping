@@ -120,7 +120,6 @@ class OmeFaireMapper:
       
         return samp_name
     
-    
     def extract_controlled_vocab(self, faire_attribute: str) -> list:
         
         # filter dataframe by the FAIRe attribute and get all allowable terms

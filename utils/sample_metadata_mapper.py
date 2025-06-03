@@ -319,16 +319,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             how='left'
         )
 
-        for i, r in metadata_df.iterrows():
-            print(r[self.sample_metadata_sample_name_column])
-
         # Drop rows where the sample name column value is NA. This is for cruises where samples were split up
         # e.g. PPS samples that were deployed from the DY2306 cruise. They will be a separate sample metadata file.
         metadata_df = metadata_df.dropna(
             subset=[self.sample_metadata_sample_name_column])
-
-        # for col in metadata_df.columns:
-        #     print(col)
 
         return metadata_df
 
@@ -573,8 +567,16 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         for idx, region in marine_regions.iterrows():
             if region.geometry.contains(point):
                 sea = region.get('NAME')
-                geo_loc = f"USA: {sea}"
-                geo_loc_name = geo_loc.split(':')[0]
+
+                if sea == 'Arctic Ocean':
+                    geo_loc = sea
+                else:
+                    geo_loc = f"USA: {sea}"
+
+                try:
+                    geo_loc_name = geo_loc.split(':')[0]
+                except:
+                    geo_loc_name = [geo_loc]
                 if geo_loc_name not in self.insdc_locations:
                     raise NoInsdcGeoLocError(
                         f'There is no geographic location in INSDC that matches {geo_loc_name}, check sea_name and try again')

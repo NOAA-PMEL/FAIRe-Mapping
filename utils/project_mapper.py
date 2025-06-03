@@ -382,9 +382,6 @@ class ProjectMapper(OmeFaireMapper):
                 transformed_rows.append(r)
 
         samp_df_updated_for_pcr = pd.DataFrame(transformed_rows)
-
-        # remove base_samp_name column
-        samp_df_updated_for_pcr.drop('base_samp_name', axis=1)
         
         return samp_df_updated_for_pcr
     
