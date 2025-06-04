@@ -4,7 +4,7 @@ sys.path.append("../../..")
 from utils.sample_metadata_mapper import FaireSampleMetadataMapper
 
 #TODO: Still need to flush out mapping file - quite different from others. Shannon will look at it.
-def create_m2_pps_0523_sample_metadata():
+def create_m2_pps_0423_sample_metadata():
 
     # initiate mapper
     sample_mapper = FaireSampleMetadataMapper(config_yaml='config.yaml')
@@ -76,7 +76,7 @@ def create_m2_pps_0523_sample_metadata():
     faire_sample_df_updated = sample_mapper.add_extraction_blanks_to_rel_cont_id(final_sample_df=faire_sample_df)
 
     # step 7: save as csv:
-    sample_mapper.save_final_df_as_csv(final_df=faire_sample_df_updated, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/m2_pps_0523/data/m2_pps_0523_faire.csv')
+    sample_mapper.save_final_df_as_csv(final_df=faire_sample_df_updated, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/m2_pps_0423/data/m2_pps_0423_faire.csv')
    
     # step 7: save to excel file
     sample_mapper.add_final_df_to_FAIRe_excel(excel_file_to_read_from=sample_mapper.faire_template_file,
@@ -88,7 +88,7 @@ def create_m2_pps_0523_sample_metadata():
  
 def main() -> None:
 
-    sample_metadata = create_m2_pps_0523_sample_metadata()
+    sample_metadata = create_m2_pps_0423_sample_metadata()
 
 if __name__ == "__main__":
     main()

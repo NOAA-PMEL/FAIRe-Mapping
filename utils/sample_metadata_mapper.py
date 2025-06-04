@@ -62,6 +62,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.google_sheet_mapping_file_id = self.config_file['google_sheet_mapping_file_id']
         self.extraction_blank_vol_we_dna_ext = self.config_file['extraction_blank_vol_we_dna_ext']
         self.extraction_set_grouping_col_name = self.config_file['extraction_set_grouping_col_name']
+        self.samp_dur_info = self.config_file['samp_store_dur_sheet_info'] if 'samp_store_dur_sheet_info' in self.config_file else None
+        self.samp_stor_dur_dict = self.create_samp_stor_dict() if 'samp_store_dur_sheet_info' in self.config_file else None
 
         # self.exp_metadata_df = exp_metadata_df
         self.extraction_blank_rel_cont_dict = {}
@@ -150,6 +152,13 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     #     # Creates a dicitonary of the samples and their assays
     #     grouped = self.exp_metadata_df.groupby('samp_name')['assay_name'].apply(list).to_dict()
     #     return grouped
+
+    def create_samp_stor_dict(self) -> dict:
+
+        samp_dur_df = self.load_google_sheet_as_df(google_sheet_id=self.samp_dur_info['google_sheet_id'], sheet_name='Sheet1', header=0)
+        samp_dur_dict = dict(zip(samp_dur_df[self.samp_dur_info['samp_name_col']], samp_dur_df[self.samp_dur_info['samp_stor_dur_col']]))
+
+        return samp_dur_dict
 
     def convert_mdy_date_to_iso8061(self, date_string: str) -> str:
         # converts from m/d/y to iso8061
@@ -477,24 +486,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         return material_sample_id
 
-    # def add_rel_cont_id(self, metadata_row: pd.Series, samp_seq_pos_controls_dict: dict) -> str:
-    #     # Adds the rel_cont_id
-    #     sample_name = metadata_row[self.sample_metadata_sample_name_column]
-
-    #     # Get positive controls
-    #     control_samps = samp_seq_pos_controls_dict.get(sample_name)
-
-    #     # Get field negative sample names in a list and add to associated_seq_pos
-    #     if not self.nc_df.empty:
-    #         nc_samples = self.nc_df[self.sample_metadata_sample_name_column].tolist(
-    #         )
-    #         control_samps.extend(nc_samples)
-
-    #     # join with |
-    #     rel_cont_id = ' | '.join(control_samps)
-
-    #     return rel_cont_id
-
     def add_assay_name(self, sample_name: str) -> str:
         # Uses the sample name to look up assays from the sample_assay_dict (generated from the exp_run_metadata_df)
         assays = self.sample_assay_dict.get(sample_name)
@@ -675,6 +666,42 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # make positive value
         return abs(elevation)
 
+    def get_samp_store_dur(self, sample_name: pd.Series) -> str:
+        # Get the samp_store_dur based on the sample name
+        
+        samp_stor_dur = self.samp_stor_dur_dict.get(sample_name, '')
+        
+        if self.samp_dur_info['dur_units'] == 'hour':
+            samp_stor_dur_formatted = f"T{samp_stor_dur}H"
+            return samp_stor_dur_formatted
+        else: 
+            raise ValueError("samp_stor_dur unit is not yet functional in this code - update get_samp_stor_dur function for unit")
+
+    def get_samp_store_loc_by_samp_store_dur(self, sample_name: pd.Series) -> str:
+        # Gets the samp_store_loc based on the samp_name, based on the samp_store_dur. If samp_stor_dur > 1 hr, loc is vessel name fridge else just vessel name
+         samp_stor_dur = int(self.samp_stor_dur_dict.get(sample_name, ''))
+         
+         if self.samp_dur_info['dur_units'] == 'hour':
+            if samp_stor_dur > 1:
+                samp_store_loc = f"{self.vessel_name} fridge"
+            else:
+                samp_store_loc = self.vessel_name
+            return samp_store_loc
+         else:
+            raise ValueError(f"samp_store_loc not able to be calculated by {self.samp_dur_info['dur_units']}, add functionality to get_samp_store_loc_by_samp_store_dur method")
+
+    def get_samp_sore_temp_by_samp_store_dur(self, sample_name: pd.Series) -> str:
+        samp_stor_dur = int(self.samp_stor_dur_dict.get(sample_name, ''))
+
+        if self.samp_dur_info['dur_units'] == 'hour':
+            if samp_stor_dur > 1:
+                samp_store_temp = 4
+            else:
+                samp_store_temp = 'ambient temperature'
+            return samp_store_temp
+        else:
+            raise ValueError(f"samp_store_loc not able to be calculated by {self.samp_dur_info['dur_units']}, add functionality to get_samp_sore_temp_by_samp_store_dur method")
+    
     def fill_empty_sample_values(self, df: pd.DataFrame, default_message="missing: not collected"):
         # fill empty values for samples after mapping over all sample data without control samples
 
@@ -844,45 +871,3 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
        
         return final_sample_df
    
-    # def add_nc_samps_to_rel_cont_id(self, final_sample_df: pd.DataFrame):
-
-    #     try:
-    #         # get list of samples associated with NC samps into dict for rel_cont_id
-    #         valid_samples = final_sample_df[self.faire_sample_name_col].tolist()
-    #         for sample in valid_samples:
-    #             if '.NC' in sample:
-    #                 other_samples = [samp for samp in valid_samples if samp != sample and '.NC' not in samp]
-    #                 self.rel_cont_dict[sample] = other_samples
-    #     except:
-    #         raise ValueError("Adding NC samps to rel_cont_dict not working!")
-    #     print(self.rel_cont_dict)
-    
-    
-    # # def fill_seq_pos_control_metadata(self, final_sample_df: pd.DataFrame) -> pd.DataFrame:
-    #     #TODO: add pos_cont_type mapping
-
-    #     # Get positive control df and only keep the sample name and assay name columns
-    #     positive_samp_df = self.exp_metadata_df[self.exp_metadata_df[self.faire_sample_name_col].str.contains('POSITIVE', case=True)][[self.faire_sample_name_col, 'assay_name']]
-
-    #     # Update sample_category
-    #     positive_samp_df[self.faire_sample_category_name_col] = positive_samp_df.apply(
-    #         lambda row: self.add_samp_category_by_sample_name(metadata_row=row, faire_col=self.faire_sample_category_name_col, metadata_col=self.faire_sample_name_col),
-    #         axis=1
-    #     )
-
-    #     positive_samp_df[self.faire_neg_cont_type_name_col] = 'not applicable'
-
-    #     positive_samp_df['eventDate'] = 'missing: not provided'
-
-    #     positive_samp_df['pos_cont_type'] = positive_samp_df[self.faire_sample_name_col].apply(self.add_pos_cont_type)
-
-    #     # fill res of empty values
-    #     faire_pos_df = pd.concat([self.sample_faire_template_df, positive_samp_df])
-
-    #     new_cols = [col for col in final_sample_df.columns if col not in faire_pos_df.columns]
-    #     for col in new_cols:
-    #         faire_pos_df[col] = 'not applicable: control sample'
-
-    #     faire_pos_df = self.fill_empty_sample_values(df=faire_pos_df, default_message='not applicable: control sample')
-
-    #     return faire_pos_df

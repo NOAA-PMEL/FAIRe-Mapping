@@ -64,6 +64,18 @@ def create_dy2209_sample_metadata():
         elif faire_col == 'env_local_scale':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(
                 sample_mapper.calculate_env_local_scale)
+            
+        elif faire_col == 'samp_store_dur':
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(
+                sample_mapper.get_samp_store_dur)
+            
+            # Add samp_store_loc based of samp_store_dur, so needs to come after samp_store_dur is calculated
+            sample_metadata_results['samp_store_loc'] = sample_mapper.sample_metadata_df[metadata_col].apply(
+                sample_mapper.get_samp_store_loc_by_samp_store_dur
+            )
+            sample_metadata_results['samp_store_temp'] = sample_mapper.sample_metadata_df[metadata_col].apply(
+                sample_mapper.get_samp_sore_temp_by_samp_store_dur
+            )
 
         elif faire_col == 'prepped_samp_store_dur':
             date_col_names = metadata_col.split(' | ')
