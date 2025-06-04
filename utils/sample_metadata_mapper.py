@@ -8,6 +8,7 @@ import requests
 import numpy as np
 import xarray as xr
 import geopandas as gpd
+import math
 from shapely.geometry import Point
 from bs4 import BeautifulSoup
 from .custom_exception import NoInsdcGeoLocError
@@ -32,6 +33,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     faire_samp_vol_we_dna_ext_col_name = "samp_vol_we_dna_ext"
     faire_pool_num_col_name = "pool_dna_num"
     faire_rel_cont_id_col_name = "rel_cont_id"
+    faire_temp_col_name = "temp"
+    faire_pressure_col_name = "pressure"
+    faire_salinity_col_name = "salinity"
+    faire_density_col_name = "density"
     faire_nucl_acid_ext_method_additional_col_name = "nucl_acid_ext_method_additional"
     not_applicable_to_samp_faire_col_dict = {"neg_cont_type": "not applicable: sample group",
                                              "pos_cont_type": "not applicable: sample group"}
@@ -62,6 +67,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.google_sheet_mapping_file_id = self.config_file['google_sheet_mapping_file_id']
         self.extraction_blank_vol_we_dna_ext = self.config_file['extraction_blank_vol_we_dna_ext']
         self.extraction_set_grouping_col_name = self.config_file['extraction_set_grouping_col_name']
+        self.extraction_name = self.config_file['extraction_name']
         self.samp_dur_info = self.config_file['samp_store_dur_sheet_info'] if 'samp_store_dur_sheet_info' in self.config_file else None
         self.samp_stor_dur_dict = self.create_samp_stor_dict() if 'samp_store_dur_sheet_info' in self.config_file else None
 
@@ -492,6 +498,18 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         assays_formatted = ' | '.join(assays)
         return assays_formatted
 
+    def create_extract_id(self, extraction_batch: str) -> str:
+        # creates the extract_id which is the [extractionName]_extract_set[extractionBatch]
+        return f"{self.extraction_name}_extSet_{extraction_batch}"
+
+    def calculate_dna_yield(self, metadata_row: pd.Series, sample_vol_metadata_col: str) -> float:
+        # calculate the dna yield based on the concentration (ng/uL) and the sample_volume (mL)
+        concentration = metadata_row[self.extraction_conc_col_name]
+        sample_vol = metadata_row[sample_vol_metadata_col]
+
+        dna_yield = (concentration * 100)/sample_vol
+        return dna_yield
+    
     def convert_wind_degrees_to_direction(self, degree_metadata_row: pd.Series) -> str:
         # converts wind direction  to cardinal directions
 
@@ -609,6 +627,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         return dt
 
+    def switch_lat_lon_degree_to_neg(self, lat_or_lon_deg) -> float:
+        # If the sign is positive and should be negative, switch the sign of longitude or latitude
+        return -lat_or_lon_deg
+
     def calculate_date_duration(self, metadata_row: pd.Series, start_date_col: str, end_date_col: str) -> datetime:
         # takes two dates and calcualtes the difference to find the duration of time in ISO 8601 format
         # Handles both simple date format (2021-04-01) and dattime format (2020-09-05T02:50:00Z)
@@ -702,6 +724,60 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         else:
             raise ValueError(f"samp_store_loc not able to be calculated by {self.samp_dur_info['dur_units']}, add functionality to get_samp_sore_temp_by_samp_store_dur method")
     
+    def get_depth_from_measurements(self, metadata_row: pd.Series) -> float:
+        # Calculate the depth from pressure_dbars, la (degrees), and salinity (in PSU), temp (C), density (kg/m3). Uses a default salinity of 35 if none is given - used for FAIRe maximumDepthInMeters
+        # will calculate density if not provided
+        pressure_db = metadata_row[self.faire_pressure_col_name]
+        latitude = metadata_row[self.faire_lat_col_name]
+        temp = metadata_row[self.faire_temp_col_name]
+        salinity = metadata_row[self.faire_salinity_col_name]
+        density = metadata_row[self.faire_density_col_name]
+        
+        # convert latitude to radians
+        lat_rad = math.radians(latitude)
+
+        # Calculate gravity at given latitude (WGS85)
+        g = 9.780318 * (1 + 0.0053024 * math.sin(lat_rad)**2 - 0.0000058 * math.sin(2*lat_rad)**2)
+        
+        # Aprroximate sewater desnity (simlified). More complex equations exist for precise calculations
+        if density is not None or 'missing' not in density or "not applicable" not in density:
+            rho = density + 1000
+        else:
+            rho = 1025 + 0.7 * (salinity - 35) - 0.4 * (temp - 15)
+
+        # Convert pressure from dbar to Pa (1 dbar = 10^4 Pa)
+        pressure_pa = pressure_db * 1e4
+        
+        # Calculate depth
+        depth = pressure_pa /(rho * g)
+
+        return round(depth, 1)
+
+    def update_unit_colums_with_no_corresponding_val(self, df: pd.DataFrame) -> pd.DataFrame:
+        # Update the final sample dataframe unit columns to be "not applicable" if there is no value in its corresponding column
+        unit_cols = [col for col in df.columns if col.endswith('unit')]
+
+        for unit_col in unit_cols:
+            main_col = unit_col.replace('_unit', '') # Remove the 'unit' from the column name
+
+            if main_col in df.columns:
+                for idx in df.index:
+                    val = df.at[idx, main_col]
+
+                    # Check if we should update the unit
+                    should_update = False
+                    if pd.isna(val):
+                        should_update = True
+                    elif isinstance(val, str):
+                        val_lower = val.lower()
+                        if 'missing' in val_lower or 'not applicable' in val_lower:
+                            should_update = True
+                    
+                    if should_update:
+                        df.at[idx, unit_col] = 'not applicable'
+
+        return df
+
     def fill_empty_sample_values(self, df: pd.DataFrame, default_message="missing: not collected"):
         # fill empty values for samples after mapping over all sample data without control samples
 
@@ -719,7 +795,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # Handles empty strings (which might not be caught by fillna) - with default message or a -
         df = df.map(lambda x: default_message if x == "" or x == "-" else x)
 
-        return df
+        # update unit cols for non-values
+        updated_df = self.update_unit_colums_with_no_corresponding_val(df=df)
+
+        return updated_df
 
     def fill_nc_metadata(self) -> pd.DataFrame:
         # Fills the negative control data frame
