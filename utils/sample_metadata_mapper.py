@@ -480,7 +480,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     def add_material_sample_id(self, metadata_row) -> str:
         # Formats MaterialSampleID to be numerical (discussed with Sean) - double check if this needs to be updated for three digit cast numbers
         # can also be used for sample_derived_from if no other in between parent samples
-
         cast_int = int(metadata_row.get(self.sample_metadata_cast_no_col_name))
         btl_int = int(metadata_row.get(
             self.sample_metadata_bottle_no_col_name))
@@ -501,6 +500,16 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     def create_extract_id(self, extraction_batch: str) -> str:
         # creates the extract_id which is the [extractionName]_extract_set[extractionBatch]
         return f"{self.extraction_name}_extSet_{extraction_batch}"
+
+    def get_well_number_from_well_field(self, metadata_row: pd.Series, well_col: str) -> int:
+        # Gets the well number from a row that has a value like G1 -> 1
+        well = metadata_row[well_col]
+        return well[-1]
+    
+    def get_well_position_from_well_field(self, metadata_row: pd.Series, well_col: str) -> int:
+        # Get the well position from a row that has a value like G1 -> G
+        well = metadata_row[well_col]
+        return well[0]
 
     def calculate_dna_yield(self, metadata_row: pd.Series, sample_vol_metadata_col: str) -> float:
         # calculate the dna yield based on the concentration (ng/uL) and the sample_volume (mL)
