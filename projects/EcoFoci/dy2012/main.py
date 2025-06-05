@@ -82,7 +82,7 @@ def create_dy2012_sample_metadata():
                 axis = 1
             )
 
-        elif faire_col == 'minimumDepthInMeters':
+        elif faire_col == 'maximumDepthInMeters':
             metadata_cols = metadata_col.split(' | ')
             max_depth = sample_mapper.sample_metadata_df.apply(
                 lambda row: sample_mapper.get_depth_from_pressure(metadata_row=row, press_col_name=metadata_cols[0], lat_col_name=metadata_cols[1]),
@@ -96,7 +96,6 @@ def create_dy2012_sample_metadata():
                 lambda row: sample_mapper.convert_min_depth_from_minus_one_meter(metadata_row=row, max_depth_col_name='finalMaxDepth'),
                 axis = 1
             )
-
             
             sample_metadata_results['env_local_scale'] = sample_mapper.sample_metadata_df['finalMaxDepth'].apply(sample_mapper.calculate_env_local_scale)
 

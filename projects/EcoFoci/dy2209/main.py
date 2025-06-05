@@ -93,6 +93,21 @@ def create_dy2209_sample_metadata():
         elif faire_col == 'wind_direction':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(
                 sample_mapper.convert_wind_degrees_to_direction)
+            
+        elif faire_col == 'maximumDepthInMeters':
+            metadata_cols = metadata_col.split(' | ')
+            max_depth = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.get_depth_from_pressure(metadata_row=row, press_col_name=metadata_cols[0], lat_col_name=metadata_cols[1]),
+                axis = 1
+            )
+
+            sample_mapper.sample_metadata_df['finalMaxDepth'] = max_depth
+            sample_metadata_results[faire_col] = max_depth
+
+            sample_metadata_results['minimumDepthInMeters'] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.convert_min_depth_from_minus_one_meter(metadata_row=row, max_depth_col_name='finalMaxDepth'),
+                axis = 1
+            )
 
         elif faire_col == 'tot_depth_water_col':
             cols = metadata_col.split(' | ')
@@ -117,34 +132,23 @@ def create_dy2209_sample_metadata():
                 lambda row: sample_mapper.calculate_dna_yield(metadata_row=row, sample_vol_metadata_col=sample_vol_col),
                 axis = 1
             )
-
-    # Step 4 convert to data frame to easily caculate and add depths
-    df = pd.DataFrame(sample_metadata_results)
-    df['maximumDepthInMeters'] = df.apply(
-        lambda row: sample_mapper.get_depth_from_measurements(metadata_row=row),
-        axis=1
-    )
-    df['minimumDepthInMeters'] = df.apply(
-        lambda row: sample_mapper.convert_min_depth_from_minus_one_meter(metadata_row=row, max_depth_col_name='maximumDepthInMeters'),
-        axis=1
-    )
     
-    # Step 5: fill in NA with missing not collected or not applicable because they are samples and adds NC to rel_cont_id
-    sample_df = sample_mapper.fill_empty_sample_values(df = df)
+    # Step 4: fill in NA with missing not collected or not applicable because they are samples and adds NC to rel_cont_id
+    sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))
     
-    # Step 6: fill NC data frame if there is - DO THIS ONLY IF negative controls were sequenced! They were not for SKQ21
+    # Step 5: fill NC data frame if there is - DO THIS ONLY IF negative controls were sequenced! They were not for SKQ21
     # nc_df = sample_mapper.fill_nc_metadata()
     controls_df = sample_mapper.finish_up_controls_df(final_sample_df=sample_df)
 
-    # Step 7: Combine all mappings at once (add nc_df if negative controls were sequenced)
+    # Step 6: Combine all mappings at once (add nc_df if negative controls were sequenced)
     faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df,controls_df])
     # Add rel_cont_id
     faire_sample_df_updated = sample_mapper.add_extraction_blanks_to_rel_cont_id(final_sample_df=faire_sample_df)
 
-    # step 8: save as csv:
+    # step 7: save as csv:
     sample_mapper.save_final_df_as_csv(final_df=faire_sample_df_updated, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2209/data/dy2209_faire.csv')
    
-    # step 9: save to excel file
+    # step 8: save to excel file
     sample_mapper.add_final_df_to_FAIRe_excel(excel_file_to_read_from=sample_mapper.faire_template_file,
                                               sheet_name=sample_mapper.sample_mapping_sheet_name, 
                                               faire_template_df=faire_sample_df_updated)
