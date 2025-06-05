@@ -177,14 +177,18 @@ class OmeFaireMapper:
         
         if transform_use_col_to_date_format == False:
             # If desired col name value is not na
-            if pd.notna(metadata_row[desired_col_name]):
+            if pd.notna(metadata_row[desired_col_name]) and metadata_row[desired_col_name] != '':
                 return metadata_row[desired_col_name]
-            elif pd.notna(metadata_row[use_if_na_col_name]):
+            elif pd.notna(metadata_row[use_if_na_col_name]) and metadata_row[use_if_na_col_name] != '':
                 return metadata_row[use_if_na_col_name]
             else:
-                return metadata_row[use_if_second_col_is_na]
+                try:
+                    return metadata_row[use_if_second_col_is_na]
+                except:
+                    return ''
+
         else:
-            if pd.notna(metadata_row[use_if_na_col_name]):
+            if pd.notna(metadata_row[use_if_na_col_name]) or metadata_row[use_if_na_col_name] != '':
                 return self.convert_date_to_iso8601(date=metadata_row[use_if_na_col_name])
             else:
                 return self.convert_date_to_iso8601(date=metadata_row[use_if_second_col_is_na])

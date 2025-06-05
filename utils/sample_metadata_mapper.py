@@ -8,7 +8,7 @@ import requests
 import numpy as np
 import xarray as xr
 import geopandas as gpd
-import math
+import gsw
 from shapely.geometry import Point
 from bs4 import BeautifulSoup
 from .custom_exception import NoInsdcGeoLocError
@@ -499,7 +499,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
     def create_extract_id(self, extraction_batch: str) -> str:
         # creates the extract_id which is the [extractionName]_extract_set[extractionBatch]
-        return f"{self.extraction_name}_extSet_{extraction_batch}"
+        return f"{self.extraction_name}_extSet_{extraction_batch.replace(' ','_')}"
 
     def get_well_number_from_well_field(self, metadata_row: pd.Series, well_col: str) -> int:
         # Gets the well number from a row that has a value like G1 -> 1
@@ -733,34 +733,18 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         else:
             raise ValueError(f"samp_store_loc not able to be calculated by {self.samp_dur_info['dur_units']}, add functionality to get_samp_sore_temp_by_samp_store_dur method")
     
-    def get_depth_from_measurements(self, metadata_row: pd.Series) -> float:
-        # Calculate the depth from pressure_dbars, la (degrees), and salinity (in PSU), temp (C), density (kg/m3). Uses a default salinity of 35 if none is given - used for FAIRe maximumDepthInMeters
-        # will calculate density if not provided
-        pressure_db = metadata_row[self.faire_pressure_col_name]
-        latitude = metadata_row[self.faire_lat_col_name]
-        temp = metadata_row[self.faire_temp_col_name]
-        salinity = metadata_row[self.faire_salinity_col_name]
-        density = metadata_row[self.faire_density_col_name]
-        
-        # convert latitude to radians
-        lat_rad = math.radians(latitude)
+    def get_depth_from_pressure(self, metadata_row: pd.Series, press_col_name: str, lat_col_name: str) -> float:
+        # Calculates depth from pressure and latitude
+        pressure = metadata_row[press_col_name]
+        lat = metadata_row[lat_col_name]
 
-        # Calculate gravity at given latitude (WGS85)
-        g = 9.780318 * (1 + 0.0053024 * math.sin(lat_rad)**2 - 0.0000058 * math.sin(2*lat_rad)**2)
-        
-        # Aprroximate sewater desnity (simlified). More complex equations exist for precise calculations
-        if density is not None or 'missing' not in density or "not applicable" not in density:
-            rho = density + 1000
+        if pressure:
+            depth = gsw.conversions.z_from_p(pressure, lat)
+            return round(abs(depth), 2)
+        elif pressure == 0:
+            return 0
         else:
-            rho = 1025 + 0.7 * (salinity - 35) - 0.4 * (temp - 15)
-
-        # Convert pressure from dbar to Pa (1 dbar = 10^4 Pa)
-        pressure_pa = pressure_db * 1e4
-        
-        # Calculate depth
-        depth = pressure_pa /(rho * g)
-
-        return round(depth, 1)
+            return ''
 
     def update_unit_colums_with_no_corresponding_val(self, df: pd.DataFrame) -> pd.DataFrame:
         # Update the final sample dataframe unit columns to be "not applicable" if there is no value in its corresponding column
