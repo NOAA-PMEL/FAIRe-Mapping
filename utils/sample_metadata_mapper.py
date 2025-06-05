@@ -894,8 +894,9 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
             # Step 3: Add related mappings
             for faire_col, metadata_col in extraction_blanks_mapping_dict[self.related_mapping].items():
-                extract_blank_results[faire_col] = self.extraction_blanks_df[metadata_col].apply(
-                    self.convert_date_to_iso8601)
+                if faire_col == 'date_ext':
+                    extract_blank_results[faire_col] = self.extraction_blanks_df[metadata_col].apply(
+                        self.convert_date_to_iso8601)
 
             extract_blanks_df = pd.concat(
                 [self.sample_faire_template_df, pd.DataFrame(extract_blank_results)])
