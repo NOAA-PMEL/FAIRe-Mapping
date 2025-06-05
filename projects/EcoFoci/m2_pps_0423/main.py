@@ -36,14 +36,14 @@ def create_m2_pps_0423_sample_metadata():
             )
         elif faire_col == 'materialSampleID' or faire_col == 'sample_derived_from':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
-                lambda row: sample_mapper.add_material_sample_id(metadata_row=row),
+                lambda row: sample_mapper.add_material_samp_id_for_pps_samp(metadata_row=row, cast_or_event_col=metadata_col, prefix='M2-PPS-0423'),
                 axis=1
             )
-        elif faire_col == 'minimumDepthInMeters':
-            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
-                lambda row: sample_mapper.convert_min_depth_from_minus_one_meter(metadata_row=row, max_depth_col_name=metadata_col),
-                axis=1
-            )
+        # elif faire_col == 'minimumDepthInMeters':
+        #     sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+        #         lambda row: sample_mapper.convert_min_depth_from_minus_one_meter(metadata_row=row, max_depth_col_name=metadata_col),
+        #         axis=1
+        #     )
         
         elif faire_col == 'geo_loc_name':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
@@ -53,12 +53,12 @@ def create_m2_pps_0423_sample_metadata():
         elif faire_col == 'env_local_scale':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(sample_mapper.calculate_env_local_scale)
 
-        elif faire_col == 'prepped_samp_store_dur':
-            date_col_names = metadata_col.split(' | ')
-            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
-                lambda row: sample_mapper.calculate_date_duration(metadata_row=row, start_date_col=date_col_names[0], end_date_col=date_col_names[1]),
-                axis=1
-            )
+        # elif faire_col == 'prepped_samp_store_dur':
+        #     date_col_names = metadata_col.split(' | ')
+        #     sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+        #         lambda row: sample_mapper.calculate_date_duration(metadata_row=row, start_date_col=date_col_names[0], end_date_col=date_col_names[1]),
+        #         axis=1
+        #     )
         
         elif faire_col == 'date_ext':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(sample_mapper.convert_date_to_iso8601)

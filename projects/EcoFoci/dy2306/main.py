@@ -5,9 +5,6 @@ from utils.sample_metadata_mapper import FaireSampleMetadataMapper
 from utils.experiment_run_metadata_mapper import ExperimentRunMetadataMapper
 import pandas as pd
 
-# TODO: figure out what to do about missing samples in the sample data. Sample E1820.DY2306 - E1842.DY2306 are missing 
-# (but they exist in the extraction spreadsheet)
-
 
 def create_dy2306_sample_metadata():
     
@@ -169,30 +166,8 @@ def create_dy2306_sample_metadata():
 
     return sample_mapper, faire_sample_df
 
-def create_exp_run_metadata():
-
-    exp_mapper = ExperimentRunMetadataMapper(config_yaml='config.yaml')
-    faire_exp_df = exp_mapper.generate_run_metadata()
-
-    # save to excel
-    # exp_mapper.add_final_df_to_FAIRe_excel(excel_file_to_read_from=exp_mapper.faire_template_file,
-    #                                        sheet_name=exp_mapper.faire_template_exp_run_sheet_name, 
-    #                                        faire_template_df=faire_exp_df)
-
-
-    return faire_exp_df, exp_mapper
-
 def main() -> None:
 
-    # step 1: generate exp metadata - this will inform which sample get metadata
-    # exp_metadata = create_exp_run_metadata()
-    # exp_df = exp_metadata[0]
-    # exp_mapper = exp_metadata[1]
-    
-    # Get sample dictionary of associated positives
-    # samp_associated_positives = exp_mapper.rel_pos_cont_id_dict
-
-    # # create sample metadata - experiment metadata needed first
     sample_metadata = create_dy2306_sample_metadata()
                 
 
