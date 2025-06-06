@@ -67,6 +67,12 @@ def create_no201_sample_metadata():
                 axis=1
             )
 
+        elif faire_col == 'minimumDepthInMeters':
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.convert_min_depth_from_minus_one_meter(metadata_row=row, max_depth_col_name=metadata_col),
+                axis = 1
+            )
+            
         elif faire_col == 'tot_depth_water_col':
             cols = metadata_col.split(' | ')
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
@@ -75,6 +81,31 @@ def create_no201_sample_metadata():
             )
         elif faire_col == 'date_ext':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(sample_mapper.convert_date_to_iso8601)
+
+        elif faire_col == 'extract_id':
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(
+                sample_mapper.create_extract_id
+            )
+
+        elif faire_col == 'extract_well_number':
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.get_well_number_from_well_field(metadata_row=row, well_col=metadata_col),
+                axis=1
+            )
+        
+        elif faire_col == 'extract_well_position':
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.get_well_position_from_well_field(metadata_row=row, well_col=metadata_col),
+                axis = 1 
+            )
+
+        elif faire_col == 'dna_yield':
+            metadata_cols = metadata_col.split(' | ')
+            sample_vol_col = metadata_cols[1]
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.calculate_dna_yield(metadata_row=row, sample_vol_metadata_col=sample_vol_col),
+                axis = 1
+            )
    
     # Step 4: fill in NA with missing not collected or not applicable because they are samples and adds NC to rel_cont_id
     sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))
@@ -84,7 +115,7 @@ def create_no201_sample_metadata():
     controls_df = sample_mapper.finish_up_controls_df(final_sample_df=sample_df)
 
     # Step 6: Combine all mappings at once (add nc_df if negative controls were sequenced)
-    faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df,controls_df])
+    faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df, controls_df])
     # Add rel_cont_id
     faire_sample_df_updated = sample_mapper.add_extraction_blanks_to_rel_cont_id(final_sample_df=faire_sample_df)
 

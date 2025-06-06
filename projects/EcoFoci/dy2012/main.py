@@ -99,6 +99,11 @@ def create_dy2012_sample_metadata():
             
             sample_metadata_results['env_local_scale'] = sample_mapper.sample_metadata_df['finalMaxDepth'].apply(sample_mapper.calculate_env_local_scale)
 
+        elif faire_col =='collected_by':
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(
+                lambda row: row.replace(', ', ' | ')
+            )
+
     # Step 4: fill in NA with missing not collected or not applicable because they are samples and adds NC to rel_cont_id
     sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))
     

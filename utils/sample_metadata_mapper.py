@@ -511,13 +511,19 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
     def get_well_number_from_well_field(self, metadata_row: pd.Series, well_col: str) -> int:
         # Gets the well number from a row that has a value like G1 -> 1
-        well = metadata_row[well_col]
-        return well[-1]
+        try:
+            well = metadata_row[well_col]
+            return well[-1]
+        except:
+            None
     
     def get_well_position_from_well_field(self, metadata_row: pd.Series, well_col: str) -> int:
         # Get the well position from a row that has a value like G1 -> G
-        well = metadata_row[well_col]
-        return well[0]
+        try:
+            well = metadata_row[well_col]
+            return well[0]
+        except:
+            None
 
     def calculate_dna_yield(self, metadata_row: pd.Series, sample_vol_metadata_col: str) -> float:
         # calculate the dna yield based on the concentration (ng/uL) and the sample_volume (mL)
@@ -764,18 +770,20 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             if main_col in df.columns:
                 for idx in df.index:
                     val = df.at[idx, main_col]
-
                     # Check if we should update the unit
-                    should_update = False
-                    if pd.isna(val):
-                        should_update = True
-                    elif isinstance(val, str):
-                        val_lower = val.lower()
-                        if 'missing' in val_lower or 'not applicable' in val_lower:
+                    try:
+                        should_update = False
+                        if pd.isna(val) or val == None:
                             should_update = True
-                    
-                    if should_update:
-                        df.at[idx, unit_col] = 'not applicable'
+                        elif isinstance(val, str):
+                            val_lower = val.lower()
+                            if 'missing' in val_lower or 'not applicable' in val_lower:
+                                should_update = True
+                        
+                        if should_update:
+                            df.at[idx, unit_col] = 'not applicable'
+                    except:
+                        print("does not work!")
 
         return df
 
