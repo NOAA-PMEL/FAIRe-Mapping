@@ -39,29 +39,70 @@ def create_m2_pps_0423_sample_metadata():
                 lambda row: sample_mapper.add_material_samp_id_for_pps_samp(metadata_row=row, cast_or_event_col=metadata_col, prefix='M2-PPS-0423'),
                 axis=1
             )
-        # elif faire_col == 'minimumDepthInMeters':
-        #     sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
-        #         lambda row: sample_mapper.convert_min_depth_from_minus_one_meter(metadata_row=row, max_depth_col_name=metadata_col),
-        #         axis=1
-        #     )
         
         elif faire_col == 'geo_loc_name':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
                 lambda row: sample_mapper.format_geo_loc(metadata_row=row, geo_loc_metadata_col=metadata_col),
                 axis=1
             )
+
+        elif faire_col == 'eventDate':
+            event_date = sample_mapper.sample_metadata_df[metadata_col].apply(sample_mapper.convert_date_to_iso8601)
+            sample_metadata_results[faire_col] = event_date
+            sample_mapper.sample_metadata_df['eventDate'] = event_date
+
+            # Get prepped_samp_store_dur based on eventDate
+            prepped_samp_stor_metadata_cols = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('prepped_samp_store_dur').split(' | ')
+            sample_metadata_results['prepped_samp_store_dur'] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.calculate_date_duration(metadata_row=row, start_date_col='eventDate', end_date_col=prepped_samp_stor_metadata_cols[0]),
+                axis = 1
+            )
+
+        elif faire_col == 'samp_store_dur':
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(
+                sample_mapper.get_samp_store_dur)
+            
+            # Add samp_store_loc based of samp_store_dur, so needs to come after samp_store_dur is calculated
+            sample_metadata_results['samp_store_loc'] = sample_mapper.sample_metadata_df[metadata_col].apply(
+                sample_mapper.get_samp_store_loc_by_samp_store_dur
+            )
+            sample_metadata_results['samp_store_temp'] = sample_mapper.sample_metadata_df[metadata_col].apply(
+                sample_mapper.get_samp_sore_temp_by_samp_store_dur
+            )
+
+        elif faire_col == 'minimumDepthInMeters':
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.convert_min_depth_from_minus_one_meter(metadata_row=row, max_depth_col_name=metadata_col),
+                axis=1
+            )
+
+        elif faire_col == 'tot_depth_water_col':
+            cols = metadata_col.split(' | ')
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.get_tot_depth_water_col_from_lat_lon(
+                    metadata_row=row, lat_col=cols[0], lon_col=cols[1]),
+                axis=1
+            )
+
         elif faire_col == 'env_local_scale':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(sample_mapper.calculate_env_local_scale)
-
-        # elif faire_col == 'prepped_samp_store_dur':
-        #     date_col_names = metadata_col.split(' | ')
-        #     sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
-        #         lambda row: sample_mapper.calculate_date_duration(metadata_row=row, start_date_col=date_col_names[0], end_date_col=date_col_names[1]),
-        #         axis=1
-        #     )
         
         elif faire_col == 'date_ext':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(sample_mapper.convert_date_to_iso8601)
+        
+        elif faire_col == 'extract_id':
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(
+                sample_mapper.create_extract_id
+            )
+
+        elif faire_col == 'dna_yield':
+            metadata_cols = metadata_col.split(' | ')
+            sample_vol_col = metadata_cols[1]
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.calculate_dna_yield(metadata_row=row, sample_vol_metadata_col=sample_vol_col),
+                axis = 1
+            )
+
             
     # Step 4: fill in NA with missing not collected or not applicable because they are samples and adds NC to rel_cont_id
     sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))

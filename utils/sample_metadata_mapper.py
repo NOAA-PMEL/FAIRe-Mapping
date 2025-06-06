@@ -491,6 +491,14 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         return material_sample_id
 
+    def add_material_samp_id_for_pps_samp(self, metadata_row: pd.Series, cast_or_event_col: str, prefix: str):
+        # Creates a material sample id in the format of "M2-PPS-0423_Port1" Where the cruise name _ cast
+        # "M2-PPS-0423" is the prefix and not the cruise name because tehcnically the PPs was part of a cruise (e.g. DY2306)
+        # the cast will have 'Event1" so need to extract the 1
+        cast_val = metadata_row[cast_or_event_col]
+        port_num = cast_val.replace('Event','')
+        return f"{prefix}_Port{port_num}"
+
     def add_assay_name(self, sample_name: str) -> str:
         # Uses the sample name to look up assays from the sample_assay_dict (generated from the exp_run_metadata_df)
         assays = self.sample_assay_dict.get(sample_name)

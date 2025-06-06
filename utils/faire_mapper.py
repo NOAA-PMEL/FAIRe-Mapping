@@ -5,6 +5,7 @@ from openpyxl.utils import get_column_letter
 from datetime import datetime
 import pandas as pd
 # import difflib
+import warnings
 import yaml
 from .custom_exception import ControlledVocabDoesNotExistError
 import gspread #library that makes it easy for us to interact with the sheet
@@ -141,7 +142,7 @@ class OmeFaireMapper:
 
         for word in value:
             if word not in controlled_vocab and word not in self.faire_missing_values:
-                raise ControlledVocabDoesNotExistError(f'The following {faire_attribute} does not exist in the FAIRe standard controlled vocabulary: {word}, the allowed values are {controlled_vocab}')
+                warnings.warn(f'The following {faire_attribute} does not exist in the FAIRe standard controlled vocabulary: {word}, the allowed values are {controlled_vocab}')
             else:
                 new_value = ' | '.join(value)
                 return new_value
