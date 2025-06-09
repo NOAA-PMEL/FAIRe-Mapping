@@ -93,7 +93,7 @@ def create_skq23_12s_sample_metadata():
             )
 
         elif faire_col == 'geo_loc_name':
-            metadata_cols = metadata_cols.split(' | ')
+            metadata_cols = metadata_col.split(' | ')
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
                 lambda row: sample_mapper.find_geo_loc_by_lat_lon(metadata_row=row, metadata_lat_col=metadata_cols[1], metadata_lon_col=metadata_cols[2]), 
                 axis = 1

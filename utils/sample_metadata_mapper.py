@@ -521,11 +521,16 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
     def calculate_dna_yield(self, metadata_row: pd.Series, sample_vol_metadata_col: str) -> float:
         # calculate the dna yield based on the concentration (ng/uL) and the sample_volume (mL)
-        concentration = metadata_row[self.extraction_conc_col_name]
-        sample_vol = metadata_row[sample_vol_metadata_col]
+        concentration = str(metadata_row[self.extraction_conc_col_name])
+        sample_vol = str(metadata_row[sample_vol_metadata_col]).replace('~','')
 
-        dna_yield = (concentration * 100)/sample_vol
-        return dna_yield
+        try:
+            concentration = float(concentration)
+            sample_vol = float(sample_vol)
+            dna_yield = (concentration * 100)/sample_vol
+            return dna_yield
+        except:
+            return None
     
     def convert_wind_degrees_to_direction(self, degree_metadata_row: pd.Series) -> str:
         # converts wind direction  to cardinal directions
