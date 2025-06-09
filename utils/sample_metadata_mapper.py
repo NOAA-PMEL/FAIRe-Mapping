@@ -370,14 +370,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
     def filter_metadata_dfs(self):
 
-        # Extract all unique sample names from experiment run metadata df
-        # exp_sample_names = self.exp_metadata_df['samp_name'].unique()
-
         # Join sample metadata with extraction metadata to get samp_df
         samp_df = self.join_sample_and_extract_df()
-
-        # filter samp_df to keep only rows with sample names that exist in the exp_sample_names
-        # samp_df_filtered = samp_df[samp_df[self.sample_metadata_sample_name_column].isin(exp_sample_names)]
 
         try:
             nc_mask = samp_df[self.sample_metadata_sample_name_column].astype(
@@ -724,15 +718,15 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
     def get_samp_store_loc_by_samp_store_dur(self, sample_name: pd.Series) -> str:
         # Gets the samp_store_loc based on the samp_name, based on the samp_store_dur. If samp_stor_dur > 1 hr, loc is vessel name fridge else just vessel name
-         samp_stor_dur = int(self.samp_stor_dur_dict.get(sample_name, ''))
+        samp_stor_dur = int(self.samp_stor_dur_dict.get(sample_name, ''))
          
-         if self.samp_dur_info['dur_units'] == 'hour':
+        if self.samp_dur_info['dur_units'] == 'hour':
             if samp_stor_dur > 1:
                 samp_store_loc = f"{self.vessel_name} fridge"
             else:
                 samp_store_loc = self.vessel_name
             return samp_store_loc
-         else:
+        else:
             raise ValueError(f"samp_store_loc not able to be calculated by {self.samp_dur_info['dur_units']}, add functionality to get_samp_store_loc_by_samp_store_dur method")
 
     def get_samp_sore_temp_by_samp_store_dur(self, sample_name: pd.Series) -> str:

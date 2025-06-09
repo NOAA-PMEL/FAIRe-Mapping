@@ -89,7 +89,7 @@ def create_skq21_12S_sample_metadata():
                 sample_metadata_results['env_local_scale'] = sample_mapper.sample_metadata_df['final_max_depth'].apply(sample_mapper.calculate_env_local_scale)
 
                 # calculate tot_depth_water_col
-                tot_depth_water_metadata_col = depth_metadata_cols = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('tot_depth_water_col')
+                tot_depth_water_metadata_col = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('tot_depth_water_col')
                 sample_metadata_results['tot_depth_water_col'] = sample_mapper.sample_metadata_df.apply(
                 lambda row: sample_mapper.get_tot_depth_water_col_from_lat_lon(metadata_row=row, lat_col='decimalLatitude', lon_col='decimalLongitude', exact_map_col=tot_depth_water_metadata_col),
                 axis=1
