@@ -1,35 +1,55 @@
 from .faire_mapper import OmeFaireMapper
-from .lists import marker_shorthand_to_pos_cont_gblcok_name
+from .analysis_metadata_mapper import AnalysisMetadataMapper
+from .lists import marker_shorthand_to_pos_cont_gblcok_name, project_pcr_library_prep_mapping_dict
+from datetime import date
 import pandas as pd
 import re
+import requests
+import base64
+import tempfile
+import openpyxl
 
-# TODO: Filter experiment run metadata to remove samples not in any of the sample_metadata (after sample_metadata is appropriatey filtered and new samples added)
-# TODO: add pooled samples to sample metadata and and sample_compose_of fo rthe samples they include (filter ^ after this step?)
-# TODO: uncomment the code in add_positive_samps_to_samp_df function when ready to fully run, or just fix ahead of time before next pandas release
-# TODO: Add code to add_pooled_samps_to_sample_metadata to add in not applicable to empty values for pooled samples
+# TODO: add project_id to process_whole_project_and_save_to_excel when calling process_analysis_metadata when extracted from projectMetadata input
+# TODO: add assay_name to sampleMetadata
+# TODO: Find what happend to the Mid.NC.SKQ21 sample (in SampleMetadataMapper)
+# TODO: Check 'Arctic Ocean' geo_loc for E1082.SKQ2021, E1083.SKQ2021, E1084.SKQ2021 and maybe other values
+# TODO: Add assay1, assay2, etc. to column headers in projectMetadata
+
 class ProjectMapper(OmeFaireMapper):
     
     faire_sample_metadata_sheet_name = "sampleMetadata"
     faire_experiment_run_metadata_sheet_name = "experimentRunMetadata"
+    faire_project_metadata_sheet_name = "projectMetadata"
 
     faire_sample_name_col = "samp_name"
     faire_rel_cont_id_col_name = "rel_cont_id"
     faire_pos_cont_type_col = 'pos_cont_type'
     faire_sample_category_col_name = "samp_category"
     faire_sample_composed_of_col_name = "sample_composed_of"
+    faire_assay_name_col = 'assay_name'
+    project_sheet_term_name_col_num = 3
+    project_sheet_assay_start_col_num = 5
+    project_sheet_project_level_col_num = 4
     
     def __init__(self, config_yaml: str):
 
         super().__init__(config_yaml)
 
+        self.config_yaml = config_yaml
         self.config_file = self.load_config(config_yaml)
+        self.project_info_goole_sheet_id = self.config_file['project_info_goole_sheet_id']
+        self.project_info_df = self.load_google_sheet_as_df(google_sheet_id=self.project_info_goole_sheet_id, sheet_name='Sheet1', header=0)
         self.mismatch_samp_names_dict = self.config_file['mismatch_sample_names']
         self.pooled_samps_dict = self.config_file['pooled_samps']
-        # self.samp_metadata_dataframes = {} # store all loaded sample metadata dataframes
-        self.combined_seq_runs_dataframes = {} # store all dataframes whose sequencing runs are combined (E.g. for cruises on multiple runs)
-        self.filtered_samp_dataframes = {} # store all filtered sample dataframes
+        self.bioinformatics_bebop_path = self.config_file['bioinformatics_bebop_path']
+        self.bebop_config_file_google_sheet_id = self.config_file['bebop_config_file_google_sheet_id']
+        self.bioinformatics_software_name = self.config_file['bioinformatics_software_name']
+        self.bebop_config_run_col_name = self.config_file['bebop_config_run_col_name']
+        self.bebop_config_marker_col_name = self.config_file['bebop_config_marker_col_name']
 
-    def process_whole_project_and_save_to_csv(self):
+        self.pcr_library_dict = {}
+
+    def process_whole_project_and_save_to_excel(self):
 
         sample_metadata_df, experiment_run_metadata_df = self.process_sample_run_data()
 
@@ -37,13 +57,19 @@ class ProjectMapper(OmeFaireMapper):
         self.add_final_df_to_FAIRe_excel(excel_file_to_read_from=self.faire_template_file, sheet_name=self.faire_sample_metadata_sheet_name, faire_template_df=sample_metadata_df)
         self.add_final_df_to_FAIRe_excel(excel_file_to_read_from=self.final_faire_template_path, sheet_name=self.faire_experiment_run_metadata_sheet_name, faire_template_df=experiment_run_metadata_df)
 
+        # Add projectMetadata, first project_level metadata then assay level metadata
+        self.load_project_level_metadata_to_excel()
+        self.load_assay_level_metadata_to_excel(final_exp_run_df=experiment_run_metadata_df)
+       
         print(f"Excel file saved to {self.final_faire_template_path}")
 
-        # self.save_final_df_as_csv(final_df=final_sample_metadata_df, sheet_name='sampleMetadata', header=2, csv_path = '/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/ecoFoci_sampleMetadata.csv')
+        # Add analysisMetadata
+        # self.process_analysis_metadata(project_id='EcoFOCI_eDNA_2020-23', final_exp_run_df=experiment_run_metadata_df)
+    
     def process_sample_run_data(self):
         # Process all csv sets defined in the config file.
         # 1. Combine all sample metadata spreadsheets into one and combine all experiment run metadata spreadsheets into one
-        # 2. f
+
 
         combined_sample_metadata_df = self.create_sample_metadata_df()
         combined_exp_run_df = self.create_exp_run_metadata_df()
@@ -65,10 +91,10 @@ class ProjectMapper(OmeFaireMapper):
         updated_pos_samp_df = self.add_positive_samps_to_samp_df(samp_df=sample_metadata_with_pooled, positive_sample_map=pos_samp_map)
 
         # Add PCR samples to sample_composed_of
-        compose_of_updated_df = self.add_pcr_samps_to_composed_of(sample_df=updated_pos_samp_df, exp_run_df=combined_exp_run_df)
+        pcr_updated_df = self.add_pcr_rows_to_samp_df(sample_df=updated_pos_samp_df, exp_run_df=combined_exp_run_df)
     
         # Filter primary dataframe based on samp_name values in sequencing run dataframe
-        filtered_samp_df, missing_samples = self._filter_samp_df_by_samp_name(samp_df=compose_of_updated_df, associated_seq_df=combined_exp_run_df)
+        filtered_samp_df, missing_samples = self._filter_samp_df_by_samp_name(samp_df=pcr_updated_df, associated_seq_df=combined_exp_run_df)
         if missing_samples:
             print(f"samples that will be eliminated from sample metadata/missing from experiment run metadata: {missing_samples}")
 
@@ -79,8 +105,25 @@ class ProjectMapper(OmeFaireMapper):
         final_exp_df, dropped_exp_run_samples = self.filter_exp_run_metadata(final_sample_df=final_sample_metadata_df, exp_run_df=combined_exp_run_df)
         print(f"samples dropped from experiment run metadata are {dropped_exp_run_samples}, double check these samples are not in the corresponding project")
 
+        # Add assay name to final_sample_df
+        final_sample_df = self.add_assay_name_to_samp_df(samp_df=final_sample_metadata_df, exp_run_df=final_exp_df)
+        self.save_final_df_as_csv(final_df=final_sample_df, sheet_name='sampleMetadata', header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/sample_metadata.csv') 
+
         return final_sample_metadata_df, final_exp_df
-            
+
+    def process_analysis_metadata(self, project_id: str, final_exp_run_df: pd.DataFrame): 
+        # Process analysis metadata using AnalyisMetadata class
+        analysis_creator = AnalysisMetadataMapper(config_yaml=self.config_yaml,
+                                                  bioinformatics_bebop_path=self.bioinformatics_bebop_path,
+                                                  bioinformatics_config_google_sheet_id=self.bebop_config_file_google_sheet_id,
+                                                  experiment_run_metadata_df=final_exp_run_df,
+                                                  bioinformatics_software_name=self.bioinformatics_software_name,
+                                                  bebop_config_run_col_name = self.bebop_config_run_col_name,
+                                                  bebop_config_marker_col_name = self.bebop_config_marker_col_name,
+                                                  project_id=project_id,
+                                                  )  
+        analysis_creator.process_analysis_metadata()
+    
     def create_sample_metadata_df(self) -> pd.DataFrame:
    
         sample_metadata_datasets = self.config_file['datasets']['sample_metadata_csvs']
@@ -96,8 +139,6 @@ class ProjectMapper(OmeFaireMapper):
 
         combined_sample_metadata_df = pd.DataFrame()
         combined_sample_metadata_df = pd.concat(samp_metadata_dfs, ignore_index=True)
-
-        print(combined_sample_metadata_df)
 
         return combined_sample_metadata_df
    
@@ -218,16 +259,7 @@ class ProjectMapper(OmeFaireMapper):
                     other_valid_samps.add(samp)
 
         # combine valid samps
-        valid_samp_names_raw = exp_valid_samps | other_valid_samps
-
-        # Remove .PCR so they can match appropriately
-        valid_samp_names = set()
-        for name in valid_samp_names_raw:
-            if '.PCR' in name:
-                subbed_name = re.sub(r'\.PCR\d*$', '', name)
-                valid_samp_names.add(subbed_name)
-            else:
-                valid_samp_names.add(name)
+        valid_samp_names = exp_valid_samps | other_valid_samps
 
         # Identify missing sample names (those in primary but not in associated seq runs)
         cruise_sample_samp_names = samp_df['samp_name'].unique()
@@ -321,31 +353,55 @@ class ProjectMapper(OmeFaireMapper):
 
         return updated_samp_df_with_pos
 
-    def add_pcr_samps_to_composed_of(self, sample_df: pd.DataFrame, exp_run_df: pd.DataFrame) -> pd.DataFrame:
-    # def remove_ids_from_rel_cont_id_that_dont_exist(self, samp_df: pd.DataFrame)
-        results_df = sample_df.copy()
+    def add_pcr_rows_to_samp_df(self, sample_df: pd.DataFrame, exp_run_df: pd.DataFrame) -> pd.DataFrame:
+    # Add PCR rows to sample df and duplicates data
+        
+        # Extract the sample base name
+        for i, r in exp_run_df.iterrows():
+            sample_name = r[self.faire_sample_name_col]
+            if '.PCR' in sample_name:
+                exp_run_df.at[i, 'base_samp_name'] = sample_name.split('.PCR')[0]
 
-        pcr_samp_map_dict = {}
-        for samp in exp_run_df[self.faire_sample_name_col]:
-            if 'PCR' in samp:
-                #extract the base name by Removin PCR suffix
-                base_samp_name = re.sub(r'\.PCR\d*$', '', samp)
-                if base_samp_name not in pcr_samp_map_dict:
-                    pcr_samp_map_dict[base_samp_name] = {samp}
-                else:
-                    pcr_samp_map_dict[base_samp_name].add(samp)
+        # Find which rows in sample_df need to be expanded to be duplicated because of PCR replicates
+        transform_dict = {}
+        for base_name in sample_df[self.faire_sample_name_col]:
+            matches = exp_run_df[exp_run_df['base_samp_name'] == base_name][self.faire_sample_name_col].tolist()
+            if matches:
+                transform_dict[base_name] = set(matches)
+       
+        # Add to the sample_df data frame
+        transformed_rows = []
+        for i, r in sample_df.iterrows():
+            base_name = r[self.faire_sample_name_col]
+            if base_name in transform_dict:
+                for extended_name in transform_dict[base_name]:
+                    new_row = r.copy()
+                    new_row[self.faire_sample_name_col] = extended_name
+                    transformed_rows.append(new_row)
+            else:
+                transformed_rows.append(r)
 
-
-        for idx, row in results_df.iterrows():
-            sample_name = row[self.faire_sample_name_col]
-            if sample_name in pcr_samp_map_dict:
-                samp_composed_of = list(pcr_samp_map_dict.get(sample_name))
-                samp_composed_of.sort() # sort so PCRs are in order 1, 2, 3
-                sample_composed_of = (' | ').join(samp_composed_of)
-                results_df.at[idx, self.faire_sample_composed_of_col_name] = sample_composed_of
-
-        return results_df
+        samp_df_updated_for_pcr = pd.DataFrame(transformed_rows)
+        
+        return samp_df_updated_for_pcr
     
+    def add_assay_name_to_samp_df(self, samp_df: pd.DataFrame, exp_run_df: pd.DataFrame) -> pd.DataFrame:
+        # Gets a list of assays related to each sample and adds to assay_name in samp_df
+
+        samp_assay_dict = exp_run_df.groupby(self.faire_sample_name_col)[self.faire_assay_name_col].agg(lambda x: ' | '.join(list(x.unique()))).to_dict()
+
+        # Account for pooled samps - add the same assays as their pooled parent sample
+        for pooled_info in self.pooled_samps_dict:
+            if pooled_info['pooled_samp_name'] in samp_assay_dict:
+                assays = samp_assay_dict.get(pooled_info['pooled_samp_name'])
+                for samp in pooled_info['samps_that_were_pooled']:
+                    samp_assay_dict[samp] = assays
+
+        samp_df[self.faire_assay_name_col] = samp_df[self.faire_sample_name_col].map(samp_assay_dict)
+
+        return samp_df
+
+
     def fill_empty_vals_for_pooled_and_pos_samps(self, df: pd.DataFrame):
         modified_df = df.copy()
 
@@ -362,19 +418,13 @@ class ProjectMapper(OmeFaireMapper):
         # Filters the experiment run metadata df to remove rows with samples that don't exist in the sample Metadata
         # This should be done at the very end of processing sample and experiment run metadata because the sample metadata first needs to be filtered
         # by comparing to the experiment run metadata. This step removes rows of samples from other projects (E.g. RC0083 of EcoFoci) that has a run shared with EcoFoci cruises (run1 ,2 and 3)
-        
-        def is_match(sample_name, reference_names):
-            if '.PCR' in sample_name:
-                base_name = sample_name.split('.PCR')[0]
-                return base_name in reference_names
-            else:
-                return sample_name in reference_names
+
         
         # Get list of reference names
         reference_names = set(final_sample_df[self.faire_sample_name_col].unique())
 
         # Create mask of rows to keep
-        mask = exp_run_df[self.faire_sample_name_col].apply(lambda x: is_match(x, reference_names))
+        mask = exp_run_df[self.faire_sample_name_col].isin(reference_names)
 
         # filter exp_run_df
         exp_run_df_filtered = exp_run_df[mask]
@@ -383,4 +433,105 @@ class ProjectMapper(OmeFaireMapper):
         dropped_samples = exp_run_df.loc[~mask, self.faire_sample_name_col].unique()
         
         return exp_run_df_filtered, dropped_samples
+    
+    def retrive_github_bebop(self, owner: str, repo: str, file_path: str):
+        url = f"https://api.github.com/repos/{owner}/{repo}/contents/{file_path}"
+
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            data = response.json()
+
+            if 'content' in data:
+                # Decode base64 to get the raw markdown file
+                base64_content = data['content'].replace('\n', '').replace(' ', '')
+                markdown_content = base64.b64decode(base64_content).decode('utf-8')
+                
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=True, encoding='utf-8') as temp_file:
+                    temp_file.write(markdown_content)
+                    temp_file_path = temp_file.name
+                    post = self.load_beBop_yaml_terms(path_to_bebop=temp_file_path)
+                    return post.metadata
         
+        except requests.exceptions.RequestException as e:
+            print(f"Error fetching bebop: {e}")
+            return None
+    
+    def load_assay_level_metadata_to_excel(self, final_exp_run_df: pd.DataFrame) -> None:
+
+        # create list of assays from experiment_run_metadata so only grabbing assays that are actually in the project
+        assays_in_proj = final_exp_run_df[self.faire_assay_name_col].unique().tolist()
+
+        col_index = 0
+        for assay, bebops in project_pcr_library_prep_mapping_dict.items():
+            if assay in assays_in_proj:
+                # Get pcr be bop_dict
+                pcr_owner = bebops['pcr_bebop']['owner']
+                pcr_repo = bebops['pcr_bebop']['repo']
+                pcr_file_path = bebops['pcr_bebop']['file_path']
+                pcr_bebop = self.retrive_github_bebop(owner=pcr_owner, repo=pcr_repo, file_path=pcr_file_path)
+            
+                # Get library preparation bebop dict
+                lib_owner = bebops['library_bebop']['owner']
+                lib_repo = bebops['library_bebop']['repo']
+                lib_file_path = bebops['library_bebop']['file_path']
+                lib_bebop = self.retrive_github_bebop(owner=lib_owner, repo=lib_repo, file_path=lib_file_path)
+                
+                assay_col_num = self.project_sheet_assay_start_col_num + col_index
+                self.map_pcr_library_prep_to_excel(pcr_bebop, lib_bebop, assay_col_num)
+                col_index = col_index + 1
+                print(f"Saved assay {assay} to projectMetadata!")
+            else:
+                print(f"assay {assay} is not in this project - skipping adding it to ProjectMetadata")
+            
+    def map_pcr_library_prep_to_excel(self, pcr_bebop_dict: dict, library_prep_bebop_dict: dict, assay_col_num: int) -> None:
+        # maps assay and library prep to projectMetadata sheet and saves in excel
+        workbook = openpyxl.load_workbook(self.final_faire_template_path)
+        worksheet = workbook[self.faire_project_metadata_sheet_name]
+
+        # Get the column numbers
+        max_row = worksheet.max_row
+
+        # Map dictionaries to excel
+        for row in range(2, max_row + 1):
+            term_name_cell = worksheet.cell(row=row, column=self.project_sheet_term_name_col_num)
+            term_name = term_name_cell.value
+
+            if term_name and term_name in pcr_bebop_dict:
+                pcr_cell = worksheet.cell(row=row, column=assay_col_num)
+                pcr_cell.value = pcr_bebop_dict[term_name]
+
+            if term_name and term_name in library_prep_bebop_dict:
+                lib_prep_cell = worksheet.cell(row=row, column=assay_col_num)
+                lib_prep_cell.value = library_prep_bebop_dict[term_name]
+
+        workbook.save(self.final_faire_template_path)
+        workbook.close()
+
+    def load_project_level_metadata_to_excel(self) -> None:
+        # Maps the project level metadata to the projectMetadata excel sheet
+        
+        project_dict = dict(zip(self.project_info_df['faire_field'], self.project_info_df['value']))
+        
+        # Add mod_date to be date code is ran
+        today = date.today()
+        today_str = today.strftime('%Y-%m-%d')
+        project_dict['mod_date'] = today_str
+
+        workbook = openpyxl.load_workbook(self.final_faire_template_path)
+        worksheet = workbook[self.faire_project_metadata_sheet_name]
+
+         # Get the column numbers
+        max_row = worksheet.max_row
+
+        # Map dictionary to excel
+        for row in range(2, max_row + 1):
+            term_name_cell = worksheet.cell(row=row, column=self.project_sheet_term_name_col_num)
+            term_name = term_name_cell.value
+
+            if term_name and term_name in project_dict:
+                pcr_cell = worksheet.cell(row=row, column=self.project_sheet_project_level_col_num)
+                pcr_cell.value = project_dict[term_name]
+
+        workbook.save(self.final_faire_template_path)
+        workbook.close()

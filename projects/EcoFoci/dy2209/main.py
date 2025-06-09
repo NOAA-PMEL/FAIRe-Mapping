@@ -49,6 +49,11 @@ def create_dy2209_sample_metadata():
                 axis=1
             )
 
+        elif faire_col == 'decimalLongitude':
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(
+                sample_mapper.switch_lat_lon_degree_to_neg
+            )
+
         elif faire_col == 'geo_loc_name':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
                 lambda row: sample_mapper.format_geo_loc(
@@ -64,6 +69,18 @@ def create_dy2209_sample_metadata():
         elif faire_col == 'env_local_scale':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(
                 sample_mapper.calculate_env_local_scale)
+            
+        elif faire_col == 'samp_store_dur':
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(
+                sample_mapper.get_samp_store_dur)
+            
+            # Add samp_store_loc based of samp_store_dur, so needs to come after samp_store_dur is calculated
+            sample_metadata_results['samp_store_loc'] = sample_mapper.sample_metadata_df[metadata_col].apply(
+                sample_mapper.get_samp_store_loc_by_samp_store_dur
+            )
+            sample_metadata_results['samp_store_temp'] = sample_mapper.sample_metadata_df[metadata_col].apply(
+                sample_mapper.get_samp_sore_temp_by_samp_store_dur
+            )
 
         elif faire_col == 'prepped_samp_store_dur':
             date_col_names = metadata_col.split(' | ')
@@ -73,15 +90,24 @@ def create_dy2209_sample_metadata():
                 axis=1
             )
 
-        elif faire_col == 'minimumDepthInMeters':
-            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
-                lambda row: sample_mapper.convert_min_depth_from_minus_one_meter(
-                    metadata_row=row, max_depth_col_name=metadata_col),
-                axis=1
-            )
         elif faire_col == 'wind_direction':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(
                 sample_mapper.convert_wind_degrees_to_direction)
+            
+        elif faire_col == 'maximumDepthInMeters':
+            metadata_cols = metadata_col.split(' | ')
+            max_depth = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.get_depth_from_pressure(metadata_row=row, press_col_name=metadata_cols[0], lat_col_name=metadata_cols[1]),
+                axis = 1
+            )
+
+            sample_mapper.sample_metadata_df['finalMaxDepth'] = max_depth
+            sample_metadata_results[faire_col] = max_depth
+
+            sample_metadata_results['minimumDepthInMeters'] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.convert_min_depth_from_minus_one_meter(metadata_row=row, max_depth_col_name='finalMaxDepth'),
+                axis = 1
+            )
 
         elif faire_col == 'tot_depth_water_col':
             cols = metadata_col.split(' | ')
@@ -93,7 +119,20 @@ def create_dy2209_sample_metadata():
         elif faire_col == 'date_ext':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(
                 sample_mapper.convert_date_to_iso8601)
+            
+        elif faire_col == 'extract_id':
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(
+                sample_mapper.create_extract_id
+            )
 
+        elif faire_col == 'dna_yield':
+            metadata_cols = metadata_col.split(' | ')
+            sample_vol_col = metadata_cols[1]
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.calculate_dna_yield(metadata_row=row, sample_vol_metadata_col=sample_vol_col),
+                axis = 1
+            )
+    
     # Step 4: fill in NA with missing not collected or not applicable because they are samples and adds NC to rel_cont_id
     sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))
     
@@ -109,7 +148,7 @@ def create_dy2209_sample_metadata():
     # step 7: save as csv:
     sample_mapper.save_final_df_as_csv(final_df=faire_sample_df_updated, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2209/data/dy2209_faire.csv')
    
-    # step 7: save to excel file
+    # step 8: save to excel file
     sample_mapper.add_final_df_to_FAIRe_excel(excel_file_to_read_from=sample_mapper.faire_template_file,
                                               sheet_name=sample_mapper.sample_mapping_sheet_name, 
                                               faire_template_df=faire_sample_df_updated)

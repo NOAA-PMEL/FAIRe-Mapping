@@ -9,6 +9,7 @@ vessel_name: Norseman
 
 # Extraction sheet related
 extraction_metadata_google_sheet_id: 1qLZzrYk7s9b68g1oW32fer68bfLKSGzTsJDlJRYmOzg
+extraction_name:  OSU
 extraction_cruise_key: .NO20 #the name in the SampleName column of the extractions sheet to filter for the specific cruise
 extraction_sample_name_col: Sample
 extraction_conc_col_name: ng/uL #to calculate average of extraction concentration

@@ -303,12 +303,19 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
     def convert_assay_to_standard(self, marker: str) -> str:
         # matches the marker to the corresponding assay and returns standardized assay name
         
-        assay = marker_to_assay_mapping.get(marker, None)
-
-        if assay == None:
-            raise NoAcceptableAssayMatch(f'The marker/assay {marker} does not match any of the {[v for v in marker_to_assay_mapping.values()]}, please update marker_to_assay_mapping dict in list file.')
+        potential_assays = marker_to_assay_mapping.get(marker, None)
+        if 'osu' in self.run_name.lower():
+            for assay in potential_assays:
+                if 'osu' in assay.lower():
+                    return assay
+                else:
+                    raise NoAcceptableAssayMatch(f'The marker/assay {marker} does not match any of the {[v for v in marker_to_assay_mapping.values()]}, please update marker_to_assay_mapping dict in list file.')
         else:
-            return assay
+            assay = potential_assays
+            if assay == None:
+                raise NoAcceptableAssayMatch(f'The marker/assay {marker} does not match any of the {[v for v in marker_to_assay_mapping.values()]}, please update marker_to_assay_mapping dict in list file.')
+            else:
+                return assay
 
     def create_lib_id(self, metadata_row: pd.Series) -> str:
         # create lib_id by concatenating sample name, index, marker and run name together
@@ -509,11 +516,26 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         return df_filtered
 
     def get_bioaccession_nums_from_metadata(self, metadata_row: pd.Series, bioaccession_cols: list) -> str:
+
+        srr_url = 'https://www.ncbi.nlm.nih.gov/sra/' #run (SRR)
+        samn_url = 'https://www.ncbi.nlm.nih.gov/biosample/' #biosample (SAMN)
+        prjna_url = 'https://www.ncbi.nlm.nih.gov/bioproject/' #bioproject (PRJNA)
+
         # Gets the bio accession numbers from various columns in the metadata row
         bioaccessions = []
         for col in bioaccession_cols:
             bioaccession_id = metadata_row.get(col)
             if bioaccession_id != '':
+                # prepend url to id
+                if 'SRR' in bioaccession_id:
+                    bioaccession_id = srr_url + bioaccession_id
+                elif 'SAMN' in bioaccession_id:
+                    bioaccession_id = samn_url + bioaccession_id
+                elif 'PRJNA' in bioaccession_id:
+                    bioaccession_id = prjna_url + bioaccession_id
+                else:
+                    raise ValueError(f"bioaccession id {bioaccession_id} does not seem to have SRR, SAMN, or PRJNA in its name, so can't prepend urls")
+                
                 bioaccessions.append(bioaccession_id)
 
         if bioaccessions:

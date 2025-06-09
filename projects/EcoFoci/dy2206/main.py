@@ -52,26 +52,47 @@ def create_dy2206_sample_metadata():
             )
 
         # Need to make sure maximumDepthInMeters is processed before MinimumDepthinMeters and env_local_scale
-        elif "DepthInMeters" in faire_col:
-            max_depth_faire_col = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('maximumDepthInMeters')
-            depth_col_names = max_depth_faire_col.split(' | ')
+        elif "maximumDepthInMeters" in faire_col:
+            depth_metadata_cols = metadata_col.split(' | ')
+
+            # Add pressure first
+            pressure_metadat_cols = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('pressure').split(' | ')
+            pressure = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.map_using_two_or_three_cols_if_one_is_na_use_other(metadata_row=row,
+                                                                                             desired_col_name=pressure_metadat_cols[0],
+                                                                                             use_if_na_col_name=pressure_metadat_cols[1],
+                                                                                             transform_use_col_to_date_format=False),
+                axis=1
+            )
+            sample_mapper.sample_metadata_df['final_pressure'] = pressure
+            sample_metadata_results['pressure'] = pressure
+
+            # calulate max depth from pressure and lat for the rows that include pressure
             max_depth = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.get_depth_from_pressure(metadata_row=row, press_col_name='final_pressure', lat_col_name=depth_metadata_cols[3]),
+                axis = 1
+            )
+            # save values to metadata df to access in a minute
+            sample_mapper.sample_metadata_df['finalMaxDepth'] = max_depth
+
+            # Add maximumDepthInMeters to final results since taking from two columns (some pressure values have NA, so using depth_m_notes)
+            final_max_depth = sample_mapper.sample_metadata_df.apply(
                 lambda row: sample_mapper.map_using_two_or_three_cols_if_one_is_na_use_other(metadata_row=row, 
-                                                                                             desired_col_name=depth_col_names[0], 
-                                                                                             use_if_na_col_name=depth_col_names[1],
-                                                                                             transform_use_col_to_date_format=False,
-                                                                                             use_if_second_col_is_na=depth_col_names[2]),
+                                                                                             desired_col_name='finalMaxDepth', 
+                                                                                             use_if_na_col_name=depth_metadata_cols[2],
+                                                                                             transform_use_col_to_date_format=False),
                 axis=1
             )
-            sample_mapper.sample_metadata_df['FinalDepth'] = max_depth
-            sample_metadata_results['maximumDepthInMeters'] = max_depth
 
+            sample_mapper.sample_metadata_df['final_max_depth'] = final_max_depth
+            sample_metadata_results['maximumDepthInMeters'] = final_max_depth
+            
             sample_metadata_results['minimumDepthInMeters'] = sample_mapper.sample_metadata_df.apply(
-                lambda row: sample_mapper.convert_min_depth_from_minus_one_meter(metadata_row=row, max_depth_col_name='FinalDepth'),
+                lambda row: sample_mapper.convert_min_depth_from_minus_one_meter(metadata_row=row, max_depth_col_name='final_max_depth'),
                 axis=1
             )
 
-            sample_metadata_results['env_local_scale'] = sample_mapper.sample_metadata_df['FinalDepth'].apply(sample_mapper.calculate_env_local_scale)
+            sample_metadata_results['env_local_scale'] = sample_mapper.sample_metadata_df['final_max_depth'].apply(sample_mapper.calculate_env_local_scale)
 
         elif faire_col == 'prepped_samp_store_dur':
             date_col_names = metadata_col.split(' | ')
@@ -91,6 +112,19 @@ def create_dy2206_sample_metadata():
     
         elif faire_col == 'date_ext':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(sample_mapper.convert_date_to_iso8601)
+
+        elif faire_col == 'extract_id':
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(
+                sample_mapper.create_extract_id
+            )
+            
+        elif faire_col == 'dna_yield':
+            metadata_cols = metadata_col.split(' | ')
+            sample_vol_col = metadata_cols[1]
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.calculate_dna_yield(metadata_row=row, sample_vol_metadata_col=sample_vol_col),
+                axis = 1
+            )
 
     # Step 4: fill in NA with missing not collected or not applicable because they are samples and adds NC to rel_cont_id
     sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))

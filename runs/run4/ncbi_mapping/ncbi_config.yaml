@@ -1,38 +1,24 @@
-#TODO: add OSU876, OSU894, OSU1034, and OSU1037 to associated_sequencing_runs after Sean gets this info to you for datasets
-project_info_goole_sheet_id: 1E8fHmfnTQA1CV8GTVuFoOXlgeUwTaVy9uXao9mUzG1Q # google sheet id for where project and data management metadata are.
+# Use same config file as projectMapper
+# TODO: RC0083 and M2-PPS-0523 sampleMetadata mapping needs to be complete before this mapping is accurate - uncomment RC0083 when ready.
 
 datasets: # a list of sample_metadata.csvs and their associated experimentRun csvs
   sample_metadata_csvs:
-    - cruise_name: dy2012
-      sample_metadata_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2012/data/dy2012_faire.csv
     - cruise_name: dy2206
       sample_metadata_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2206/data/dy2206_faire.csv
     - cruise_name: dy2209
       sample_metadata_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2209/data/dy2209_faire.csv
     - cruise_name: dy2306
       sample_metadata_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2306/data/dy2306_faire.csv
-    - cruise_name: m2_pps_0423
-      sample_metadata_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/m2_pps_0423/data/m2_pps_0423_faire.csv
-    - cruise_name: no201
-      sample_metadata_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/no201/data/no201_faire.csv
-    - cruise_name: skq21_12S
-      sample_metadata_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/skq21_12S/data/skq21_12S_faire.csv
+    - cruise_name: m2_pps_0523
+      sample_metadata_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/m2_pps_0523/data/m2_pps_0523_faire.csv
     - cruise_name: skq23_12S
       sample_metadata_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/skq23_12S/data/skq23_12S_faire.csv
+    # - cruise_name: RC0083
+    #   sample_metadata_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/AK_Carbon/rc0083/data/rc0083_faire.csv
   associated_sequencing_csvs:
-    - sequencing_run_name: osu867
-      sequence_run_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/osu867/data/osu867_faire.csv
-    - sequencing_run_name: osu873
-      sequence_run_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/osu873/data/osu873_faire.csv
-    - sequencing_run_name: osu1089
-      sequence_run_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/osu1089/data/osu1089_faire.csv
-    - sequencing_run_name: run2
-      sequence_run_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/run2/data/run2_faire.csv
-    - sequencing_run_name: run3
-      sequence_run_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/run3/data/run3_faire.csv
     - sequencing_run_name: run4
       sequence_run_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/run4/data/run4_faire.csv
-
+    
 # Add samples that have mismatching names between the Sample Metadata and the Experiment Run Metadata
 # Add sample metadata name as key, and experiment run metadata name as value
 mismatch_sample_names: 
@@ -79,16 +65,7 @@ pooled_samps:
     sample_category: negative control
     cont_type: extraction negative
 
-# AnalysisMetadata
-bioinformatics_bebop_path: /home/poseidon/zalmanek/BeBOPs/BioinformticsBeBops/NOAA-PMEL-OME-Bioinformatics-Metabarcoding-Protocol-BeBOP/NOAA-PMEL-OME-Bioinformatics-Metabarcoding-Protocol-BEBOP.md
-bebop_config_file_google_sheet_id: 1BCZXpU0mIpWJsi-zM0l8D9DuPBvNOWBWH0zt-9r_If0 # Google sheet ID of config file that has fields that differ in BeBOP per anlaysis
-bioinformatics_software_name: REVAMP # For adding to the analysis run name
-bebop_config_run_col_name: Run
-bebop_config_marker_col_name: Marker
-
 faire_template_file: /home/poseidon/zalmanek/FAIRe-Mapping/faire_template.xlsx
-final_faire_template_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/data/ecoFoci_faire.xlsx
+final_faire_template_path: # nothing here because final_faire_template_path is not needed for ncbi
 
 json_creds: /home/poseidon/zalmanek/FAIRe-Mapping/credentials.json
- 
- 

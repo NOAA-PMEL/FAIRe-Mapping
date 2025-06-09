@@ -59,11 +59,11 @@ marker_to_assay_mapping = {
     '16S Kelley': 'lsu16s_2434-2571_kelly',
     'Kelly 16S': 'lsu16s_2434-2571_kelly',
     'Leray CO1': 'COI_1835-2198_lerayfolmer', #geller and folmer is same region
-    '18S Machida': 'ssu18sv8_machida',
+    '18S Machida': ['ssu18sv8_machida', 'ssu18sv8_machida_OSUmod'],
     'MiFish 12S': 'ssu12sv5v6_mifish_u_sales',
-    '16S Furhman': 'ssu16sv4v5_parada',
-    '16S Fuhrman': 'ssu16sv4v5_parada',
-    '16S Furhman/Parada': 'ssu16sv4v5_parada',
+    '16S Furhman': ['ssu16sv4v5_parada', 'ssu16sv4v5_parada_OSUmod'],
+    '16S Fuhrman': ['ssu16sv4v5_parada', 'ssu16sv4v5_parada_OSUmod'],
+    '16S Furhman/Parada': ['ssu16sv4v5_parada', 'ssu16sv4v5_parada_OSUmod'],
     '18S V4': 'ssu18sv4_stoeck',
     'ITS': 'ITS1_sterling',
 }
@@ -106,4 +106,311 @@ mismatch_sample_names_metadata_to_raw_data_files_dict = {
     'E2139.': 'E.2139.',
     'E687.WCOA21': 'E687'
 
+}
+
+# Dictionary with assay_name as keys and links to associated pcr library preparation bebops
+project_pcr_library_prep_mapping_dict = {
+    'ssu18sv9_amaralzettler': {
+        'pcr_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'NOAA-PMEL-OME-AmaralZettler-phytoplankton-18S-V9-PCR-Protocol-BeBOP',
+            'file_path': 'NOAA-PMEL-OME-AmaralZettler-phytoplankton-18S-V9-PCR-Protocol-BeBOP.md'
+        },
+        'library_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'Jonah-Ventures-Library-Preparation',
+            'file_path': 'Jonah-Ventures-Library-Preparation-BeBOP.md'
+        }
+    },
+    'lsu16s_2434-2571_kelly': {
+        'pcr_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'NOAA-PMEL-OME-Kelly-Metazoan-16S-PCR-Protocol-BeBOP-',
+            'file_path': 'NOAA-PMEL-OME-Kelly-Metazoan-16S-PCR-Protocol-BeBOP.md'
+        },
+        'library_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'Jonah-Ventures-Library-Preparation',
+            'file_path': 'Jonah-Ventures-Library-Preparation-BeBOP.md'
+        }
+    },
+    'COI_1835-2198_lerayfolmer': {
+        'pcr_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'NOAA-PMEL-OME-LF-metazoan-COI-PCR-Protocol-BeBOP',
+            'file_path': 'NOAA-PMEL-OME-LF-metazoan-COI-PCR-Protocol-BeBOP.md'
+        },
+        'library_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'Jonah-Ventures-Library-Preparation',
+            'file_path': 'Jonah-Ventures-Library-Preparation-BeBOP.md'
+        }
+    },
+    'ssu18sv8_machida': {
+        'pcr_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'NOAA-PMEL-OME-Machida-Metazoan-18S-V8-PCR-Protocol-BeBOP',
+            'file_path': 'NOAA-PMEL-OME-Machida-Metazoan-18S-V8-PCR-Protocol-BeBOP.md'
+        },
+        'library_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'Jonah-Ventures-Library-Preparation',
+            'file_path': 'Jonah-Ventures-Library-Preparation-BeBOP.md'
+        }
+    },
+    'ssu18sv8_machida_OSUmod': {
+        'pcr_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'OSU-Machida-metazoan-18S-V8-PCR',
+            'file_path': 'NOAA-PMEL-OME-OSU-Machida-Metazoan-18S-V8-PCR-Protocol-BeBOP.md'
+        },
+         'library_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'OSU-Library-Preparation-Sequencing',
+            'file_path': 'OSU-Library-Preparation-Sequencing-BeBOP.md'
+        }
+    },
+    'ssu12sv5v6_mifish_u_sales': {
+        'pcr_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'NOAA-PMEL-OME-MiFish-mod-Universal-Teleost-12S-PCR-Protocol-BeBOP',
+            'file_path': 'NOAA-PMEL-OME-MiFish-mod-Universal-Teleost-12S-PCR-Protocol-BeBOP.md'
+        },
+        'library_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'Jonah-Ventures-Library-Preparation',
+            'file_path': 'Jonah-Ventures-Library-Preparation-BeBOP.md'
+        }
+    },
+    'ssu16sv4v5_parada': {
+        'pcr_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'NOAA-PMEL-OME-Parada-universal-16S-PCR-Protocol-BeBOP',
+            'file_path': 'NOAA-PMEL-OME-Parada-universal-16S-PCR-Protocol-BeBOP.md'
+        },
+        'library_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'Jonah-Ventures-Library-Preparation',
+            'file_path': 'Jonah-Ventures-Library-Preparation-BeBOP.md'
+        }
+    },
+    'ssu16sv4v5_parada_OSUmod': {
+        'pcr_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'OSU-Parada-universal-16S-PCR',
+            'file_path': 'NOAA-PMEL-OME-OSU-Parada-universal-16S-PCR-Protocol-BeBOP copy.md'
+        },
+         'library_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'OSU-Library-Preparation-Sequencing',
+            'file_path': 'OSU-Library-Preparation-Sequencing-BeBOP.md'
+        }
+    },
+    'ssu18sv4_stoeck': {
+        'pcr_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'NOAA-PMEL-OME-Stoeck-phytoplankton-18S-V4-PCR-Protocol-BeBOP',
+            'file_path': 'NOAA-PMEL-OME-Stoeck-NCOG-phytoplankton-18S-V4-PCR-Protocol-BeBOP.md'
+        },
+        'library_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'Jonah-Ventures-Library-Preparation',
+            'file_path': 'Jonah-Ventures-Library-Preparation-BeBOP.md'
+        }
+    },
+    'ITS1_sterling': {
+        'pcr_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'NOAA-PMEL-OME-WhiteSterling-phytoplankton-ITS1-PCR-Protocol-BeBOP',
+            'file_path': 'NOAA-PMEL-OME-WhiteSterling-phytoplankton-ITS1-PCR-Protocol-BeBOP.md'
+        },
+        'library_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'Jonah-Ventures-Library-Preparation',
+            'file_path': 'Jonah-Ventures-Library-Preparation-BeBOP.md'
+        }
+    }
+}
+# NCBI sample column name as key and faire columns ask nested values with units
+faire_to_ncbi_units = {
+    "alkalinity": {
+        "faire_col": "tot_alkalinity",
+        "faire_unit_col": "tot_alkalinity_unit"
+    },
+    "ammonium": {
+        "faire_col": "ammonium",
+        "faire_unit_col": "ammonium_unit"
+    },
+    "chlorophyll": {
+        "faire_col": "chlorophyll",
+        "constant_unit_val": "mg/m3"
+    },
+    "density": {
+        "faire_col": "density",
+        "faire_unit_col": "density_unit"
+    },
+    "diss_inorg_carb": {
+        "faire_col": "diss_inorg_carb",
+        "faire_unit_col": "diss_inorg_carb_unit"
+    },
+    "diss_inorg_nitro": {
+        "faire_col": "diss_inorg_nitro",
+        "faire_unit_col": "diss_inorg_nitro_unit"
+    },
+    "diss_org_carb": {
+        "faire_col": "diss_org_carb",
+        "faire_unit_col": "diss_org_carb_unit"
+    },
+    "diss_org_nitro": {
+        "faire_col": "diss_org_nitro",
+        "faire_unit_col": "diss_org_nitro_unit"
+    },
+    "diss_oxygen": {
+        "faire_col": "diss_oxygen",
+        "faire_unit_col": "diss_oxygen_unit"
+    },
+    "down_par": { # This is a user defined field that we added
+        "faire_col": "par",
+        "faire_unit_col": "par_unit"
+    },
+    "elev": {
+        "faire_col": "elev",
+        "constant_unit_val": "m"
+    },
+    "light_intensity": {
+        "faire_col": "light_intensity",
+        "constant_unit_val": "lux"
+    },
+    "nitrate": {
+        "faire_col": "nitrate",
+        "faire_unit_col": "nitrate_unit"
+    },
+    "nitrite": {
+        "faire_col": "nitrite",
+        "faire_unit_col": "nitrite_unit"
+    },
+    "nitro": {
+        "faire_col": "nitro",
+        "faire_unit_col": "nitro_unit"
+    },
+    "org_carb": {
+        "faire_col": "org_carb",
+        "faire_unit_col": "org_carb_unit"
+    },
+    "org_matter": {
+        "faire_col": "org_matter",
+        "faire_unit_col": "org_matter_unit"
+    },
+    "org_nitro": {
+        "faire_col": "org_nitro",
+        "faire_unit_col": "org_nitro_unit"
+    },
+    "part_org_carb": {
+        "faire_col": "part_org_carb",
+        "faire_unit_col": "part_org_carb_unit"
+    },
+    "part_org_nitro": {
+        "faire_col": "part_org_nitro",
+        "faire_unit_col": "part_org_nitro_unit"
+    },
+    "ph": {
+        "faire_col": "ph",
+    },
+    "phosphate": { #user defined we added
+        "faire_col": "phosphate",
+        "faire_unit_col": "phosphate_unit"
+    },
+    "pressure": {
+        "faire_col": "pressure",
+        "faire_unit_col": "pressure_unit"
+    },
+    "salinity": {
+        "faire_col": "salinity",
+        "constant_unit_val": "psu"
+    },
+    "samp_size": {
+        "faire_col": "samp_size",
+        "faire_unit_col": "samp_size_unit"
+    },
+    "samp_store_temp": {
+        "faire_col": "samp_store_temp",
+        "constant_unit_val": "C"
+    },
+    "samp_vol_we_dna_ext": {
+        "faire_col": "samp_vol_we_dna_ext",
+        "faire_unit_col": "samp_vol_we_dna_ext_unit"
+    },
+    "silicate": { #user defined we added
+        "faire_col": "silicate",
+        "faire_unit_col": "silicate_unit"
+    },
+    "size_frac": {
+        "faire_col": "size_frac",
+        "constant_unit_val": "µm"
+    },
+    "size_frac_low": {
+        "faire_col": "size_frac_low",
+        "constant_unit_val": "µm"
+    },
+    "suspend_part_matter": {
+        "faire_col": "suspend_part_matter",
+        "constant_unit_val": "mg/L"
+    },
+    "temp": {
+        "faire_col": "temp",
+        "constant_unit_val": "C"
+    },
+    "tot_depth_water_col": {
+        "faire_col": "tot_depth_water_col",
+        "constant_unit_val": "m"
+    },
+    "tot_diss_nitro": {
+        "faire_col": "tot_diss_nitro",
+        "faire_unit_col": "tot_diss_nitro_unit"
+    },
+    "tot_inorg_nitro": {
+        "faire_col": "tot_inorg_nitro",
+        "faire_unit_col": "tot_inorg_nitro_unit"
+    },
+    "tot_nitro": {
+        "faire_col": "tot_nitro",
+        "faire_unit_col": "tot_nitro_unit"
+    },
+    "tot_part_carb": {
+        "faire_col": "tot_part_carb",
+        "faire_unit_col": "tot_part_carb_unit"
+    },
+    "turbidity": {
+        "faire_col": "turbidity",
+        "constant_unit_val": "ntu"
+    },
+    "water_current": {
+        "faire_col": "water_current",
+        "constant_unit_val": "m/s"
+    }
+}
+
+ # The columns of faire as keys and the columns of ncbi as values (if they map exactly)
+ncbi_faire_to_ncbi_column_mappings_exact = {
+    "samp_name": "*sample_name",
+    "eventDate": "*collection_date",
+    "env_broad_scale": "*env_broad_scale",
+    "env_local_scale": "*env_local_scale",
+    "env_medium": "*env_medium", 
+    "geo_loc_name": '*geo_loc_name',
+    "collection_method": "samp_collect_method",
+    "samp_collect_device": "samp_collect_device",
+    "samp_mat_process": "samp_mat_process",
+    "samp_store_dur": "samp_store_dur",
+    "samp_store_loc": "samp_store_loc",
+    "source_material_id": "materialSampleID",
+    "tidal_stage": "tidal_stage"
+}
+
+# For faire_column as keys and ncbit sra columns as values
+ncbi_faire_sra_column_mappings_exact = {
+    "samp_name": "sample_name",
+    "lib_id": "library_ID",
+    "filename": "filename",
+    "filename2": "filename2"
 }

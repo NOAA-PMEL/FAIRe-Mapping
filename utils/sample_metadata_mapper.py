@@ -8,6 +8,7 @@ import requests
 import numpy as np
 import xarray as xr
 import geopandas as gpd
+import gsw
 from shapely.geometry import Point
 from bs4 import BeautifulSoup
 from .custom_exception import NoInsdcGeoLocError
@@ -32,6 +33,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     faire_samp_vol_we_dna_ext_col_name = "samp_vol_we_dna_ext"
     faire_pool_num_col_name = "pool_dna_num"
     faire_rel_cont_id_col_name = "rel_cont_id"
+    faire_temp_col_name = "temp"
+    faire_pressure_col_name = "pressure"
+    faire_salinity_col_name = "salinity"
+    faire_density_col_name = "density"
     faire_nucl_acid_ext_method_additional_col_name = "nucl_acid_ext_method_additional"
     not_applicable_to_samp_faire_col_dict = {"neg_cont_type": "not applicable: sample group",
                                              "pos_cont_type": "not applicable: sample group"}
@@ -62,6 +67,9 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.google_sheet_mapping_file_id = self.config_file['google_sheet_mapping_file_id']
         self.extraction_blank_vol_we_dna_ext = self.config_file['extraction_blank_vol_we_dna_ext']
         self.extraction_set_grouping_col_name = self.config_file['extraction_set_grouping_col_name']
+        self.extraction_name = self.config_file['extraction_name']
+        self.samp_dur_info = self.config_file['samp_store_dur_sheet_info'] if 'samp_store_dur_sheet_info' in self.config_file else None
+        self.samp_stor_dur_dict = self.create_samp_stor_dict() if 'samp_store_dur_sheet_info' in self.config_file else None
 
         # self.exp_metadata_df = exp_metadata_df
         self.extraction_blank_rel_cont_dict = {}
@@ -150,6 +158,13 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     #     # Creates a dicitonary of the samples and their assays
     #     grouped = self.exp_metadata_df.groupby('samp_name')['assay_name'].apply(list).to_dict()
     #     return grouped
+
+    def create_samp_stor_dict(self) -> dict:
+
+        samp_dur_df = self.load_google_sheet_as_df(google_sheet_id=self.samp_dur_info['google_sheet_id'], sheet_name='Sheet1', header=0)
+        samp_dur_dict = dict(zip(samp_dur_df[self.samp_dur_info['samp_name_col']], samp_dur_df[self.samp_dur_info['samp_stor_dur_col']]))
+
+        return samp_dur_dict
 
     def convert_mdy_date_to_iso8061(self, date_string: str) -> str:
         # converts from m/d/y to iso8061
@@ -324,9 +339,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         metadata_df = metadata_df.dropna(
             subset=[self.sample_metadata_sample_name_column])
 
-        # for col in metadata_df.columns:
-        #     print(col)
-
         return metadata_df
 
     def _check_nc_samp_name_has_nc(self, metadata_row: pd.Series) -> str:
@@ -358,14 +370,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
     def filter_metadata_dfs(self):
 
-        # Extract all unique sample names from experiment run metadata df
-        # exp_sample_names = self.exp_metadata_df['samp_name'].unique()
-
         # Join sample metadata with extraction metadata to get samp_df
         samp_df = self.join_sample_and_extract_df()
-
-        # filter samp_df to keep only rows with sample names that exist in the exp_sample_names
-        # samp_df_filtered = samp_df[samp_df[self.sample_metadata_sample_name_column].isin(exp_sample_names)]
 
         try:
             nc_mask = samp_df[self.sample_metadata_sample_name_column].astype(
@@ -468,7 +474,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     def add_material_sample_id(self, metadata_row) -> str:
         # Formats MaterialSampleID to be numerical (discussed with Sean) - double check if this needs to be updated for three digit cast numbers
         # can also be used for sample_derived_from if no other in between parent samples
-
         cast_int = int(metadata_row.get(self.sample_metadata_cast_no_col_name))
         btl_int = int(metadata_row.get(
             self.sample_metadata_bottle_no_col_name))
@@ -480,23 +485,13 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         return material_sample_id
 
-    # def add_rel_cont_id(self, metadata_row: pd.Series, samp_seq_pos_controls_dict: dict) -> str:
-    #     # Adds the rel_cont_id
-    #     sample_name = metadata_row[self.sample_metadata_sample_name_column]
-
-    #     # Get positive controls
-    #     control_samps = samp_seq_pos_controls_dict.get(sample_name)
-
-    #     # Get field negative sample names in a list and add to associated_seq_pos
-    #     if not self.nc_df.empty:
-    #         nc_samples = self.nc_df[self.sample_metadata_sample_name_column].tolist(
-    #         )
-    #         control_samps.extend(nc_samples)
-
-    #     # join with |
-    #     rel_cont_id = ' | '.join(control_samps)
-
-    #     return rel_cont_id
+    def add_material_samp_id_for_pps_samp(self, metadata_row: pd.Series, cast_or_event_col: str, prefix: str):
+        # Creates a material sample id in the format of "M2-PPS-0423_Port1" Where the cruise name _ cast
+        # "M2-PPS-0423" is the prefix and not the cruise name because tehcnically the PPs was part of a cruise (e.g. DY2306)
+        # the cast will have 'Event1" so need to extract the 1
+        cast_val = metadata_row[cast_or_event_col]
+        port_num = cast_val.replace('Event','')
+        return f"{prefix}_Port{port_num}"
 
     def add_assay_name(self, sample_name: str) -> str:
         # Uses the sample name to look up assays from the sample_assay_dict (generated from the exp_run_metadata_df)
@@ -504,6 +499,34 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         assays_formatted = ' | '.join(assays)
         return assays_formatted
 
+    def create_extract_id(self, extraction_batch: str) -> str:
+        # creates the extract_id which is the [extractionName]_extract_set[extractionBatch]
+        return f"{self.extraction_name}_extSet_{extraction_batch.replace(' ','_')}"
+
+    def get_well_number_from_well_field(self, metadata_row: pd.Series, well_col: str) -> int:
+        # Gets the well number from a row that has a value like G1 -> 1
+        try:
+            well = metadata_row[well_col]
+            return well[-1]
+        except:
+            None
+    
+    def get_well_position_from_well_field(self, metadata_row: pd.Series, well_col: str) -> int:
+        # Get the well position from a row that has a value like G1 -> G
+        try:
+            well = metadata_row[well_col]
+            return well[0]
+        except:
+            None
+
+    def calculate_dna_yield(self, metadata_row: pd.Series, sample_vol_metadata_col: str) -> float:
+        # calculate the dna yield based on the concentration (ng/uL) and the sample_volume (mL)
+        concentration = metadata_row[self.extraction_conc_col_name]
+        sample_vol = metadata_row[sample_vol_metadata_col]
+
+        dna_yield = (concentration * 100)/sample_vol
+        return dna_yield
+    
     def convert_wind_degrees_to_direction(self, degree_metadata_row: pd.Series) -> str:
         # converts wind direction  to cardinal directions
 
@@ -570,8 +593,16 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         for idx, region in marine_regions.iterrows():
             if region.geometry.contains(point):
                 sea = region.get('NAME')
-                geo_loc = f"USA: {sea}"
-                geo_loc_name = geo_loc.split(':')[0]
+
+                if sea == 'Arctic Ocean':
+                    geo_loc = sea
+                else:
+                    geo_loc = f"USA: {sea}"
+
+                try:
+                    geo_loc_name = geo_loc.split(':')[0]
+                except:
+                    geo_loc_name = [geo_loc]
                 if geo_loc_name not in self.insdc_locations:
                     raise NoInsdcGeoLocError(
                         f'There is no geographic location in INSDC that matches {geo_loc_name}, check sea_name and try again')
@@ -612,6 +643,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             dt = datetime.fromisoformat(date)
 
         return dt
+
+    def switch_lat_lon_degree_to_neg(self, lat_or_lon_deg) -> float:
+        # If the sign is positive and should be negative, switch the sign of longitude or latitude
+        return -lat_or_lon_deg
 
     def calculate_date_duration(self, metadata_row: pd.Series, start_date_col: str, end_date_col: str) -> datetime:
         # takes two dates and calcualtes the difference to find the duration of time in ISO 8601 format
@@ -670,6 +705,82 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # make positive value
         return abs(elevation)
 
+    def get_samp_store_dur(self, sample_name: pd.Series) -> str:
+        # Get the samp_store_dur based on the sample name
+        
+        samp_stor_dur = self.samp_stor_dur_dict.get(sample_name, '')
+        
+        if self.samp_dur_info['dur_units'] == 'hour':
+            samp_stor_dur_formatted = f"T{samp_stor_dur}H"
+            return samp_stor_dur_formatted
+        else: 
+            raise ValueError("samp_stor_dur unit is not yet functional in this code - update get_samp_stor_dur function for unit")
+
+    def get_samp_store_loc_by_samp_store_dur(self, sample_name: pd.Series) -> str:
+        # Gets the samp_store_loc based on the samp_name, based on the samp_store_dur. If samp_stor_dur > 1 hr, loc is vessel name fridge else just vessel name
+        samp_stor_dur = int(self.samp_stor_dur_dict.get(sample_name, ''))
+         
+        if self.samp_dur_info['dur_units'] == 'hour':
+            if samp_stor_dur > 1:
+                samp_store_loc = f"{self.vessel_name} fridge"
+            else:
+                samp_store_loc = self.vessel_name
+            return samp_store_loc
+        else:
+            raise ValueError(f"samp_store_loc not able to be calculated by {self.samp_dur_info['dur_units']}, add functionality to get_samp_store_loc_by_samp_store_dur method")
+
+    def get_samp_sore_temp_by_samp_store_dur(self, sample_name: pd.Series) -> str:
+        samp_stor_dur = int(self.samp_stor_dur_dict.get(sample_name, ''))
+
+        if self.samp_dur_info['dur_units'] == 'hour':
+            if samp_stor_dur > 1:
+                samp_store_temp = 4
+            else:
+                samp_store_temp = 'ambient temperature'
+            return samp_store_temp
+        else:
+            raise ValueError(f"samp_store_loc not able to be calculated by {self.samp_dur_info['dur_units']}, add functionality to get_samp_sore_temp_by_samp_store_dur method")
+    
+    def get_depth_from_pressure(self, metadata_row: pd.Series, press_col_name: str, lat_col_name: str) -> float:
+        # Calculates depth from pressure and latitude
+        pressure = metadata_row[press_col_name]
+        lat = metadata_row[lat_col_name]
+
+        if pressure:
+            depth = gsw.conversions.z_from_p(pressure, lat)
+            return round(abs(depth), 2)
+        elif pressure == 0:
+            return 0
+        else:
+            return ''
+
+    def update_unit_colums_with_no_corresponding_val(self, df: pd.DataFrame) -> pd.DataFrame:
+        # Update the final sample dataframe unit columns to be "not applicable" if there is no value in its corresponding column
+        unit_cols = [col for col in df.columns if col.endswith('unit')]
+
+        for unit_col in unit_cols:
+            main_col = unit_col.replace('_unit', '') # Remove the 'unit' from the column name
+
+            if main_col in df.columns:
+                for idx in df.index:
+                    val = df.at[idx, main_col]
+                    # Check if we should update the unit
+                    try:
+                        should_update = False
+                        if pd.isna(val) or val == None:
+                            should_update = True
+                        elif isinstance(val, str):
+                            val_lower = val.lower()
+                            if 'missing' in val_lower or 'not applicable' in val_lower:
+                                should_update = True
+                        
+                        if should_update:
+                            df.at[idx, unit_col] = 'not applicable'
+                    except:
+                        print("does not work!")
+
+        return df
+
     def fill_empty_sample_values(self, df: pd.DataFrame, default_message="missing: not collected"):
         # fill empty values for samples after mapping over all sample data without control samples
 
@@ -687,7 +798,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # Handles empty strings (which might not be caught by fillna) - with default message or a -
         df = df.map(lambda x: default_message if x == "" or x == "-" else x)
 
-        return df
+        # update unit cols for non-values
+        updated_df = self.update_unit_colums_with_no_corresponding_val(df=df)
+
+        return updated_df
 
     def fill_nc_metadata(self) -> pd.DataFrame:
         # Fills the negative control data frame
@@ -790,8 +904,9 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
             # Step 3: Add related mappings
             for faire_col, metadata_col in extraction_blanks_mapping_dict[self.related_mapping].items():
-                extract_blank_results[faire_col] = self.extraction_blanks_df[metadata_col].apply(
-                    self.convert_date_to_iso8601)
+                if faire_col == 'date_ext':
+                    extract_blank_results[faire_col] = self.extraction_blanks_df[metadata_col].apply(
+                        self.convert_date_to_iso8601)
 
             extract_blanks_df = pd.concat(
                 [self.sample_faire_template_df, pd.DataFrame(extract_blank_results)])
@@ -839,45 +954,3 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
        
         return final_sample_df
    
-    # def add_nc_samps_to_rel_cont_id(self, final_sample_df: pd.DataFrame):
-
-    #     try:
-    #         # get list of samples associated with NC samps into dict for rel_cont_id
-    #         valid_samples = final_sample_df[self.faire_sample_name_col].tolist()
-    #         for sample in valid_samples:
-    #             if '.NC' in sample:
-    #                 other_samples = [samp for samp in valid_samples if samp != sample and '.NC' not in samp]
-    #                 self.rel_cont_dict[sample] = other_samples
-    #     except:
-    #         raise ValueError("Adding NC samps to rel_cont_dict not working!")
-    #     print(self.rel_cont_dict)
-    
-    
-    # # def fill_seq_pos_control_metadata(self, final_sample_df: pd.DataFrame) -> pd.DataFrame:
-    #     #TODO: add pos_cont_type mapping
-
-    #     # Get positive control df and only keep the sample name and assay name columns
-    #     positive_samp_df = self.exp_metadata_df[self.exp_metadata_df[self.faire_sample_name_col].str.contains('POSITIVE', case=True)][[self.faire_sample_name_col, 'assay_name']]
-
-    #     # Update sample_category
-    #     positive_samp_df[self.faire_sample_category_name_col] = positive_samp_df.apply(
-    #         lambda row: self.add_samp_category_by_sample_name(metadata_row=row, faire_col=self.faire_sample_category_name_col, metadata_col=self.faire_sample_name_col),
-    #         axis=1
-    #     )
-
-    #     positive_samp_df[self.faire_neg_cont_type_name_col] = 'not applicable'
-
-    #     positive_samp_df['eventDate'] = 'missing: not provided'
-
-    #     positive_samp_df['pos_cont_type'] = positive_samp_df[self.faire_sample_name_col].apply(self.add_pos_cont_type)
-
-    #     # fill res of empty values
-    #     faire_pos_df = pd.concat([self.sample_faire_template_df, positive_samp_df])
-
-    #     new_cols = [col for col in final_sample_df.columns if col not in faire_pos_df.columns]
-    #     for col in new_cols:
-    #         faire_pos_df[col] = 'not applicable: control sample'
-
-    #     faire_pos_df = self.fill_empty_sample_values(df=faire_pos_df, default_message='not applicable: control sample')
-
-    #     return faire_pos_df

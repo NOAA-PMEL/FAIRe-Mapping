@@ -1,9 +1,11 @@
 from pathlib import Path
 import openpyxl
+import frontmatter
 from openpyxl.utils import get_column_letter
 from datetime import datetime
 import pandas as pd
 # import difflib
+import warnings
 import yaml
 from .custom_exception import ControlledVocabDoesNotExistError
 import gspread #library that makes it easy for us to interact with the sheet
@@ -90,6 +92,12 @@ class OmeFaireMapper:
         
         return df
     
+    def load_beBop_yaml_terms(self, path_to_bebop: str):
+        # read BeBOP yaml terms
+        with open(path_to_bebop, 'r', encoding='utf-8') as f:
+            post = frontmatter.load(f)
+            return post
+        
     def str_replace_for_samps(self, samp_name: pd.Series) -> str:
         # Fixes sample names in the data frame
         # if sample is part of the DY2012 cruise, will replace any str of DY20 with DY2012
@@ -113,7 +121,6 @@ class OmeFaireMapper:
       
         return samp_name
     
-    
     def extract_controlled_vocab(self, faire_attribute: str) -> list:
         
         # filter dataframe by the FAIRe attribute and get all allowable terms
@@ -135,7 +142,7 @@ class OmeFaireMapper:
 
         for word in value:
             if word not in controlled_vocab and word not in self.faire_missing_values:
-                raise ControlledVocabDoesNotExistError(f'The following {faire_attribute} does not exist in the FAIRe standard controlled vocabulary: {word}, the allowed values are {controlled_vocab}')
+                warnings.warn(f'The following {faire_attribute} does not exist in the FAIRe standard controlled vocabulary: {word}, the allowed values are {controlled_vocab}')
             else:
                 new_value = ' | '.join(value)
                 return new_value
@@ -171,14 +178,18 @@ class OmeFaireMapper:
         
         if transform_use_col_to_date_format == False:
             # If desired col name value is not na
-            if pd.notna(metadata_row[desired_col_name]):
+            if pd.notna(metadata_row[desired_col_name]) and metadata_row[desired_col_name] != '':
                 return metadata_row[desired_col_name]
-            elif pd.notna(metadata_row[use_if_na_col_name]):
+            elif pd.notna(metadata_row[use_if_na_col_name]) and metadata_row[use_if_na_col_name] != '':
                 return metadata_row[use_if_na_col_name]
             else:
-                return metadata_row[use_if_second_col_is_na]
+                try:
+                    return metadata_row[use_if_second_col_is_na]
+                except:
+                    return ''
+
         else:
-            if pd.notna(metadata_row[use_if_na_col_name]):
+            if pd.notna(metadata_row[use_if_na_col_name]) or metadata_row[use_if_na_col_name] != '':
                 return self.convert_date_to_iso8601(date=metadata_row[use_if_na_col_name])
             else:
                 return self.convert_date_to_iso8601(date=metadata_row[use_if_second_col_is_na])
