@@ -304,12 +304,22 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         # matches the marker to the corresponding assay and returns standardized assay name
         
         potential_assays = marker_to_assay_mapping.get(marker, None)
-        if 'osu' in self.run_name.lower():
-            for assay in potential_assays:
-                if 'osu' in assay.lower():
-                    return assay
-                else:
-                    raise NoAcceptableAssayMatch(f'The marker/assay {marker} does not match any of the {[v for v in marker_to_assay_mapping.values()]}, please update marker_to_assay_mapping dict in list file.')
+        if isinstance(potential_assays, list):
+            # Get the OSU assay name if OSU in the run name
+            if 'osu' in self.run_name.lower():
+                for assay in potential_assays:
+                    if 'osu' in assay.lower():
+                        return assay
+                    else:
+                        raise NoAcceptableAssayMatch(f'The marker/assay {marker} does not match any of the {[v for v in marker_to_assay_mapping.values()]}, for an osu assay, please update marker_to_assay_mapping dict in list file.')
+            # else get the other assay name that does not have OSU in the run name if the run name is not an osu assay, but has an osu sibling assay
+            else:
+                for assay in potential_assays:
+                    if 'osu' not in assay.lower():
+                        return assay
+                    else:
+                        raise NoAcceptableAssayMatch(f'The marker/assay {marker} does not match any of the {[v for v in marker_to_assay_mapping.values()]} for a non-osu assay, please update marker_to_assay_mapping dict in list file.')
+        # else if potential_assays is not a list, then just get the value
         else:
             assay = potential_assays
             if assay == None:
