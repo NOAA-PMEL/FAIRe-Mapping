@@ -44,7 +44,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         self.rel_pos_cont_id_dict = self._create_positive_samp_dict()
 
         self.exp_run_faire_template_df = self.load_faire_template_as_df(file_path=self.config_file['faire_template_file'], sheet_name=self.faire_template_exp_run_sheet_name, header=self.faire_sheet_header).dropna()
-
+        
     def generate_run_metadata(self) -> pd.DataFrame :
         # Works for run2, need to check other jv runs - maybe can potentially use for OSU runs, if mapping file is generically the same?
         exp_metadata_results = {}
@@ -337,7 +337,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             # Get approrpiate nested marker dict and corresponding nested sample list with dictionary of files and checksums
             filename = raw_file_dict.get(marker_name).get(sample_name).get('filename')
         except:
-            raise ValueError(f"sample name{sample_name} with marker {marker_name} does not appear to have a value in the raw data dict, please look into")
+            raise ValueError(f"sample name {sample_name} with marker {marker_name} does not appear to have a value in the raw data dict, please look into")
 
         return filename
     

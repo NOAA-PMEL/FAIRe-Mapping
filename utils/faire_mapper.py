@@ -102,7 +102,7 @@ class OmeFaireMapper:
         # Fixes sample names in the data frame
         # if sample is part of the DY2012 cruise, will replace any str of DY20 with DY2012
         samp_name = str(samp_name)
-        if '_' in samp_name: # osu samp names have _ that needs to be . For example, E62_1B_DY20
+        if '_' in samp_name and 'pool' not in samp_name: # osu samp names have _ that needs to be . For example, E62_1B_DY20. Pooled samples keep the underscore
             samp_name = samp_name.replace('_', '.')
         if '.DY20' in samp_name:
            samp_name = samp_name.replace('.DY20', '.DY2012')
