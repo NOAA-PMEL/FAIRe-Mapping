@@ -166,7 +166,7 @@ class SampleMetadataValidator:
                         empty_details.append(f"{none_count} None")
 
                     detail_str = ",".join(empty_details)
-                    self.errors.append(f"{file}: Column: {col} has {total_empty} empty values ({detail_str})")
+                    self.errors.append(f"{self.file}: Column: {col} has {total_empty} empty values ({detail_str})")
 
     def get_validation_summary(self) -> Dict[str, Any]:
         # Get summary of validation results
