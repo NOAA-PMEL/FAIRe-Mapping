@@ -5,6 +5,11 @@ on:
     paths: 
       - 'projects/**/**/data/*.csv'
 
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
 jobs:
   validate-sample-metadata-csv:
     runs-on: ubuntu-latest
