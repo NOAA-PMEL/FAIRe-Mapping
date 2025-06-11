@@ -42,7 +42,7 @@ class SampleMetadataValidator:
         return df.dropna(how='all')
 
     def load_iho_dataset(self):
-        return gpd.read_file("/home/poseidon/zalmanek/FAIRe-Mapping/utils/World_Seas_IHO_v3/World_Seas_IHO_v3.shp")
+        return gpd.read_file("utils/World_Seas_IHO_v3/World_Seas_IHO_v3.shp")
 
     def run(self) -> None:
 
@@ -110,6 +110,7 @@ class SampleMetadataValidator:
                     if supposed_sea != geo_loc_sea_area:
                         self.warnings.append(f"{self.file} with sample {samp_name} has have lat lon coordinates that point to {supposed_sea}, but geo_loc is listed as {geo_loc_sea_area}, double check this!")
                     break
+    
     def get_validation_summary(self) -> Dict[str, Any]:
         # Get summary of validation results
         return {'errors': self.errors,
