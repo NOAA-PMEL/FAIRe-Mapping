@@ -4,6 +4,7 @@ import argparse
 import sys
 from shapely.geometry import Point
 from typing import Dict, Any
+from datetime import datetime, timedelta
 
 
 class SampleMetadataValidator:
@@ -165,6 +166,21 @@ class SampleMetadataValidator:
 
                     detail_str = ",".join(empty_details)
                     self.errors.append(f"{self.file}: Column: {col} has {total_empty} empty values ({detail_str})")
+
+    def check_eventDate_ranges(self) -> None:
+        # Check that eventData ranges per cruise are no more the 60 days, for pps cruises, no more than 400 days
+        # No sampling before 2018
+
+        # convert eventData to datetime
+        self.sample_metadata_df[self.faire_event_date] = pd.to_datetime(self.sample_metadata_df[self.faire_event_date])
+
+        # Check no samples before 2018
+        self.sample_metadata_df['year'] = self.sample_metadata_df[self.faire_event_date].dt.year
+        invalid_years = self.sample_metadata_df[self.sample_metadata_df['year'] < 2018]
+        if not invalid_years.empty:
+            self.errors.append(f"{self.file} has {len(invalid_years)} records with years before 2018. They include: {invalid_years[[self.faire_samp_name]]}")
+
+
 
     def get_validation_summary(self) -> Dict[str, Any]:
         # Get summary of validation results
