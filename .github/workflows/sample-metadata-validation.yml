@@ -15,10 +15,6 @@ jobs:
         fetch-depth: 0
         lfs: true
 
-    # - name: Checkout LFS files (backup)
-    #   run: git lfs pull
-
-
     # Cache Conda Environment so don't have to install dependencies every time
     - name: Set up Conda with caching
       uses: conda-incubator/setup-miniconda@v3

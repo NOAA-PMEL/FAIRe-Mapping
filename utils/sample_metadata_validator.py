@@ -12,6 +12,13 @@ class SampleMetadataValidator:
     faire_geo_loc_name = "geo_loc_name"
     faire_samp_name = "samp_name"
     faire_samp_category = "samp_category"
+    faire_neg_cont_type = "neg_cont_type"
+    faire_pos_cont_type = "pos_cont_type"
+    faire_event_date = "eventDate"
+    faire_env_broad_scale = "env_broad_scale"
+    faire_env_local_scale = "env_local_scale"
+    faire_env_medium = "env_medium"
+    faire_assay_name = "assay_name"
 
     def __init__(self, csv_file_path: str):
 
@@ -31,6 +38,22 @@ class SampleMetadataValidator:
         # relevant keywords for Arctic regions
         self.artic_region_keywords = ['bering', 'chukchi', 'arctic', 'north pacific', 'alaska', 'british columbia']
 
+        # Mandatory columns
+        self.mandatory_cols = [
+            self.faire_samp_name,
+            self.faire_samp_category,
+            self.faire_neg_cont_type,
+            self.faire_pos_cont_type,
+            self.faire_latitude,
+            self.faire_longitude,
+            self.faire_geo_loc_name,
+            self.faire_event_date,
+            self.faire_env_broad_scale,
+            self.faire_env_local_scale,
+            self.faire_env_medium,
+            self.faire_assay_name
+        ]
+
         self.iho_dataset = self.load_iho_dataset()
         self.sample_metadata_df = self.load_csv_as_df(file_path=self.file)
 
@@ -46,6 +69,7 @@ class SampleMetadataValidator:
 
     def run(self) -> None:
 
+        self.validate_mandatory_columns()
         self.validate_coordinates()
         self.validate_arctic_regions_and_geo_loc_name()
     
@@ -89,12 +113,18 @@ class SampleMetadataValidator:
         for idx, row in self.sample_metadata_df.iterrows():
             point = Point(row[self.faire_longitude], row[self.faire_latitude])
             # Get the sea area and the country for geo_loc_name
-            geo_loc_sea_area = row[self.faire_geo_loc_name].split(':')[1]
-            geo_loc_country = row[self.faire_geo_loc_name].split(':')[0]
             samp_name = row[self.faire_samp_name]
+            try:
+                geo_loc_sea_area = row[self.faire_geo_loc_name].split(':')[1]
+                geo_loc_country = row[self.faire_geo_loc_name].split(':')[0]
+            # Sometimes Arctic Ocean won't have USA in front because its an INSDC acceptable region
+            except:
+                geo_loc_country = None
+                geo_loc_sea_area = row[self.faire_geo_loc_name]
+            
 
             # Check country is USA
-            if geo_loc_country not in self.arctic_countries:
+            if geo_loc_country and geo_loc_country not in self.arctic_countries:
                 self.errors.append(f"{self.file} with sample {samp_name} has country {geo_loc_country}, which is not acceptable.")
             
             # check sea area has key words
@@ -107,10 +137,37 @@ class SampleMetadataValidator:
                     
                     # Check geo_loc kind of matches
                     # TODO: double check this logic makes sense. Maybe data list geo_loc as Bering but looking up lat/lon is coming up as Arctic Ocean. Not sure if this should be a warning or an error.
-                    if supposed_sea != geo_loc_sea_area:
-                        self.warnings.append(f"{self.file} with sample {samp_name} has have lat lon coordinates that point to {supposed_sea}, but geo_loc is listed as {geo_loc_sea_area}, double check this!")
+                    if supposed_sea.lower().strip() != geo_loc_sea_area.lower().strip():
+                        self.warnings.append(f"{self.file} with sample {samp_name} has lat lon coordinates that point to {supposed_sea}, but geo_loc is listed as {geo_loc_sea_area}, double check this!")
                     break
     
+    def validate_mandatory_columns(self) -> None:
+        # Check to make sure all mandatory columns are present are do there are no Nan, None, or empty values
+        missing_columns = [col for col in self.mandatory_cols if col not in self.sample_metadata_df.columns]
+        if missing_columns:
+            self.errors.append(f"{self.file}: Missing mandatory columsn: {missing_columns}")
+        
+        for col in self.mandatory_cols:
+            if col in self.sample_metadata_df.columns:
+                # Count different types of "empty" values
+                null_count = self.sample_metadata_df[col].isna().sum()
+                empty_string_count = (self.sample_metadata_df[col] == '').sum()
+                none_count = (self.sample_metadata_df[col].astype(str) == 'None').sum()
+
+                total_empty = null_count + empty_string_count + none_count
+
+                if total_empty > 0:
+                    empty_details = []
+                    if null_count > 0:
+                        empty_details.append(f"{null_count} NaN/null")
+                    if empty_string_count > 0:
+                        empty_details.append(f"{empty_string_count} empty strings")
+                    if none_count > 0:
+                        empty_details.append(f"{none_count} None")
+
+                    detail_str = ",".join(empty_details)
+                    self.errors.append(f"{file}: Column: {col} has {total_empty} empty values ({detail_str})")
+
     def get_validation_summary(self) -> Dict[str, Any]:
         # Get summary of validation results
         return {'errors': self.errors,
