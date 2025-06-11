@@ -1,0 +1,24 @@
+name: faire_mapping
+channels:
+  - https://repo.anaconda.com/pkgs/main
+  - https://repo.anaconda.com/pkgs/r
+dependencies:
+  - pandas
+  - anaconda::pyyaml
+  - anaconda::openpyxl
+  - conda-forge::isodate
+  - requests
+  - bs4
+  - conda-forge::google-api-python-client
+  - conda-forge::google-auth-oauthlib
+  - conda-forge::gspread
+  - bioconda::bioawk
+  - anaconda::xarray
+  - h5netcdf
+  - netcdf4
+  - anaconda::shapely
+  - conda-forge::geopandas
+  - conda-forge::oauth2client
+  - conda-forge::python-frontmatter
+  - conda-forge::gsw
+prefix: /home/poseidon/zalmanek/miniconda3/envs/faire_mapping
