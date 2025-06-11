@@ -15,6 +15,9 @@ jobs:
         fetch-depth: 0
         lfs: true
 
+    - name: Download LFS files
+      run: git lfs pull
+
     # Cache Conda Environment so don't have to install dependencies every time
     - name: Set up Conda with caching
       uses: conda-incubator/setup-miniconda@v3
@@ -107,6 +110,7 @@ jobs:
         echo "OVERALL_SUCCESS=$overall_success" >> $GITHUB_ENV
         echo "FAILED_FILES=${failed_files[*]}" >> $GITHUB_ENV
         echo "WARNING_FILES=${warning_files[*]}" >> $GITHUB_ENV
+        echo "VALIDATION_RAN=true" >> $GITHUB_ENV
         
         # Summary
         echo "================================================================="
@@ -138,7 +142,7 @@ jobs:
         fi
         
     - name: Comment PR with detailed results
-      if: github.event_name == 'pull_request'
+      if: github.event_name == 'pull_request' && env.VALIDATION_RAN == 'true'
       uses: actions/github-script@v6
       with:
         script: |
