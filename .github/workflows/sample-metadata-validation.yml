@@ -82,10 +82,12 @@ jobs:
           # Capture both stdout and stderr, and the exit code
           output_file=$(mktemp)
           if python utils/sample_metadata_validator.py --file "$file" > "$output_file" 2>&1; then
-            echo "✅ $file passed validation"
             # Check if there were warnings in the output
-            if grep -q "⚠️" "$output_file"; then
+            if grep -q "⚠" "$output_file"; then
+              echo "⚠️ $file passed validation with warnings"
               warning_files+=("$file")
+            else
+              echo "✅ $file passed validation"
             fi
           else 
             echo "❌ $file failed validation"
@@ -123,7 +125,7 @@ jobs:
         echo "================================================================="
         if [ "$overall_success" = true ]; then
           if [ ${#warning_files[@]} -gt 0 ]; then
-            echo "✅ All files passed validation, but some have warnings:"
+            echo "⚠️ All files passed validation, but ${#warning_files[@]} file(s) have warnings:"
             for warning_file in "${warning_files[@]}"; do
               echo "  ⚠️ $warning_file"
             done
