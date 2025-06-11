@@ -18,7 +18,6 @@ class SampleMetadataValidator:
     faire_env_broad_scale = "env_broad_scale"
     faire_env_local_scale = "env_local_scale"
     faire_env_medium = "env_medium"
-    faire_assay_name = "assay_name"
 
     def __init__(self, csv_file_path: str):
 
@@ -51,7 +50,6 @@ class SampleMetadataValidator:
             self.faire_env_broad_scale,
             self.faire_env_local_scale,
             self.faire_env_medium,
-            self.faire_assay_name
         ]
 
         self.iho_dataset = self.load_iho_dataset()
