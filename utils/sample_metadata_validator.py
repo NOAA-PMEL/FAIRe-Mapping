@@ -19,6 +19,7 @@ class SampleMetadataValidator:
     faire_env_broad_scale = "env_broad_scale"
     faire_env_local_scale = "env_local_scale"
     faire_env_medium = "env_medium"
+    faire_expedition_id = "expedition_id"
 
     def __init__(self, csv_file_path: str):
 
@@ -71,6 +72,7 @@ class SampleMetadataValidator:
         self.validate_mandatory_columns()
         self.validate_coordinates()
         self.validate_arctic_regions_and_geo_loc_name()
+        self.check_eventDate_ranges()
     
     def validate_coordinates(self) -> None:
         # Validate latitude and longitude values in general
@@ -180,6 +182,27 @@ class SampleMetadataValidator:
         if not invalid_years.empty:
             self.errors.append(f"{self.file} has {len(invalid_years)} records with years before 2018. They include: {invalid_years[[self.faire_samp_name]]}")
 
+
+        # Group by expedition_id and calculate date ranges
+        expedition_stats = self.sample_metadata_df.groupby(self.faire_expedition_id).agg({
+            self.faire_event_date: ['min', 'max'],
+            'year': 'min' # keep for reference
+        }).round()
+
+        # flatten column names
+        expedition_stats.columns = ['min_date', 'max_date', 'min_year']
+
+        # calculate date span in days
+        expedition_stats['date_span_days'] = (
+            expedition_stats['max_date'] - expedition_stats['min_date']
+        ).dt.days
+
+        # Check date span constraints
+        for expedition_id, row in expedition_stats.iterrows():
+            max_allowed_days = 400 if 'pps' in expedition_id else 60
+
+            if row['date_span_days'] > max_allowed_days:
+                self.errors.append(f"{self.file} has a date range of {row['date_span_days']}, which is outside of the acceptable amount of 60 days, or 400 days for PPS cruises. Min date is {row['min_date']} and max date is {row['max_date']}")
 
 
     def get_validation_summary(self) -> Dict[str, Any]:
