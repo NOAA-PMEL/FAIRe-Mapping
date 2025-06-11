@@ -4,43 +4,38 @@ on:
   pull_request:
     paths: 
       - 'projects/**/**/data/*.csv'
-    push:
-      branches: [main, master]
-      paths:
-       - 'projects/**/**/data/*.csv'
 
 jobs:
   validate-sample-metadata-csv:
-    runs-on: ubuntu
-
+    runs-on: ubuntu-latest
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
-
+        
     - name: Set up Conda
       uses: conda-incubator/setup-miniconda@v3
       with:
         auto-update-conda: true
-        activate_environment: faire_mapping
-        envrionment_file: environment.yml
+        activate-environment: faire_mapping
+        environment-file: environment.yml
         python-version: 3.11
         auto-activate-base: false
-
+        
     - name: Install dependencies with conda
       shell: bash -l {0}
       run: | 
         conda install -c conda-forge -c anaconda -c bioconda pandas pyyaml openpyxl isodate requests beautifulsoup4 shapely geopandas h5netcdf netcdf4 xarray 
-        pip install google-api-python-client google-auth-oauthlib gspread, oauth2client python-frontmatter gsw bioawk
-
+        pip install google-api-python-client google-auth-oauthlib gspread oauth2client python-frontmatter gsw bioawk
+        
     - name: Get changed sample metadata csv files
       id: changed-files
       uses: tj-actions/changed-files@v40
       with:
         files: | 
           projects/**/**/data/*.csv
-
+          
     - name: Validate sample metadata csv files
       if: steps.changed-files.outputs.any_changed == 'true'
       shell: bash -l {0}
@@ -48,23 +43,20 @@ jobs:
         echo "🔎 Validating the following sample metadata files:"
         echo "${{ steps.changed-files.outputs.all_changed_files }}"
         echo ""
-
         # Track validation results
         overall_success=true
         failed_files=()
-
         # Process each changed CSV file
         for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
           echo "📋 Validating: $file"
           echo " --------------------------------------------------------------------"
-
           # Run validation in normal mode
           if python utils/sample_metadata_validator.py --file "$file"; then
             echo "✅ $file passed validation"
           else 
             echo "❌ $file failed validation"
             failed_files+=("$file")
-            overall_sucess=false
+            overall_success=false
           fi
         
           echo ""
@@ -74,13 +66,12 @@ jobs:
         echo "================================================================="
         echo "📊 VALIDATION SUMMARY"
         echo "================================================================="
-
         if [ "$overall_success" = true ]; then
           echo "🎉 All Sample metadata csv files passed validation!"
         else
           echo "❌ Some Sample metadata files failed validation:"
           for failed_file in "${failed_files[@]}"; do
-            echo "  = $filed_file"
+            echo "  - $failed_file"
           done
           echo ""
           echo "Please fix the validation errors before merging."
@@ -92,13 +83,21 @@ jobs:
       uses: actions/github-script@v6
       with:
         script: | 
-        github.rest.issues.createComment({issue_number:context.issue.number, owner: context.repo.owner, repo: context.repo.repo, body: '\u274C Sample Metadata Validation failed. Please check logs for details.'})
-
-    - name: Comment PR with success
-        if: github.event_name == 'pull_request' && success()
-        uses: actions/github-script@v6
-        with:
-          script: | 
-            github.rest.issues.createComment({issue_number: context.issue.number, owner: context.repo.owner, repo: context.repo.repo, body: '\u2705 All Sample Metadata CSV files passed validation!'})
-
+          github.rest.issues.createComment({
+            issue_number: context.issue.number, 
+            owner: context.repo.owner, 
+            repo: context.repo.repo, 
+            body: '❌ Sample Metadata Validation failed. Please check logs for details.'
+          })
           
+    - name: Comment PR with success
+      if: github.event_name == 'pull_request' && success()
+      uses: actions/github-script@v6
+      with:
+        script: | 
+          github.rest.issues.createComment({
+            issue_number: context.issue.number, 
+            owner: context.repo.owner, 
+            repo: context.repo.repo, 
+            body: '✅ All Sample Metadata CSV files passed validation!'
+          })
