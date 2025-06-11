@@ -204,7 +204,6 @@ class SampleMetadataValidator:
             if row['date_span_days'] > max_allowed_days:
                 self.errors.append(f"{self.file} has a date range of {row['date_span_days']}, which is outside of the acceptable amount of 60 days, or 400 days for PPS cruises. Min date is {row['min_date']} and max date is {row['max_date']}")
 
-
     def get_validation_summary(self) -> Dict[str, Any]:
         # Get summary of validation results
         return {'errors': self.errors,

@@ -81,7 +81,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.replicates_dict = self.create_biological_replicates_dict()
         self.insdc_locations = self.extract_insdc_geographic_locations()
         self.mapping_dict = self.create_sample_mapping_dict()
-        # self.sample_assay_dict = self.create_assay_name_dict()
 
     def create_sample_mapping_dict(self) -> dict:
         # creates a mapping dictionary and saves as self.mapping_dict
@@ -153,11 +152,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             mapping_dict[self.constant_mapping][self.faire_nucl_acid_ext_method_additional_col_name] = "missing: not provided"
 
         return mapping_dict
-
-    # def create_assay_name_dict(self) -> dict:
-    #     # Creates a dicitonary of the samples and their assays
-    #     grouped = self.exp_metadata_df.groupby('samp_name')['assay_name'].apply(list).to_dict()
-    #     return grouped
 
     def create_samp_stor_dict(self) -> dict:
 
@@ -492,12 +486,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         cast_val = metadata_row[cast_or_event_col]
         port_num = cast_val.replace('Event','')
         return f"{prefix}_Port{port_num}"
-
-    def add_assay_name(self, sample_name: str) -> str:
-        # Uses the sample name to look up assays from the sample_assay_dict (generated from the exp_run_metadata_df)
-        assays = self.sample_assay_dict.get(sample_name)
-        assays_formatted = ' | '.join(assays)
-        return assays_formatted
 
     def create_extract_id(self, extraction_batch: str) -> str:
         # creates the extract_id which is the [extractionName]_extract_set[extractionBatch]
