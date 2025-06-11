@@ -13,8 +13,9 @@ jobs:
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
-        
-    - name: Set up Conda
+
+    # Cache Conda Environment so don't have to install dependencies every time
+    - name: Set up Conda with caching
       uses: conda-incubator/setup-miniconda@v3
       with:
         auto-update-conda: true
@@ -22,13 +23,27 @@ jobs:
         environment-file: environment.yml
         python-version: 3.11
         auto-activate-base: false
+        use-mamba: true  # Faster than conda
         
-    - name: Install dependencies with conda
+    - name: Cache conda environment
+      uses: actions/cache@v3
+      with:
+        path: /usr/share/miniconda/envs/faire_mapping
+        key: conda-${{ runner.os }}-${{ hashFiles('environment.yml') }}
+        restore-keys: |
+          conda-${{ runner.os }}-
+          
+    - name: Install dependencies with conda (cached)
       shell: bash -l {0}
       run: | 
-        conda install -c conda-forge -c anaconda -c bioconda pandas pyyaml openpyxl isodate requests beautifulsoup4 shapely geopandas h5netcdf netcdf4 xarray 
-        pip install google-api-python-client google-auth-oauthlib gspread oauth2client python-frontmatter gsw bioawk
-        
+        # Only install if cache miss or environment.yml changed
+        conda list | grep pandas || {
+          echo "Installing dependencies..."
+          conda install -c conda-forge -c anaconda -c bioconda pandas pyyaml openpyxl isodate requests beautifulsoup4 shapely geopandas h5netcdf netcdf4 xarray 
+          pip install google-api-python-client google-auth-oauthlib gspread oauth2client python-frontmatter gsw bioawk
+        }
+
+    # Finds which CSV files were modified in the PR
     - name: Get changed sample metadata csv files
       id: changed-files
       uses: tj-actions/changed-files@v40
@@ -43,61 +58,127 @@ jobs:
         echo "🔎 Validating the following sample metadata files:"
         echo "${{ steps.changed-files.outputs.all_changed_files }}"
         echo ""
+        
         # Track validation results
         overall_success=true
         failed_files=()
+        warning_files=()
+        validation_output=""
+        
         # Process each changed CSV file
         for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
           echo "📋 Validating: $file"
           echo " --------------------------------------------------------------------"
-          # Run validation in normal mode
-          if python utils/sample_metadata_validator.py --file "$file"; then
+          
+          # Capture both stdout and stderr, and the exit code
+          output_file=$(mktemp)
+          if python utils/sample_metadata_validator.py --file "$file" > "$output_file" 2>&1; then
             echo "✅ $file passed validation"
+            # Check if there were warnings in the output
+            if grep -q "⚠️" "$output_file"; then
+              warning_files+=("$file")
+            fi
           else 
             echo "❌ $file failed validation"
             failed_files+=("$file")
             overall_success=false
           fi
-        
+          
+          # Capture output for PR comment
+          file_output=$(cat "$output_file")
+          validation_output+="**$file:**"$'\n'
+          validation_output+='```'$'\n'
+          validation_output+="$file_output"$'\n'
+          validation_output+='```'$'\n\n'
+          
+          # Also show output in workflow logs
+          cat "$output_file"
+          rm "$output_file"
           echo ""
         done
+        
+        # Save validation output for PR comment
+        echo "VALIDATION_OUTPUT<<EOF" >> $GITHUB_ENV
+        echo "$validation_output" >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
+        
+        # Save summary info
+        echo "OVERALL_SUCCESS=$overall_success" >> $GITHUB_ENV
+        echo "FAILED_FILES=${failed_files[*]}" >> $GITHUB_ENV
+        echo "WARNING_FILES=${warning_files[*]}" >> $GITHUB_ENV
         
         # Summary
         echo "================================================================="
         echo "📊 VALIDATION SUMMARY"
         echo "================================================================="
         if [ "$overall_success" = true ]; then
-          echo "🎉 All Sample metadata csv files passed validation!"
+          if [ ${#warning_files[@]} -gt 0 ]; then
+            echo "✅ All files passed validation, but some have warnings:"
+            for warning_file in "${warning_files[@]}"; do
+              echo "  ⚠️ $warning_file"
+            done
+          else
+            echo "🎉 All Sample metadata csv files passed validation with no warnings!"
+          fi
         else
           echo "❌ Some Sample metadata files failed validation:"
           for failed_file in "${failed_files[@]}"; do
             echo "  - $failed_file"
           done
+          if [ ${#warning_files[@]} -gt 0 ]; then
+            echo "Files with warnings:"
+            for warning_file in "${warning_files[@]}"; do
+              echo "  ⚠️ $warning_file"
+            done
+          fi
           echo ""
           echo "Please fix the validation errors before merging."
           exit 1
         fi
         
-    - name: Comment PR with validation results
-      if: github.event_name == 'pull_request' && failure()
+    - name: Comment PR with detailed results
+      if: github.event_name == 'pull_request'
       uses: actions/github-script@v6
       with:
-        script: | 
-          github.rest.issues.createComment({
-            issue_number: context.issue.number, 
-            owner: context.repo.owner, 
-            repo: context.repo.repo, 
-            body: '❌ Sample Metadata Validation failed. Please check logs for details.'
-          })
+        script: |
+          const output = process.env.VALIDATION_OUTPUT;
+          const overallSuccess = process.env.OVERALL_SUCCESS === 'true';
+          const failedFiles = process.env.FAILED_FILES.split(' ').filter(f => f);
+          const warningFiles = process.env.WARNING_FILES.split(' ').filter(f => f);
           
-    - name: Comment PR with success
-      if: github.event_name == 'pull_request' && success()
-      uses: actions/github-script@v6
-      with:
-        script: | 
+          let summary = '';
+          let emoji = '';
+          
+          if (overallSuccess) {
+            if (warningFiles.length > 0) {
+              emoji = '⚠️';
+              summary = `**Validation Passed with Warnings**\n\n${warningFiles.length} file(s) have warnings that should be reviewed.`;
+            } else {
+              emoji = '✅';
+              summary = '**All Sample Metadata CSV files passed validation!**';
+            }
+          } else {
+            emoji = '❌';
+            summary = `**Validation Failed**\n\n${failedFiles.length} file(s) failed validation. Please fix the errors before merging.`;
+            if (warningFiles.length > 0) {
+              summary += `\n\nAdditionally, ${warningFiles.length} file(s) have warnings.`;
+            }
+          }
+          
+          const body = `${emoji} **Sample Metadata Validation Results**
+          
+          ${summary}
+          
+          <details>
+          <summary>📋 Detailed Validation Output</summary>
+          
+          ${output}
+          
+          </details>`;
+          
           github.rest.issues.createComment({
             issue_number: context.issue.number, 
             owner: context.repo.owner, 
             repo: context.repo.repo, 
-            body: '✅ All Sample Metadata CSV files passed validation!'
+            body: body
           })
