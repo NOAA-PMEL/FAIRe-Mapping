@@ -1,6 +1,5 @@
 from pydantic import BaseModel
-from typing import Literal, Optional, List
-import csv
+from typing import Literal, Optional
 
 # TODO: Need to add validator for controlled vocabulary attributes to have other: <description> (e.g. lib_conc_unit)
 # TODO: Need to add validator for pipe separated string lists (associatedSequences)

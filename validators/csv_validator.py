@@ -4,6 +4,7 @@ import pandas as pd
 from typing import Type
 from pydantic import BaseModel, ValidationError
 from models.experiment_run_metadata import ExperimentRunMetadata
+from models.sample_metadata import SampleMetadata
 
 class CSVValidationResult:
     def __init__(self):
@@ -23,7 +24,10 @@ class CSVValidationResult:
     
 class CSVValidator:
     def __init__(self, model_class: Type[BaseModel]):
-        self.model_class = model_class
+        if isinstance(model_class, str):
+            self.model_class = globals()[model_class]
+        else:
+            self.model_class = model_class
 
     def _clean_row_data(self, row_dict):
         """Clean row data by convertying empty strings/NaN to None for optional fields"""
@@ -76,17 +80,18 @@ class CSVValidator:
 
 
 def main():
-    if len(sys.argv) < 2:
+    if len(sys.argv) < 3:
         print("Usage: python csv_validator.py <csv_file> [--strict]")
         print(" --strict: Stop validation on first error (default: continue)")
         sys.exit(1)
 
 
     csv_path = sys.argv[1]
+    model_class_name = sys.argv[2]
     strict_mode = '--strict' in sys.argv
 
     # Initialize validator with your model
-    validator = CSVValidator(model_class=ExperimentRunMetadata)
+    validator = CSVValidator(model_class=model_class_name)
 
     try: 
         result = validator.validate_file(csv_path, strict=strict_mode)
