@@ -84,6 +84,7 @@ class NCBIMapper:
         return df_clean
     
     def get_ncbi_sample_df(self):
+        # TODO: Edit elif_faire_unit col statement to just use the corresponding unit col by removing _unit from main col name. See update_unit_colums_with_no_corresponding_val method in SampleMapper to see how to do..
         
         updated_df = pd.DataFrame()
 

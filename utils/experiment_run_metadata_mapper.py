@@ -44,7 +44,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         self.rel_pos_cont_id_dict = self._create_positive_samp_dict()
 
         self.exp_run_faire_template_df = self.load_faire_template_as_df(file_path=self.config_file['faire_template_file'], sheet_name=self.faire_template_exp_run_sheet_name, header=self.faire_sheet_header).dropna()
-
+        
     def generate_run_metadata(self) -> pd.DataFrame :
         # Works for run2, need to check other jv runs - maybe can potentially use for OSU runs, if mapping file is generically the same?
         exp_metadata_results = {}
@@ -304,12 +304,22 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         # matches the marker to the corresponding assay and returns standardized assay name
         
         potential_assays = marker_to_assay_mapping.get(marker, None)
-        if 'osu' in self.run_name.lower():
-            for assay in potential_assays:
-                if 'osu' in assay.lower():
-                    return assay
-                else:
-                    raise NoAcceptableAssayMatch(f'The marker/assay {marker} does not match any of the {[v for v in marker_to_assay_mapping.values()]}, please update marker_to_assay_mapping dict in list file.')
+        if isinstance(potential_assays, list):
+            # Get the OSU assay name if OSU in the run name
+            if 'osu' in self.run_name.lower():
+                for assay in potential_assays:
+                    if 'osu' in assay.lower():
+                        return assay
+                    else:
+                        raise NoAcceptableAssayMatch(f'The marker/assay {marker} does not match any of the {[v for v in marker_to_assay_mapping.values()]}, for an osu assay, please update marker_to_assay_mapping dict in list file.')
+            # else get the other assay name that does not have OSU in the run name if the run name is not an osu assay, but has an osu sibling assay
+            else:
+                for assay in potential_assays:
+                    if 'osu' not in assay.lower():
+                        return assay
+                    else:
+                        raise NoAcceptableAssayMatch(f'The marker/assay {marker} does not match any of the {[v for v in marker_to_assay_mapping.values()]} for a non-osu assay, please update marker_to_assay_mapping dict in list file.')
+        # else if potential_assays is not a list, then just get the value
         else:
             assay = potential_assays
             if assay == None:
@@ -337,7 +347,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             # Get approrpiate nested marker dict and corresponding nested sample list with dictionary of files and checksums
             filename = raw_file_dict.get(marker_name).get(sample_name).get('filename')
         except:
-            raise ValueError(f"sample name{sample_name} with marker {marker_name} does not appear to have a value in the raw data dict, please look into")
+            raise ValueError(f"sample name {sample_name} with marker {marker_name} does not appear to have a value in the raw data dict, please look into")
 
         return filename
     

@@ -102,7 +102,7 @@ class OmeFaireMapper:
         # Fixes sample names in the data frame
         # if sample is part of the DY2012 cruise, will replace any str of DY20 with DY2012
         samp_name = str(samp_name)
-        if '_' in samp_name: # osu samp names have _ that needs to be . For example, E62_1B_DY20
+        if '_' in samp_name and 'pool' not in samp_name: # osu samp names have _ that needs to be . For example, E62_1B_DY20. Pooled samples keep the underscore
             samp_name = samp_name.replace('_', '.')
         if '.DY20' in samp_name:
            samp_name = samp_name.replace('.DY20', '.DY2012')
@@ -198,6 +198,7 @@ class OmeFaireMapper:
         # converts strings from 2021/11/08 00:00:00 to iso8601 format  to 2021-11-08T00:00:00Z
         # also converts strings from 5/1/2024 to 2024-01-05T00:00:00Z
         # And coverts 2024-05-01 to 2024-01-05T00:00:00Z
+        # Also handles years like 0022 and corrects them to 2022
     
         has_time_component = False
         
@@ -215,14 +216,17 @@ class OmeFaireMapper:
                     dt_obj = datetime.strptime(date, "%Y-%m-%d")
             else:
                 raise ValueError(f"Unsupported date format: {date}")
-
-            formatted_date = dt_obj.strftime("%Y-%m-%d")
+            
+            # Correct years that are clearly wrong (like 0022 -> 2022)
+            if dt_obj.year < 100: # Years like 0022, 0023, etc.
+                corrected_year = 2000 + dt_obj.year
+                dt_obj = dt_obj.replace(year=corrected_year)
 
             # Only add time component if it was in the original string
             if has_time_component:
                 return dt_obj.strftime("%Y-%m-%dT%H:%M:%SZ")
             else:
-                return formatted_date
+                return dt_obj.strftime("%Y-%m-%d")
             
         else:
             return "missing: not provided"
