@@ -1,0 +1,63 @@
+name: Exp Run Validation
+
+on:
+  pull_request:
+    paths: 
+      - 'runs/**/data/*.csv'
+
+jobs:
+  validate-sample-metadata-csv:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        lfs: true
+
+    # Cache Conda Environment so don't have to install dependencies every time
+    - name: Set up Conda with caching
+      uses: conda-incubator/setup-miniconda@v3
+      with:
+        auto-update-conda: true
+        activate-environment: faire_mapping
+        environment-file: environment.yml
+        python-version: 3.11
+        auto-activate-base: false
+        use-mamba: true  # Faster than conda
+        
+    - name: Cache conda environment
+      uses: actions/cache@v3
+      with:
+        path: /usr/share/miniconda/envs/faire_mapping
+        key: conda-${{ runner.os }}-${{ hashFiles('environment.yml') }}
+        restore-keys: |
+          conda-${{ runner.os }}-
+          
+    - name: Install dependencies with conda (cached)
+      shell: bash -l {0}
+      run: | 
+        # Only install if cache miss or environment.yml changed
+        conda list | grep pandas || {
+          echo "Installing dependencies..."
+          conda install -c conda-forge -c anaconda -c bioconda pandas pyyaml openpyxl isodate requests beautifulsoup4 shapely geopandas h5netcdf netcdf4 xarray pydantic 
+          pip install google-api-python-client google-auth-oauthlib gspread oauth2client python-frontmatter gsw bioawk
+        }
+
+    # Finds which CSV files were modified in the PR
+    - name: Get changed sample metadata csv files
+      id: changed-files
+      uses: tj-actions/changed-files@v40
+      with:
+        files: | 
+          'runs/**/data/*.csv'
+
+    - name: Validate changed CSV files
+      if: steps.outputs.any_changed == 'true'
+      shell: bash -l {0}
+      run: | 
+        for csv_file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+        echo: "Validating: $csv_file"
+        python csv_validator.py "$csv_file" --strict
+        echo "---"
+        done

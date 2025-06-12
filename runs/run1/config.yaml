@@ -12,7 +12,7 @@ run_sample_metadata_file_id: 16Qp9d9-18kU-rm7WEm8MDrsy6Arep_fyO4nLMOtUBAs
 google_sheet_mapping_file_id: 1QMEXopVOE314Cys7zCcUi6fOoS44bHec7ILPFzylqrY
 run_name: run1 # for adding to the Positive control sample names
 revamp_blast: True # if using the revamp blast-based taxonomy assignment then set this to True, otherwise False
-ignore_markers: # Add Metabarcoding Marker name EXACTLY from run_sample_metadata_file if not submitting info for that marker
+# ignore_markers: # Add Metabarcoding Marker name EXACTLY from run_sample_metadata_file if not submitting info for that marker
 asv_counts_tsvs_for_run: #dloop left out because Sean said dLoop did not work for Run2, keys match metabarcoding marker in metadata spreadsheet
   '18Sv4': /home/poseidon/mcallister/eDNA_bioinformatics/Run1/REVAMP/01_originalREVAMP/18Sv4/dada2/ASVs_counts.tsv
   '18Sv9': /home/poseidon/mcallister/eDNA_bioinformatics/Run1/REVAMP/01_originalREVAMP/18Sv9/dada2/ASVs_counts.tsv

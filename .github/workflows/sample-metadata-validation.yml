@@ -48,7 +48,7 @@ jobs:
         # Only install if cache miss or environment.yml changed
         conda list | grep pandas || {
           echo "Installing dependencies..."
-          conda install -c conda-forge -c anaconda -c bioconda pandas pyyaml openpyxl isodate requests beautifulsoup4 shapely geopandas h5netcdf netcdf4 xarray 
+          conda install -c conda-forge -c anaconda -c bioconda pandas pyyaml openpyxl isodate requests beautifulsoup4 shapely geopandas h5netcdf netcdf4 xarray pydantic 
           pip install google-api-python-client google-auth-oauthlib gspread oauth2client python-frontmatter gsw bioawk
         }
 
