@@ -63,7 +63,6 @@ jobs:
       id: validation
       shell: bash -l {0}
       run: |
-        export PYTHONPATH="${GITHUB_WORKSPACE}:$PYTHONPATH"
         echo "changed_files=${{ steps.changed-files.outputs.all_changed_files }}" >> $GITHUB_OUTPUT
         
         # Initialize summary file
