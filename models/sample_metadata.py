@@ -4,6 +4,7 @@ from shapely.geometry import Point
 import geopandas as gpd
 import warnings
 from pathlib import Path
+import math
  # Field(default=None) is for USer defined fields that might be missing in each csv
 # TODO: Add custom data validation for controlled vocabs that accept 'other: <description>' (samp_category, neg_cont_type, verbatimCoordinateSystem, verbatimSRS,
 # samp_size_unit, samp_store_temp, samp_store_sol, precip_chem_prep, filter_material)
@@ -16,6 +17,21 @@ from pathlib import Path
 # TODO: Add custom validation for eventDurationValue and samp_store_dur, stationed_sample_dur, prepped_samp_store_dur
 # TODO: Add custom validation for env scale variable - use API to check
 
+# Load World SEas IHO dataset once at modul level (when file is imported)
+def load_iho_dataset():
+    try:
+    # Get the parent directory of the current script
+        parent_dir = Path(__file__).parent.parent
+        # reference the file relative to the script's location
+        target_file = parent_dir / "utils" / "World_Seas_IHO_v3/World_Seas_IHO_v3.shp"
+        return gpd.read_file(target_file)
+    except Exception as e:
+        print(f"Warning: Could not load IHO datset: {e}")
+        return None
+
+# This runs once when the module is imported 
+_iho_dataset = load_iho_dataset()
+
 class SampleMetadata(BaseModel):
     samp_name: str
     samp_category: Literal['sample', 'negative control', 'positive control', 'PCR standard']
@@ -26,20 +42,20 @@ class SampleMetadata(BaseModel):
     sample_composed_of: Optional[str] # needs custom list validation
     rel_cont_id: Optional[str] # needs custom list validation
     biological_rep_relation: Optional[str] # needs custom list validation
-    decimalLongitude: float
-    decimalLatitude: float
+    decimalLongitude: Optional[float]
+    decimalLatitude: Optional[float]
     verbatimLongitude: Optional[str]
     verbatimLatitude: Optional[str]
     verbatimCoordinateSystem: Optional[Literal['decimal degrees', 'degrees minutes seconds', 'UTM']]
     verbatimSRS: Optional[Literal['WGS84', 'NAD84', 'NAD27', 'GDA94', 'GDA2020 ', 'ETRS89', 'JGD2000']]
-    geo_loc_name: str # Needs custom validation - see mapping functions for this
-    eventDate: str 
+    geo_loc_name: Optional[str] # Needs custom validation - see mapping functions for this
+    eventDate: Optional[str] 
     eventDurationValue: Optional[str]
     verbatimEventDate: Optional[str]
     verbatimEventTime: Optional[str]
-    env_broad_scale: str
-    env_local_scale: str
-    env_medium: str
+    env_broad_scale: Optional[str]
+    env_local_scale: Optional[str]
+    env_medium: Optional[str]
     habitat_natural_artificial_0_1: Optional[Literal[0, 1]]
     samp_collect_method: Optional[str]
     samp_collect_device: Optional[str]
@@ -207,21 +223,7 @@ class SampleMetadata(BaseModel):
                                                   "missing: restricted access: endangered species", 
                                                   "missing: restricted access: human-identifiable", 
                                                   "missing: restricted access"]
-    _iho_dataset: ClassVar[gpd.GeoDataFrame] = None
-
-    def __init__(self, **data):
-        # Load IHO dataset once
-        if self.__class__._iho_dataset is None: 
-            self.__class__._iho_dataset = self.load_iho_dataset()
-            super().__init__(**data)
-            
-
-    def load_iho_dataset(self):
-        # Get the parent directory of the current script
-        parent_dir = Path(__file__).parent.parent
-        # reference the file relative to the script's location
-        target_file = parent_dir / "utils" / "World_Seas_IHO_v3/World_Seas_IHO_v3.shp"
-        return gpd.read_file(target_file)
+  
     
     # Treat missing faire field strings as empty pre-validation
     @model_validator(mode='before')
@@ -230,29 +232,44 @@ class SampleMetadata(BaseModel):
         if isinstance(data, dict):
             # Process each filed in the dictionary
             for key, value in data.items():
-                if isinstance(value, str) and value in cls._faire_missing_fields:
+                if (
+                    (isinstance(value, str) and value in cls._faire_missing_fields) or
+                    (isinstance(value, float) and math.isnan(value)) or 
+                    (isinstance(value, str) and value.lower() in ['nan', 'null', ''])
+                ):
                     data[key] = None
             return data
+        
+    @model_validator(mode='after')
+    def validate_required_fields_for_samples(self):
+        # Ensure sample records have required fields that are not required for controls
+        required = [self.decimalLatitude, self.decimalLongitude, self.geo_loc_name, self.env_broad_scale, self.env_local_scale, self.env_medium, self.eventDate]
+        if self.samp_category == 'sample':
+            for attribute in required:
+                if attribute is None:
+                    raise ValueError(f"Sample {self.samp_name} mus have {attribute}")
+        return self
 
-    # validate materialSampleID as only allowed 4 or 6 digit
-    @field_validator('materialSampleID')
-    @classmethod
-    def validate_parent_samp_digits(cls, v):
-        digit_count = len(str(abs(v)))
-        if digit_count not in [4, 6]:
-            raise ValueError(f'materialSampleID must have exactly 4 or 6 digits, got {digit_count}')
-        return v
+    # # validate materialSampleID as only allowed 4 or 6 digit
+    # @field_validator('materialSampleID')
+    # @classmethod
+    # def validate_parent_samp_digits(cls, v):
+    #     if v:
+    #         digit_count = len(str(abs(v)))
+    #         if digit_count not in [4, 6]:
+    #             raise ValueError(f'materialSampleID must have exactly 4 or 6 digits, got {digit_count}')
+    #         return v
 
-    @field_validator('decimalLatitude')
-    @classmethod
-    def validate_latitude(cls, v):
-        if not(-90 <= v <= 90):
-            raise ValueError(f"Latitude {v} is outside valid latitude range (-90 to 90)")
-        return v
+    # @field_validator('decimalLatitude')
+    # @classmethod
+    # def validate_latitude(cls, v):
+    #     if not(-90 <= v <= 90):
+    #         raise ValueError(f"Latitude {v} is outside valid latitude range (-90 to 90)")
+    #     return v
     
-    @field_validator('decimalLongitude')
-    @classmethod
-    def validate_latitude(cls, v):
+    # @field_validator('decimalLongitude')
+    # @classmethod
+    # def validate_latitude(cls, v):
         if not(-180 <= v <= 180):
             raise ValueError(f"Longitude {v} is outside valid latitude range (-180 to 180)")
         return v
@@ -260,6 +277,13 @@ class SampleMetadata(BaseModel):
     @model_validator(mode='after')
     def validate_arctic_region_and_geo_loc_name(self):
         """Validate that coordinates are in Arctic Region and geo_loc_name makes sense"""
+        if _iho_dataset is None:
+            warnings.warn("IHO dataset not available, skipping geographics validation")
+            return self
+        # skip validation for non-sample records that won't have lat lon or geo_loc
+        if self.samp_category != 'sample':
+            return self
+        
         point = Point(self.decimalLongitude, self.decimalLatitude)
         try:
             geo_loc_sea_area = self.geo_loc_name.split(':')[1]
@@ -274,7 +298,7 @@ class SampleMetadata(BaseModel):
             raise ValueError(f"{self.samp_name} has country {geo_loc_country}, which is not acceptable.")
         
         # check sea area has key words
-        for _, region in self._iho_dataset.iterrows():
+        for _, region in _iho_dataset.iterrows():
             if region.geometry.contains(point):
                 supposed_sea = region.get('NAME')
                 # Check if any of the arctic keywords exist in the supposed sea to make sure the lat/lon coords are indeed in the Arctic
@@ -285,22 +309,23 @@ class SampleMetadata(BaseModel):
                 if supposed_sea.lower().strip() != geo_loc_sea_area.lower().strip():
                     warnings.warn(f"{self.samp_name} has lat lon coordinates that point to {supposed_sea}, but geo_loc is listed as {geo_loc_sea_area}, double check this!")
                 break
+        return self # Always return self in mode='after' validators
 
-    @model_validator(mode='after')
-    def validate_neg_cont_type_conditions(self):
-        """Validate that neg_cont_type is required when samp_category is 'negative control"""
-        if self.samp_category == 'negative control':
-            if self.neg_cont_type is None:
-                raise ValueError(f"{self.samp_name}: neg_cont_type is required when samp_category is 'negative control'")
-        return self
+    # @model_validator(mode='after')
+    # def validate_neg_cont_type_conditions(self):
+    #     """Validate that neg_cont_type is required when samp_category is 'negative control"""
+    #     if self.samp_category == 'negative control':
+    #         if self.neg_cont_type is None:
+    #             raise ValueError(f"{self.samp_name}: neg_cont_type is required when samp_category is 'negative control'")
+    #     return self
     
-    @model_validator(mode='after')
-    def validate_pos_cont_type_conditions(self):
-        """Validate that pos_cont_type is required when samp_category is 'positive control"""
-        if self.samp_category == 'positive control':
-            if self.pos_cont_type is None:
-                raise ValueError(f"{self.samp_name}: pos_cont_type is required when samp_category is 'positive control'")
-        return self
+    # @model_validator(mode='after')
+    # def validate_pos_cont_type_conditions(self):
+    #     """Validate that pos_cont_type is required when samp_category is 'positive control"""
+    #     if self.samp_category == 'positive control':
+    #         if self.pos_cont_type is None:
+    #             raise ValueError(f"{self.samp_name}: pos_cont_type is required when samp_category is 'positive control'")
+    #     return self
     
 
 ## Notes: without @classmethod you can access self.other_field, but iwth @class_method you cannot. Use @classmethod when you only need to validate a single field.

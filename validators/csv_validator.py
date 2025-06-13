@@ -34,15 +34,15 @@ class CSVValidator:
         else:
             self.model_class = model_class
 
-    def _clean_row_data(self, row_dict):
-        """Clean row data by convertying empty strings/NaN to None for optional fields"""
-        cleaned = {}
-        for key, value in row_dict.items():
-            if pd.isna(value) or value == '' or value == 'nan':
-                cleaned[key] = None
-            else:
-                cleaned[key] = value
-        return cleaned
+    # def _clean_row_data(self, row_dict):
+    #     """Clean row data by convertying empty strings/NaN to None for optional fields"""
+    #     cleaned = {}
+    #     for key, value in row_dict.items():
+    #         if pd.isna(value) or value == '' or value == 'nan':
+    #             cleaned[key] = None
+    #         else:
+    #             cleaned[key] = value
+    #     return cleaned
 
     def validate_file(self, csv_path: str, strict: bool = True) -> CSVValidationResult:
         """Validate CSV file against pydantic model"""
@@ -57,7 +57,8 @@ class CSVValidator:
 
             for idx, row in df.iterrows():
                 try: 
-                    row_data = self._clean_row_data(row.to_dict())
+                    # row_data = self._clean_row_data(row.to_dict())
+                    row_data = row.to_dict()
 
                     # capture warnings during validation
                     with warnings.catch_warnings(record=True) as w:
