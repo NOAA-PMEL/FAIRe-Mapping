@@ -250,26 +250,32 @@ class SampleMetadata(BaseModel):
                     raise ValueError(f"Sample {self.samp_name} mus have {attribute}")
         return self
 
-    # # validate materialSampleID as only allowed 4 or 6 digit
-    # @field_validator('materialSampleID')
-    # @classmethod
-    # def validate_parent_samp_digits(cls, v):
-    #     if v:
-    #         digit_count = len(str(abs(v)))
-    #         if digit_count not in [4, 6]:
-    #             raise ValueError(f'materialSampleID must have exactly 4 or 6 digits, got {digit_count}')
-    #         return v
+    # validate materialSampleID as only allowed 4 or 6 digit
+    @field_validator('materialSampleID')
+    @classmethod
+    def validate_parent_samp_digits(cls, v):
+        if v:
+            digit_count = len(str(abs(v)))
+            if digit_count not in [4, 6]:
+                raise ValueError(f'materialSampleID must have exactly 4 or 6 digits, got {digit_count}')
+            return v
 
-    # @field_validator('decimalLatitude')
-    # @classmethod
-    # def validate_latitude(cls, v):
-    #     if not(-90 <= v <= 90):
-    #         raise ValueError(f"Latitude {v} is outside valid latitude range (-90 to 90)")
-    #     return v
+    @field_validator('decimalLatitude')
+    @classmethod
+    def validate_latitude(cls, v, info):
+        # only apply to sample records, not controls
+        if info.data.get('samp_category') != 'sample':
+            return v
+        if not(-90 <= v <= 90):
+            raise ValueError(f"Latitude {v} is outside valid latitude range (-90 to 90)")
+        return v
     
-    # @field_validator('decimalLongitude')
-    # @classmethod
-    # def validate_latitude(cls, v):
+    @field_validator('decimalLongitude')
+    @classmethod
+    def validate_latitude(cls, v, info):
+        # only apply to sample records, not controls
+        if info.data.get('samp_category') != 'sample':
+            return v
         if not(-180 <= v <= 180):
             raise ValueError(f"Longitude {v} is outside valid latitude range (-180 to 180)")
         return v
@@ -311,21 +317,21 @@ class SampleMetadata(BaseModel):
                 break
         return self # Always return self in mode='after' validators
 
-    # @model_validator(mode='after')
-    # def validate_neg_cont_type_conditions(self):
-    #     """Validate that neg_cont_type is required when samp_category is 'negative control"""
-    #     if self.samp_category == 'negative control':
-    #         if self.neg_cont_type is None:
-    #             raise ValueError(f"{self.samp_name}: neg_cont_type is required when samp_category is 'negative control'")
-    #     return self
+    @model_validator(mode='after')
+    def validate_neg_cont_type_conditions(self):
+        """Validate that neg_cont_type is required when samp_category is 'negative control"""
+        if self.samp_category == 'negative control':
+            if self.neg_cont_type is None:
+                raise ValueError(f"{self.samp_name}: neg_cont_type is required when samp_category is 'negative control'")
+        return self
     
-    # @model_validator(mode='after')
-    # def validate_pos_cont_type_conditions(self):
-    #     """Validate that pos_cont_type is required when samp_category is 'positive control"""
-    #     if self.samp_category == 'positive control':
-    #         if self.pos_cont_type is None:
-    #             raise ValueError(f"{self.samp_name}: pos_cont_type is required when samp_category is 'positive control'")
-    #     return self
+    @model_validator(mode='after')
+    def validate_pos_cont_type_conditions(self):
+        """Validate that pos_cont_type is required when samp_category is 'positive control"""
+        if self.samp_category == 'positive control':
+            if self.pos_cont_type is None:
+                raise ValueError(f"{self.samp_name}: pos_cont_type is required when samp_category is 'positive control'")
+        return self
     
 
 ## Notes: without @classmethod you can access self.other_field, but iwth @class_method you cannot. Use @classmethod when you only need to validate a single field.
