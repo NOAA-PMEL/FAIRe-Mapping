@@ -134,7 +134,7 @@ jobs:
       uses: actions/github-script@v7
       with:
         script: |
-          const summary = `${{ steps.validation.outputs.SUMMARY }}`;
+          const summary = process.env.VALIDATION_SUMMARY;
           const success = '${{ steps.validation.outcome }}' === 'success';
           
           const emoji = success ? '✅' : '❌';
@@ -159,3 +159,5 @@ jobs:
             repo: context.repo.repo,
             body: body
           });
+      env:
+        VALIDATION_SUMMARY: ${{ steps.validation.outputs.SUMMARY }}
