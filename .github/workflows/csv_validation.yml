@@ -95,7 +95,7 @@ jobs:
           echo "🔎 Using model class: $model_class"
           
           # Run validation and capture output
-          if output=$(python csv_validator.py "$csv_file" "$model_class" 2>&1); then
+          if output=$(python validators/csv_validator.py "$csv_file" "$model_class" 2>&1); then
             echo "✅ $csv_file passed validation"
             status="✅ PASSED"
             if echo "$output" | grep -q "warnings"; then
