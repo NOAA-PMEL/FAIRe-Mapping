@@ -1,9 +1,13 @@
 name: Exp Run Validation
-
 on:
   pull_request:
     paths: 
       - 'runs/**/data/*.csv'
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
 
 jobs:
   validate-sample-metadata-csv:
@@ -15,6 +19,9 @@ jobs:
         fetch-depth: 0
         lfs: true
 
+    - name: Download LFS files
+      run: git lfs pull
+        
     # Cache Conda Environment so don't have to install dependencies every time
     - name: Set up Conda with caching
       uses: conda-incubator/setup-miniconda@v3
@@ -43,21 +50,154 @@ jobs:
           conda install -c conda-forge -c anaconda -c bioconda pandas pyyaml openpyxl isodate requests beautifulsoup4 shapely geopandas h5netcdf netcdf4 xarray pydantic 
           pip install google-api-python-client google-auth-oauthlib gspread oauth2client python-frontmatter gsw bioawk
         }
-
+        
     # Finds which CSV files were modified in the PR
-    - name: Get changed sample metadata csv files
+    - name: Get changed CSV files
       id: changed-files
       uses: tj-actions/changed-files@v40
       with:
         files: | 
           'runs/**/data/*.csv'
-
+          
     - name: Validate changed CSV files
-      if: steps.outputs.any_changed == 'true'
+      if: steps.changed-files.outputs.any_changed == 'true'
       shell: bash -l {0}
       run: | 
+        echo "🔍 Found changed CSV files:"
+        echo "${{ steps.changed-files.outputs.all_changed_files }}"
+        echo ""
+        
+        # Track validation results
+        overall_success=true
+        failed_files=()
+        warning_files=()
+        passed_files=()
+        validation_output=""
+        
+        # Function to determine model class based on file path
+        get_model_class() {
+          local file_path="$1"
+          case "$file_path" in
+            *sample*|*Sample*)
+              echo "SampleMetadata"
+              ;;
+            *experiment*|*Experiment*|*run*|*Run*)
+              echo "ExperimentRunMetadata"
+              ;;
+            *)
+              # Default to SampleMetadata
+              echo "SampleMetadata"
+              ;;
+          esac
+        }
+        
+        # Validate each file
         for csv_file in ${{ steps.changed-files.outputs.all_changed_files }}; do
-        echo: "Validating: $csv_file"
-        python csv_validator.py "$csv_file" --strict
-        echo "---"
+          echo "======================================"
+          echo "📋 Validating: $csv_file"
+          
+          # Determine model class based on file path
+          model_class=$(get_model_class "$csv_file")
+          echo "🔎 Using model class: $model_class"
+          
+          # Capture validation output
+          output_file=$(mktemp)
+          if python csv_validator.py "$csv_file" "$model_class" > "$output_file" 2>&1; then
+            # Check if there were warnings in the output
+            if grep -q "⚠️" "$output_file"; then
+              echo "⚠️ $csv_file passed validation with warnings"
+              warning_files+=("$csv_file")
+            else
+              echo "✅ $csv_file passed validation"
+              passed_files+=("$csv_file")
+            fi
+          else 
+            echo "❌ $csv_file failed validation"
+            failed_files+=("$csv_file")
+            overall_success=false
+          fi
+          
+          # Capture output for PR comment
+          file_output=$(cat "$output_file")
+          validation_output+="**$csv_file** (Model: $model_class):"\n'
+          validation_output+='```'\n'
+          validation_output+="$file_output"\n'
+          validation_output+='```'\n\n'
+          
+          # Also show output in workflow logs
+          cat "$output_file"
+          rm "$output_file"
+          echo ""
         done
+        
+        # Save validation output for PR comment
+        echo "VALIDATION_OUTPUT<<EOF" >> $GITHUB_ENV
+        echo "$validation_output" >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
+        
+        # Save summary info
+        echo "OVERALL_SUCCESS=$overall_success" >> $GITHUB_ENV
+        echo "FAILED_FILES=${failed_files[*]}" >> $GITHUB_ENV
+        echo "WARNING_FILES=${warning_files[*]}" >> $GITHUB_ENV
+        echo "PASSED_FILES=${passed_files[*]}" >> $GITHUB_ENV
+        echo "VALIDATION_RAN=true" >> $GITHUB_ENV
+        
+        # Summary
+        echo "================================================================="
+        echo "📊 VALIDATION SUMMARY"
+        echo "================================================================="
+        if [ "$overall_success" = true ]; then
+          if [ ${#warning_files[@]} -gt 0 ]; then
+            echo "⚠️ All files passed validation, but ${#warning_files[@]} file(s) have warnings:"
+            for warning_file in "${warning_files[@]}"; do
+              echo "  ⚠️ $warning_file"
+            done
+          else
+            echo "🎉 All CSV files passed validation with no warnings!"
+          fi
+        else
+          echo "❌ Some CSV files failed validation:"
+          for failed_file in "${failed_files[@]}"; do
+            echo "  ❌ $failed_file"
+          done
+          if [ ${#warning_files[@]} -gt 0 ]; then
+            echo "Files with warnings:"
+            for warning_file in "${warning_files[@]}"; do
+              echo "  ⚠️ $warning_file"
+            done
+          fi
+          echo ""
+          echo "Please fix the validation errors before merging."
+          exit 1
+        fi
+        
+    - name: Comment PR with validation results
+      if: github.event_name == 'pull_request' && env.VALIDATION_RAN == 'true'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const output = process.env.VALIDATION_OUTPUT;
+          const overallSuccess = process.env.OVERALL_SUCCESS === 'true';
+          
+          let emoji = overallSuccess ? '✅' : '❌';
+          let summary = overallSuccess ? 
+            '**All CSV files passed validation!**' : 
+            '**Some CSV files failed validation. Please fix the errors before merging.**';
+          
+          const body = `${emoji} **CSV Data Validation Results**
+          
+          ${summary}
+          
+          <details>
+          <summary>📋 Detailed Validation Output</summary>
+          
+          ${output}
+          
+          </details>`;
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number, 
+            owner: context.repo.owner, 
+            repo: context.repo.repo, 
+            body: body
+          })
