@@ -85,7 +85,7 @@ jobs:
           
           # Run validation (non-strict mode to continue on errors)
           output_file=$(mktemp)
-          if python validators/csv_validator.py "$csv_file" "$model_class" > "$output_file" 2>&1; then
+          if python -m validators/csv_validator.py "$csv_file" "$model_class" > "$output_file" 2>&1; then
             output=$(cat "$output_file")
             # Check if there were any validation errors in the output
             if echo "$output" | grep -q "Validation failed!"; then
