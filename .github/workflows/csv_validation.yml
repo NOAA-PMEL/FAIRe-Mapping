@@ -60,93 +60,78 @@ jobs:
           
     - name: Validate CSV files
       if: steps.changed-files.outputs.any_changed == 'true'
-      shell: bash -l {0}
-      run: | 
-        echo "🔍 Found changed CSV files:"
-        echo "${{ steps.changed-files.outputs.all_changed_files }}"
-        echo ""
+      id: validation
+      run: |
+        echo "changed_files=${{ steps.changed-files.outputs.all_changed_files }}" >> $GITHUB_OUTPUT
         
-        # Initialize variables
-        overall_success=true
-        validation_summary=""
+        # Initialize summary
+        summary=""
+        has_errors=false
         
-        # Function to determine model class based on file path
+        # Function to determine model class
         get_model_class() {
-          local file_path="$1"
-          case "$file_path" in
-            *runs/*/data/*.csv)
-              echo "ExperimentRunMetadata"
-              ;;
-            *projects/*/data/*.csv)
-              echo "SampleMetadata"
-              ;;
-            *)
-              echo "SampleMetadata"  # Default fallback
-              ;;
+          case "$1" in
+            *runs/*/data/*.csv) echo "ExperimentRunMetadata" ;;
+            *projects/*/data/*.csv) echo "SampleMetadata" ;;
+            *) echo "SampleMetadata" ;;
           esac
         }
         
         # Validate each file
         for csv_file in ${{ steps.changed-files.outputs.all_changed_files }}; do
-          echo "======================================"
-          echo "📋 Validating: $csv_file"
-          
           model_class=$(get_model_class "$csv_file")
-          echo "🔎 Using model class: $model_class"
+          echo "Validating $csv_file with $model_class..."
           
-          # Run validation and capture output
+          # Run validation (non-strict mode to continue on errors)
           if output=$(python validators/csv_validator.py "$csv_file" "$model_class" 2>&1); then
-            echo "✅ $csv_file passed validation"
-            status="✅ PASSED"
-            if echo "$output" | grep -q "warnings"; then
+            # Check if there were any validation errors in the output
+            if echo "$output" | grep -q "Validation failed!"; then
+              has_errors=true
+              status="❌ FAILED"
+            elif echo "$output" | grep -q "warnings"; then
               status="⚠️ PASSED (with warnings)"
+            else
+              status="✅ PASSED"
             fi
           else
-            echo "❌ $csv_file failed validation"
-            echo "$output"
-            overall_success=false
+            has_errors=true
             status="❌ FAILED"
           fi
           
           # Add to summary
-          validation_summary+="**$csv_file** ($model_class): $status"$'\n'
-          validation_summary+='```'$'\n'
-          validation_summary+="$output"$'\n'
-          validation_summary+='```'$'\n\n'
+          summary+="**$csv_file** ($model_class): $status"$'\n'
+          summary+='```'$'\n'
+          summary+="$output"$'\n'
+          summary+='```'$'\n\n'
         done
         
-        # Save results for PR comment
+        # Save summary for PR comment
         {
-          echo "VALIDATION_SUMMARY<<EOF"
-          echo "$validation_summary"
+          echo "SUMMARY<<EOF"
+          echo "$summary"
           echo "EOF"
-        } >> $GITHUB_ENV
+        } >> $GITHUB_OUTPUT
         
-        echo "OVERALL_SUCCESS=$overall_success" >> $GITHUB_ENV
-        
-        # Print final summary
-        echo "================================================================="
-        echo "📊 VALIDATION SUMMARY"
-        echo "================================================================="
-        if [ "$overall_success" = true ]; then
-          echo "🎉 All CSV files passed validation!"
-        else
-          echo "❌ Some CSV files failed validation. Please fix the errors before merging."
+        # Exit with error if validation failed
+        if [ "$has_errors" = true ]; then
+          echo "❌ CSV validation failed"
           exit 1
+        else
+          echo "✅ All CSV files are valid"
         fi
         
     - name: Comment on PR
-      if: github.event_name == 'pull_request' && steps.changed-files.outputs.any_changed == 'true'
+      if: always() && github.event_name == 'pull_request' && steps.changed-files.outputs.any_changed == 'true'
       uses: actions/github-script@v7
       with:
         script: |
-          const summary = process.env.VALIDATION_SUMMARY;
-          const success = process.env.OVERALL_SUCCESS === 'true';
+          const summary = `${{ steps.validation.outputs.SUMMARY }}`;
+          const success = '${{ steps.validation.outcome }}' === 'success';
           
           const emoji = success ? '✅' : '❌';
           const title = success ? 
             'All CSV files passed validation!' : 
-            'Some CSV files failed validation';
+            'CSV validation failed - please fix errors before merging';
           
           const body = `${emoji} **CSV Data Validation Results**
           
