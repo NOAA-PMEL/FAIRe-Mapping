@@ -1,6 +1,7 @@
 import sys
 sys.path.append("..")
 import pandas as pd
+import warnings
 from typing import Type
 from pydantic import BaseModel, ValidationError
 from models.experiment_run_metadata import ExperimentRunMetadata
@@ -10,6 +11,7 @@ class CSVValidationResult:
     def __init__(self):
         self.valid_records = []
         self.invalid_records = []
+        self.warnings = []
         self.total_rows = 0
         self.errors = []
 
@@ -17,11 +19,14 @@ class CSVValidationResult:
         return {
             'valid_count': len(self.valid_records),
             'invalid_count': len(self.invalid_records),
+            'warning_count': len(self.warnings),
             'total_rows': self.total_rows, 
             'success_rate': len(self.valid_records) / self.total_rows if self.total_rows > 0 else 0, 
-            'errors': self.errors
+            'errors': self.errors,
+            'warnings': self.warnings
             }
     
+
 class CSVValidator:
     def __init__(self, model_class: Type[BaseModel]):
         if isinstance(model_class, str):
@@ -53,8 +58,23 @@ class CSVValidator:
             for idx, row in df.iterrows():
                 try: 
                     row_data = self._clean_row_data(row.to_dict())
-                    validated_record = self.model_class(**row_data)
+
+                    # capture warnings during validation
+                    with warnings.catch_warnings(record=True) as w:
+                        warnings.simplefilter("always")
+                        validated_record = self.model_class(**row_data)
+
+                        # store any warnings that were raised
+                        for warning in w:
+                            result.warnings.append({
+                                'row': idx + 1, 
+                                'message': str(warning.message),
+                                'category': warning.category.__name__,
+                                'data': row_data
+                            })
+
                     result.valid_records.append(validated_record.model_dump())
+
                 except ValidationError as e:
                     error_info = { 
                         'row': idx + 1, 
@@ -101,15 +121,24 @@ def main():
         print(f"    📊 Total rows: {result.total_rows}")
         print(f"    📈 Success rate: {result.to_dict()['success_rate']:.1%}")
 
+        if result.warnings:
+            print(f"\n⚠️ Validation Warnings:")
+            for warning in result.warnings:
+                print(f"    Row {warning['row']}: {warning['message']}")
+
         if result.errors:
             print(f"\n🚨 Validation Errors:")
             for error in result.errors:
                 print(f"    {error}")
+        
         if len(result.invalid_records) > 0:
             print(f"\n💥 Validation failed!")
             sys.exit(1)
         else:
-            print(f"\n🎉 All rows passed validation!")
+            if result.warnings:
+                print(f"\n🎉 All rows passed validation (with {len(result.warnings)} warnings)!")
+            else:
+                print(f"\n🎉 All rows passed validation!")
             sys.exit(0)
 
     except Exception as e:
