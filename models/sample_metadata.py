@@ -231,7 +231,7 @@ class SampleMetadata(BaseModel):
             return None
         return v
 
-    # validate materialSampleID as only allowed 4 or 6 digits
+    # validate materialSampleID as only allowed 4 or 6 digit
     @field_validator('materialSampleID')
     @classmethod
     def validate_parent_samp_digits(cls, v):
