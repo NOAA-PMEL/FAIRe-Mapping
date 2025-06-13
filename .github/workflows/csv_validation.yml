@@ -1,4 +1,4 @@
-name: Exp Run Validation
+name: CSV FAIRe Validation
 on:
   pull_request:
     paths: 
@@ -11,7 +11,7 @@ permissions:
   issues: write
 
 jobs:
-  validate-sample-metadata-csv:
+  validate-faire-csv:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
@@ -61,11 +61,12 @@ jobs:
     - name: Validate CSV files
       if: steps.changed-files.outputs.any_changed == 'true'
       id: validation
+      shell: bash -l {0}
       run: |
         echo "changed_files=${{ steps.changed-files.outputs.all_changed_files }}" >> $GITHUB_OUTPUT
         
-        # Initialize summary
-        summary=""
+        # Initialize summary file
+        summary_file=$(mktemp)
         has_errors=false
         
         # Function to determine model class
@@ -83,7 +84,9 @@ jobs:
           echo "Validating $csv_file with $model_class..."
           
           # Run validation (non-strict mode to continue on errors)
-          if output=$(python validators/csv_validator.py "$csv_file" "$model_class" 2>&1); then
+          output_file=$(mktemp)
+          if python validators/csv_validator.py "$csv_file" "$model_class" > "$output_file" 2>&1; then
+            output=$(cat "$output_file")
             # Check if there were any validation errors in the output
             if echo "$output" | grep -q "Validation failed!"; then
               has_errors=true
@@ -94,23 +97,29 @@ jobs:
               status="✅ PASSED"
             fi
           else
+            output=$(cat "$output_file")
             has_errors=true
             status="❌ FAILED"
           fi
           
-          # Add to summary
-          summary+="**$csv_file** ($model_class): $status"$'\n'
-          summary+='```'$'\n'
-          summary+="$output"$'\n'
-          summary+='```'$'\n\n'
+          # Add to summary file
+          echo "**$csv_file** ($model_class): $status" >> "$summary_file"
+          echo '```' >> "$summary_file"
+          echo "$output" >> "$summary_file"
+          echo '```' >> "$summary_file"
+          echo "" >> "$summary_file"
+          
+          rm "$output_file"
         done
         
-        # Save summary for PR comment
+        # Save summary for PR comment using proper multiline output
         {
           echo "SUMMARY<<EOF"
-          echo "$summary"
+          cat "$summary_file"
           echo "EOF"
         } >> $GITHUB_OUTPUT
+        
+        rm "$summary_file"
         
         # Exit with error if validation failed
         if [ "$has_errors" = true ]; then
