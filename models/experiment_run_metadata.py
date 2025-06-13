@@ -1,5 +1,6 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Literal, Optional
+import math
 
 # TODO: Need to add validator for controlled vocabulary attributes to have other: <description> (e.g. lib_conc_unit)
 # TODO: Need to add validator for pipe separated string lists (associatedSequences)
@@ -23,11 +24,22 @@ class ExperimentRunMetadata(BaseModel):
     filename2: Optional[str]
     checksum_filename: Optional[str]
     checksum_filename2: Optional[str]
-    associatedSequences: Optional[str]
+    associatedSequences: Optional[str] = None
     input_read_count: Optional[int]
     output_read_count: Optional[int]
     output_otu_num: Optional[int]
     otu_num_tax_assigned: Optional[int]
+
+    @field_validator('associatedSequences', mode='before')
+    @classmethod
+    def empty_associatedSequences_to_none(cls, v):
+                if (
+                    (isinstance(v, str) and math.isnan(v)) or 
+                    (isinstance(v, str) and v.lower() in ['nan', 'null', '']) or
+                    (isinstance(v, float) and math.isnan(v))):
+                    return None
+                return v
+
 
 
 
