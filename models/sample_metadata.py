@@ -1,10 +1,12 @@
 from pydantic import BaseModel, field_validator, Field, model_validator
-from typing import Literal, Optional, Union, Any, List, ClassVar
+from typing import Literal, Optional, Union, Any, List, ClassVar, Dict
 from shapely.geometry import Point
 import geopandas as gpd
 import warnings
 from pathlib import Path
 import math
+from datetime import datetime
+from collections import defaultdict
  # Field(default=None) is for USer defined fields that might be missing in each csv
 # TODO: Add custom data validation for controlled vocabs that accept 'other: <description>' (samp_category, neg_cont_type, verbatimCoordinateSystem, verbatimSRS,
 # samp_size_unit, samp_store_temp, samp_store_sol, precip_chem_prep, filter_material)
@@ -223,6 +225,7 @@ class SampleMetadata(BaseModel):
                                                   "missing: restricted access: endangered species", 
                                                   "missing: restricted access: human-identifiable", 
                                                   "missing: restricted access"]
+    _expedition_dates: ClassVar[Dict[str, List[datetime]]] = defaultdict(list) #For tracking dates to make sure ranges are valid
   
     
     # Treat missing faire field strings as empty pre-validation
@@ -280,6 +283,58 @@ class SampleMetadata(BaseModel):
             raise ValueError(f"Longitude {v} is outside valid latitude range (-180 to 180)")
         return v
     
+    @field_validator('eventDate')
+    @classmethod
+    def validate_event_date_constraints(cls, v):
+        """ensure no sampling before 2018"""
+        if not v:
+            return v
+        
+        try:
+            event_datetime = datetime.fromisoformat(v.replace('Z', '+00:00'))
+            if event_datetime.year < 2018:
+                raise ValueError(f"eventDate year {event_datetime.year} is before 2018.")
+            
+            return v
+            
+        except ValueError as e:
+            if "eventDate year" in str(e):
+                raise e # Re-raise our custom year validation error
+            else:
+                raise ValueError(f"eventDate: '{v}' is not in valid ISO format")
+
+    @model_validator(mode='after')
+    def validate_expedition_date_ranges(self):
+        """Class method to validate date ranges across all records in an expedition. Call this after validating individual records"""
+        if not self.eventDate:
+            return self
+
+        try:
+            event_datetime = datetime.fromisoformat(self.eventDate.replace('Z', '+00:00'))
+            self._expedition_dates[self.expedition_id].append(event_datetime)
+            expedition_dates = self._expedition_dates[self.expedition_id]
+
+            if len(expedition_dates) > 1:
+                date_range_days = (max(expedition_dates) - min(expedition_dates)).days
+                max_days = 400 if 'pps' in self.expedition_id.lower() else 60
+
+                if date_range_days > max_days:
+                    raise ValueError(f"Expedition '{self.expedition_id}: dat range of {date_range_days} days "
+                                    f"exceeds maximum {max_days}")
+        
+        except ValueError as e:
+            if "Expedition" in str(e) or "eventDate" in str(e):
+                raise e
+            else:
+                raise ValueError(F"Error validateing eventDate for {self.samp_name}")
+            
+        return self
+    
+    @classmethod
+    def reset_expedition_tracking(cls):
+        """Call this before processing a new dataset"""
+        cls._expedition_dates.clear()
+
     @model_validator(mode='after')
     def validate_arctic_region_and_geo_loc_name(self):
         """Validate that coordinates are in Arctic Region and geo_loc_name makes sense"""
