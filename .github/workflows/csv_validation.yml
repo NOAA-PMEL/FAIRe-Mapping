@@ -58,8 +58,8 @@ jobs:
       uses: tj-actions/changed-files@v40
       with:
         files: | 
-          'runs/**/data/*.csv'
-          'projects/**/**/data/*.csv'
+          runs/**/data/*.csv
+          projects/**/**/data/*.csv
           
     - name: Validate changed CSV files
       if: steps.changed-files.outputs.any_changed == 'true'
@@ -80,14 +80,14 @@ jobs:
         get_model_class() {
           local file_path="$1"
           case "$file_path" in
-            *sample*|*Sample*)
-              echo "SampleMetadata"
-              ;;
-            *experiment*|*Experiment*|*run*|*Run*)
+            runs/**/data/*.csv|*runs/**/data/*.csv)
               echo "ExperimentRunMetadata"
               ;;
+            projects/**/**/data/*.csv|*projects/**/**/data/*.csv)
+              echo "SampleMetadata"
+              ;;
             *)
-              # Default to SampleMetadata
+              # Default fallback to SampleMetadata
               echo "SampleMetadata"
               ;;
           esac
