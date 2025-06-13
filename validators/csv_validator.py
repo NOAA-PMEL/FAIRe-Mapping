@@ -1,11 +1,12 @@
 import sys
-sys.path.append("..")
+# sys.path.append("..")
 import pandas as pd
 import warnings
 from typing import Type
 from pydantic import BaseModel, ValidationError
 from models.experiment_run_metadata import ExperimentRunMetadata
 from models.sample_metadata import SampleMetadata
+
 
 class CSVValidationResult:
     def __init__(self):
