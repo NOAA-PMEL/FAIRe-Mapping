@@ -501,8 +501,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         formatted_btl = f'{btl_int:02d}'
 
         material_sample_id = formatted_cast + formatted_btl
-
-        return material_sample_id
+        return str(material_sample_id)
 
     def add_material_samp_id_for_pps_samp(self, metadata_row: pd.Series, cast_or_event_col: str, prefix: str):
         # Creates a material sample id in the format of "M2-PPS-0423_Port1" Where the cruise name _ cast
