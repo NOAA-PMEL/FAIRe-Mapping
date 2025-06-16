@@ -34,7 +34,7 @@ class ExperimentRunMetadata(BaseModel):
     @classmethod
     def empty_associatedSequences_to_none(cls, v):
                 if (
-                    (isinstance(v, str) and math.isnan(v)) or 
+                    (isinstance(v, float) and math.isnan(v)) or 
                     (isinstance(v, str) and v.lower() in ['nan', 'null', '']) or
                     (isinstance(v, float) and math.isnan(v))):
                     return None
