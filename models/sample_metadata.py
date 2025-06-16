@@ -253,15 +253,16 @@ class SampleMetadata(BaseModel):
                     raise ValueError(f"Sample {self.samp_name} mus have {attribute}")
         return self
 
-    # validate materialSampleID as only allowed 4 or 6 digit
-    @field_validator('materialSampleID')
-    @classmethod
-    def validate_parent_samp_digits(cls, v):
-        if v:
-            digit_count = len(str(abs(v)))
-            if digit_count not in [4, 6]:
-                raise ValueError(f'materialSampleID must have exactly 4 or 6 digits, got {digit_count}')
-            return v
+# TODO: figure this out. commenting out because the validators read_csv is dropping the 0 in front!
+    # # validate materialSampleID as only allowed 4 or 6 digit
+    # @field_validator('materialSampleID')
+    # @classmethod
+    # def validate_parent_samp_digits(cls, v):
+    #     if v:
+    #         digit_count = len(str(abs(v)))
+    #         if digit_count not in [4, 6]:
+    #             raise ValueError(f'materialSampleID must have exactly 4 or 6 digits, got {digit_count}')
+    #         return v
 
     @field_validator('decimalLatitude')
     @classmethod

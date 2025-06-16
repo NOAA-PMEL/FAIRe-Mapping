@@ -1,6 +1,7 @@
 import sys
-# sys.path.append("..") # uncomment when running locally, but comment back out for remote.
+sys.path.append("..") # uncomment when running locally, but comment back out for remote.
 import pandas as pd
+import csv
 import warnings
 from typing import Type
 from pydantic import BaseModel, ValidationError
@@ -27,7 +28,6 @@ class CSVValidationResult:
             'warnings': self.warnings
             }
     
-
 class CSVValidator:
     def __init__(self, model_class: Type[BaseModel]):
         if isinstance(model_class, str):
@@ -40,7 +40,7 @@ class CSVValidator:
         result = CSVValidationResult()
 
         try:
-            df = pd.read_csv(csv_path, dtype={{'materialSampleID': str, 'sample_derived_from': str}})
+            df = pd.read_csv(csv_path, dtype={"materialSampleID": str, "sample_derived_from": str})
             result.total_rows = len(df)
 
             print(f"📊 Validating {result.total_rows} rows from '{csv_path}'")
@@ -97,7 +97,6 @@ def main():
         print(" --strict: Stop validation on first error (default: continue)")
         sys.exit(1)
 
-
     csv_path = sys.argv[1]
     model_class_name = sys.argv[2]
     strict_mode = '--strict' in sys.argv
@@ -122,8 +121,9 @@ def main():
             print(f"\n🚨 Validation Errors:")
             for error in result.errors:
                 print(f"    {error}")
+                sys.exit(1)
         
-        if len(result.invalid_records) > 0:
+        if len(result.invalid_records) > 0 or len(result.errors) > 0:
             print(f"\n💥 Validation failed!")
             sys.exit(1)
         else:
