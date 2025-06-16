@@ -1,5 +1,5 @@
 import sys
-# sys.path.append("..")
+# sys.path.append("..") # uncomment when running locally, but comment back out for remote.
 import pandas as pd
 import warnings
 from typing import Type
@@ -35,22 +35,12 @@ class CSVValidator:
         else:
             self.model_class = model_class
 
-    # def _clean_row_data(self, row_dict):
-    #     """Clean row data by convertying empty strings/NaN to None for optional fields"""
-    #     cleaned = {}
-    #     for key, value in row_dict.items():
-    #         if pd.isna(value) or value == '' or value == 'nan':
-    #             cleaned[key] = None
-    #         else:
-    #             cleaned[key] = value
-    #     return cleaned
-
     def validate_file(self, csv_path: str, strict: bool = True) -> CSVValidationResult:
         """Validate CSV file against pydantic model"""
         result = CSVValidationResult()
 
         try:
-            df = pd.read_csv(csv_path)
+            df = pd.read_csv(csv_path, dtype={{'materialSampleID': str, 'sample_derived_from': str}})
             result.total_rows = len(df)
 
             print(f"📊 Validating {result.total_rows} rows from '{csv_path}'")
