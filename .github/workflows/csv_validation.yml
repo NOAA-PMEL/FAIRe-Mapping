@@ -46,7 +46,7 @@ jobs:
       run: | 
         conda list | grep pandas || {
           echo "Installing dependencies..."
-          conda install -c conda-forge -c anaconda -c bioconda pandas pyyaml openpyxl isodate requests beautifulsoup4 shapely geopandas h5netcdf netcdf4 xarray pydantic 
+          conda install -c conda-forge -c anaconda -c bioconda pandas pyyaml openpyxl isodate requests beautifulsoup4 shapely geopandas h5netcdf netcdf4 xarray pydantic, geopy 
           pip install google-api-python-client google-auth-oauthlib gspread oauth2client python-frontmatter gsw bioawk
         }
         
