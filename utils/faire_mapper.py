@@ -1,5 +1,6 @@
 from pathlib import Path
 import openpyxl
+import csv
 import frontmatter
 from openpyxl.utils import get_column_letter
 from datetime import datetime
@@ -237,7 +238,7 @@ class OmeFaireMapper:
 
         faire_final_df = pd.concat([faire_template_df, final_df], ignore_index=True)
 
-        faire_final_df.to_csv(csv_path)
+        faire_final_df.to_csv(csv_path, quoting=csv.QUOTE_NONNUMERIC)
 
     def add_final_df_to_FAIRe_excel(self, excel_file_to_read_from: str, sheet_name: str, faire_template_df: pd.DataFrame):
 
