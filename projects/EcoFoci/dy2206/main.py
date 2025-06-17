@@ -126,6 +126,15 @@ def create_dy2206_sample_metadata():
                 axis = 1
             )
 
+        elif faire_col == 'alternative_station_ids':
+            metadata_cols = metadata_col.split(' | ')
+            lat_col = metadata_cols[1]
+            lon_col = metadata_cols[0]
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.get_alternative_station_names(metadata_row=row, lat_col=lat_col, lon_col=lon_col), 
+                axis=1
+            )
+
     # Step 4: fill in NA with missing not collected or not applicable because they are samples and adds NC to rel_cont_id
     sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))
     
@@ -137,14 +146,13 @@ def create_dy2206_sample_metadata():
     faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df,controls_df])
     # Add rel_cont_id
     faire_sample_df_updated = sample_mapper.add_extraction_blanks_to_rel_cont_id(final_sample_df=faire_sample_df)
-
     # step 7: save as csv:
     sample_mapper.save_final_df_as_csv(final_df=faire_sample_df_updated, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2206/data/dy2206_faire.csv')
    
-    # step 7: save to excel file
-    sample_mapper.add_final_df_to_FAIRe_excel(excel_file_to_read_from=sample_mapper.faire_template_file,
-                                              sheet_name=sample_mapper.sample_mapping_sheet_name, 
-                                              faire_template_df=faire_sample_df_updated)
+    # # step 7: save to excel file
+    # sample_mapper.add_final_df_to_FAIRe_excel(excel_file_to_read_from=sample_mapper.faire_template_file,
+    #                                           sheet_name=sample_mapper.sample_mapping_sheet_name, 
+    #                                           faire_template_df=faire_sample_df_updated)
 
     return sample_mapper, faire_sample_df
 

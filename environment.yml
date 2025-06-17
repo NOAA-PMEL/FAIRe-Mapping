@@ -21,4 +21,6 @@ dependencies:
   - conda-forge::oauth2client
   - conda-forge::python-frontmatter
   - conda-forge::gsw
+  - conda-forge::pydantic
+  - conda-forge::geopy
 prefix: /home/poseidon/zalmanek/miniconda3/envs/faire_mapping

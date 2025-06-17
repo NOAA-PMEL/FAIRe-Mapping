@@ -3,35 +3,35 @@ run_metadata_sample_name_column: SampleName
 run_metadata_marker_col_name: Metabarcoding Marker
 run_metadata_sample_sheet_name: Sample Data Sheet Long
 run_raw_data_path: # The raw data path of each marker folder (a lot are in a renamed folder)
-  '18Sv4': /data/raw_data/20240606_JV_Run3_Arctic_WCOAbenthic_eDNA/renamed/18Sv4/
-  'COI': /data/raw_data/20250107_JV_Run3_FIXED_DEMULTIPLEXING/renamed/JVB3424_UniCOI/
-  'Machida18S': /data/raw_data/20240606_JV_Run3_Arctic_WCOAbenthic_eDNA/renamed/Machida18S/
-  'MiFish': /data/raw_data/20250107_JV_Run3_FIXED_DEMULTIPLEXING/renamed/JVB3424_MiFishU/
-  'Parada16S': /data/raw_data/20250107_JV_Run3_FIXED_DEMULTIPLEXING/renamed/JVB3424_16Sv4v5/
-  'Kelly16S': /data/raw_data/20250107_JV_Run3_FIXED_DEMULTIPLEXING/renamed/JVB3424_16SKelly/
-  '18Sv9': /data/raw_data/20250107_JV_Run3_FIXED_DEMULTIPLEXING/renamed/JVB3424_18Sv9/
-run_sample_metadata_file_id: 1dhf8-q52newqGicKgabwtKllGiVlv4WL-SrF2o-eo0Y
-google_sheet_mapping_file_id: 1Nn96kTUgTgodclmjJn7pxdOCYjysaN7hRMxM8lUs-X0
+  '18Sv4': '/data/raw_data/20240606_JV_Run3_Arctic_WCOAbenthic_eDNA/renamed/18Sv4/'
+  'COI': '/data/raw_data/20250107_JV_Run3_FIXED_DEMULTIPLEXING/renamed/JVB3424_UniCOI/'
+  'Machida18S': '/data/raw_data/20240606_JV_Run3_Arctic_WCOAbenthic_eDNA/renamed/Machida18S/'
+  'MiFish': '/data/raw_data/20250107_JV_Run3_FIXED_DEMULTIPLEXING/renamed/JVB3424_MiFishU/'
+  'Parada16S': '/data/raw_data/20250107_JV_Run3_FIXED_DEMULTIPLEXING/renamed/JVB3424_16Sv4v5/'
+  'Kelly16S': '/data/raw_data/20250107_JV_Run3_FIXED_DEMULTIPLEXING/renamed/JVB3424_16SKelly/'
+  '18Sv9': '/data/raw_data/20250107_JV_Run3_FIXED_DEMULTIPLEXING/renamed/JVB3424_18Sv9/'
+run_sample_metadata_file_id: '1dhf8-q52newqGicKgabwtKllGiVlv4WL-SrF2o-eo0Y'
+google_sheet_mapping_file_id: '1Nn96kTUgTgodclmjJn7pxdOCYjysaN7hRMxM8lUs-X0'
 run_name: run3 # for adding to the Positive control sample names
 revamp_blast: True # if using the revamp blast-based taxonomy assignment then set this to True, otherwise False
 ignore_markers: # Add Metabarcoding Marker name EXACTLY from run_sample_metadata_file if not submitting info for that marker
   - dLoop
 asv_counts_tsvs_for_run: #dloop left out because Sean said dLoop did not work for Run2, keys match metabarcoding marker in metadata spreadsheet
-  '18Sv4': /home/poseidon/mcallister/eDNA_bioinformatics/Run3/18Sv4_REVAMP_out/dada2/ASVs_counts.tsv
-  'COI': /home/poseidon/mcallister/eDNA_bioinformatics/Run3_rerun/COI_REVAMP/dada2/ASVs_counts.tsv
-  'Machida18S': /home/poseidon/mcallister/eDNA_bioinformatics/Run3/Machida18S_REVAMP_out_COMBINEALL/dada2/ASVs_counts.tsv
-  'MiFish': /home/poseidon/mcallister/eDNA_bioinformatics/Run3_rerun/MiFish_REVAMP/dada2/ASVs_counts.tsv
-  'Parada16S': /home/poseidon/mcallister/eDNA_bioinformatics/Run3_rerun/Parada16S_REVAMP_merged/dada2/ASVs_counts.tsv
-  'Kelly16S': /home/poseidon/mcallister/eDNA_bioinformatics/Run3_rerun/Kelly16S_REVAMP/dada2/ASVs_counts.tsv
-  '18Sv9': /home/poseidon/mcallister/eDNA_bioinformatics/Run3_rerun/18Sv9_REVAMP/dada2/ASVs_counts.tsv 
+  '18Sv4': '/home/poseidon/mcallister/eDNA_bioinformatics/Run3/18Sv4_REVAMP_out/dada2/ASVs_counts.tsv'
+  'COI': '/home/poseidon/mcallister/eDNA_bioinformatics/Run3_rerun/COI_REVAMP/dada2/ASVs_counts.tsv'
+  'Machida18S': '/home/poseidon/mcallister/eDNA_bioinformatics/Run3/Machida18S_REVAMP_out_COMBINEALL/dada2/ASVs_counts.tsv'
+  'MiFish': '/home/poseidon/mcallister/eDNA_bioinformatics/Run3_rerun/MiFish_REVAMP/dada2/ASVs_counts.tsv'
+  'Parada16S': '/home/poseidon/mcallister/eDNA_bioinformatics/Run3_rerun/Parada16S_REVAMP_merged/dada2/ASVs_counts.tsv'
+  'Kelly16S': '/home/poseidon/mcallister/eDNA_bioinformatics/Run3_rerun/Kelly16S_REVAMP/dada2/ASVs_counts.tsv'
+  '18Sv9': '/home/poseidon/mcallister/eDNA_bioinformatics/Run3_rerun/18Sv9_REVAMP/dada2/ASVs_counts.tsv' 
 otu_num_tax_assigned_files_for_run: # The files used to calculate the otu_num_tax_assigned - Sean said it depends on the version of taxonomy we are using
-  '18Sv4': /home/poseidon/mcallister/eDNA_bioinformatics/Run3/18Sv4_REVAMP_out/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
-  'COI': /home/poseidon/mcallister/eDNA_bioinformatics/Run3_rerun/COI_REVAMP/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
-  'Machida18S': /home/poseidon/mcallister/eDNA_bioinformatics/Run3/Machida18S_REVAMP_out_COMBINEALL/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
-  'MiFish': /home/poseidon/mcallister/eDNA_bioinformatics/Run3_rerun/MiFish_REVAMP/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
-  'Parada16S': /home/poseidon/mcallister/eDNA_bioinformatics/Run3_rerun/Parada16S_REVAMP_merged/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
-  'Kelly16S': /home/poseidon/mcallister/eDNA_bioinformatics/Run3_rerun/Kelly16S_REVAMP/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
-  '18Sv9': /home/poseidon/mcallister/eDNA_bioinformatics/Run3_rerun/18Sv9_REVAMP/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
+  '18Sv4': '/home/poseidon/mcallister/eDNA_bioinformatics/Run3/18Sv4_REVAMP_out/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv'
+  'COI': '/home/poseidon/mcallister/eDNA_bioinformatics/Run3_rerun/COI_REVAMP/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv'
+  'Machida18S': '/home/poseidon/mcallister/eDNA_bioinformatics/Run3/Machida18S_REVAMP_out_COMBINEALL/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv'
+  'MiFish': '/home/poseidon/mcallister/eDNA_bioinformatics/Run3_rerun/MiFish_REVAMP/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv'
+  'Parada16S': '/home/poseidon/mcallister/eDNA_bioinformatics/Run3_rerun/Parada16S_REVAMP_merged/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv'
+  'Kelly16S': '/home/poseidon/mcallister/eDNA_bioinformatics/Run3_rerun/Kelly16S_REVAMP/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv'
+  '18Sv9': '/home/poseidon/mcallister/eDNA_bioinformatics/Run3_rerun/18Sv9_REVAMP/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv'
 # path to json creds file for google sheets
 json_creds: /home/poseidon/zalmanek/FAIRe-Mapping/credentials.json
 

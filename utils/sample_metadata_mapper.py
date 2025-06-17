@@ -10,6 +10,7 @@ import xarray as xr
 import geopandas as gpd
 import gsw
 from shapely.geometry import Point
+from geopy.distance import geodesic
 from bs4 import BeautifulSoup
 from .custom_exception import NoInsdcGeoLocError
 from .lists import nc_faire_field_cols, marker_shorthand_to_pos_cont_gblcok_name
@@ -70,8 +71,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.extraction_name = self.config_file['extraction_name']
         self.samp_dur_info = self.config_file['samp_store_dur_sheet_info'] if 'samp_store_dur_sheet_info' in self.config_file else None
         self.samp_stor_dur_dict = self.create_samp_stor_dict() if 'samp_store_dur_sheet_info' in self.config_file else None
+        self.station_ref_dict = self.create_reference_station_dict()
 
-        # self.exp_metadata_df = exp_metadata_df
         self.extraction_blank_rel_cont_dict = {}
         self.sample_metadata_df = self.filter_metadata_dfs()[0]
         self.nc_df = self.filter_metadata_dfs()[1]
@@ -159,6 +160,30 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         samp_dur_dict = dict(zip(samp_dur_df[self.samp_dur_info['samp_name_col']], samp_dur_df[self.samp_dur_info['samp_stor_dur_col']]))
 
         return samp_dur_dict
+
+    def create_reference_station_dict(self) -> dict:
+        # Creates a reference dictionary for station names - hard coded because will be the same across cruises I believe
+        station_ref_df = self.load_google_sheet_as_df(google_sheet_id='1bJiX5pXpUuk74tbuoiYRc7iNXAVYU2dD8nTnZAFpZg8', sheet_name='Sheet1', header=0)
+        ref_dict = {}
+        for _, row in station_ref_df.iterrows():
+            station_name = row['station_name']
+            lat = row['LatitudeDegree']
+            lon = row['LongitudeDegree']
+            lat_hem = row['LatitudeHem']
+            lon_hem = row['LongitudeHem']
+
+            # Add direction sign to lat/lon
+            if 'S' == lat_hem:
+                lat = float(-abs(float(lat)))
+            if 'W' == lon_hem:
+                lon = float(-abs(float(lon)))
+            
+            ref_dict[station_name] = {
+                'lat': lat,
+                'lon': lon
+            }
+
+        return ref_dict
 
     def convert_mdy_date_to_iso8061(self, date_string: str) -> str:
         # converts from m/d/y to iso8061
@@ -476,8 +501,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         formatted_btl = f'{btl_int:02d}'
 
         material_sample_id = formatted_cast + formatted_btl
-
-        return material_sample_id
+        return str(material_sample_id)
 
     def add_material_samp_id_for_pps_samp(self, metadata_row: pd.Series, cast_or_event_col: str, prefix: str):
         # Creates a material sample id in the format of "M2-PPS-0423_Port1" Where the cruise name _ cast
@@ -485,7 +509,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # the cast will have 'Event1" so need to extract the 1
         cast_val = metadata_row[cast_or_event_col]
         port_num = cast_val.replace('Event','')
-        return f"{prefix}_Port{port_num}"
+        return f"{prefix}_Port{port_num.strip()}"
 
     def create_extract_id(self, extraction_batch: str) -> str:
         # creates the extract_id which is the [extractionName]_extract_set[extractionBatch]
@@ -774,17 +798,48 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         return df
 
+    def calculate_distance_btwn_lat_lon_points(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+        # Calculates the surface distance between two points in lat/lon using the great_circle package of GeoPy
+        # TODO: move to projectMapper?
+        return geodesic((lat1, lon1), (lat2, lon2)).kilometers
+        
+    def get_alternative_station_names(self, metadata_row: pd.Series, lat_col: float, lon_col: float) -> str:
+        # Get the top three closes stations based on lat/lon coords. Right now will return a list of dictionaries with station, disttance and coords
+        # TODO: move to projectMapper?
+        lat = metadata_row[lat_col]
+        lon = metadata_row[lon_col]
+        # alt_stations = []
+        distances = []
+
+        for station_name, coords in self.station_ref_dict.items():
+            station_lat = coords['lat']
+            station_lon = coords ['lon']
+
+            # calculate distance
+            distance = self.calculate_distance_btwn_lat_lon_points(lat1=lat, lon1=lon, lat2=station_lat, lon2=station_lon)
+
+            distances.append({
+                'station': station_name,
+                'distance_km': distance,
+                'coords': coords
+            })
+
+        # sort by distance and return top n
+        distances.sort(key=lambda x: x['distance_km'])
+        return str(distances[:3])
+    
     def fill_empty_sample_values(self, df: pd.DataFrame, default_message="missing: not collected"):
         # fill empty values for samples after mapping over all sample data without control samples
 
         # check if data frame is sample data frame and if so, then adds not applicable: control sample to control columns
-        if '.NC' not in df[self.faire_sample_name_col].iloc[0] and 'POSITIVE' not in df[self.faire_sample_name_col].iloc[0]:
+        if '.NC' not in df[self.faire_sample_name_col].iloc[0] and 'POSITIVE' not in df[self.faire_sample_name_col].iloc[0] and 'blank' not in df[self.faire_sample_name_col].iloc[0].lower():
             for col, message in self.not_applicable_to_samp_faire_col_dict.items():
                 df[col] = message
         elif '.NC' in df[self.faire_sample_name_col]:
             # for NC sample pos_cont_type is just not applicable
             df['pos_cont_type'] = "not applicable"
 
+    
         # Use default message for all other empty values - handles None, Nan
         df = df.fillna(default_message)
 
@@ -793,6 +848,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         # update unit cols for non-values
         updated_df = self.update_unit_colums_with_no_corresponding_val(df=df)
+
 
         return updated_df
 

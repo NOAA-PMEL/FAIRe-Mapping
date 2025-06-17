@@ -159,10 +159,10 @@ def create_dy2306_sample_metadata():
     # step 7: save as csv:
     sample_mapper.save_final_df_as_csv(final_df=faire_sample_df_updated, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2306/data/dy2306_faire.csv')
    
-    # step 7: save to excel file
-    sample_mapper.add_final_df_to_FAIRe_excel(excel_file_to_read_from=sample_mapper.faire_template_file,
-                                              sheet_name=sample_mapper.sample_mapping_sheet_name, 
-                                              faire_template_df=faire_sample_df_updated)
+    # # step 7: save to excel file
+    # sample_mapper.add_final_df_to_FAIRe_excel(excel_file_to_read_from=sample_mapper.faire_template_file,
+    #                                           sheet_name=sample_mapper.sample_mapping_sheet_name, 
+    #                                           faire_template_df=faire_sample_df_updated)
 
     return sample_mapper, faire_sample_df
 

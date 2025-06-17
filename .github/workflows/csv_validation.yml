@@ -1,0 +1,163 @@
+name: CSV FAIRe Validation
+on:
+  pull_request:
+    paths: 
+      - 'runs/**/data/*.csv'
+      - 'projects/**/**/data/*.csv'
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  validate-faire-csv:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        lfs: true
+
+    - name: Download LFS files
+      run: git lfs pull
+        
+    - name: Set up Conda with caching
+      uses: conda-incubator/setup-miniconda@v3
+      with:
+        auto-update-conda: true
+        activate-environment: faire_mapping
+        environment-file: environment.yml
+        python-version: 3.11
+        auto-activate-base: false
+        use-mamba: true
+        
+    - name: Cache conda environment
+      uses: actions/cache@v3
+      with:
+        path: /usr/share/miniconda/envs/faire_mapping
+        key: conda-${{ runner.os }}-${{ hashFiles('environment.yml') }}
+        restore-keys: |
+          conda-${{ runner.os }}-
+          
+    - name: Install dependencies
+      shell: bash -l {0}
+      run: | 
+        conda list | grep pandas || {
+          echo "Installing dependencies..."
+          conda install -c conda-forge -c anaconda -c bioconda pandas pyyaml openpyxl isodate requests beautifulsoup4 shapely geopandas h5netcdf netcdf4 xarray pydantic, geopy 
+          pip install google-api-python-client google-auth-oauthlib gspread oauth2client python-frontmatter gsw bioawk
+        }
+        
+    - name: Get changed CSV files
+      id: changed-files
+      uses: tj-actions/changed-files@v40
+      with:
+        files: | 
+          runs/**/data/*.csv
+          projects/**/**/data/*.csv
+          
+    - name: Validate CSV files
+      if: steps.changed-files.outputs.any_changed == 'true'
+      id: validation
+      shell: bash -l {0}
+      run: |
+        echo "changed_files=${{ steps.changed-files.outputs.all_changed_files }}" >> $GITHUB_OUTPUT
+        
+        # Initialize summary file
+        summary_file=$(mktemp)
+        has_errors=false
+        
+        # Function to determine model class
+        get_model_class() {
+          case "$1" in
+            *runs/*/data/*.csv) echo "ExperimentRunMetadata" ;;
+            *projects/*/data/*.csv) echo "SampleMetadata" ;;
+            *) echo "SampleMetadata" ;;
+          esac
+        }
+        
+        # Validate each file
+        for csv_file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+          model_class=$(get_model_class "$csv_file")
+          echo "Validating $csv_file with $model_class..."
+          
+          # Run validation (non-strict mode to continue on errors)
+          output_file=$(mktemp)
+          if python -m validators.csv_validator "$csv_file" "$model_class" > "$output_file" 2>&1; then
+            output=$(cat "$output_file")
+            # Check if there were any validation errors in the output
+            if echo "$output" | grep -q -E "(Validation failed!|Validation Errors!)"; then
+              has_errors=true
+              status="❌ FAILED"
+            elif echo "$output" | grep -q "warnings"; then
+              status="⚠️ PASSED (with warnings)"
+            else
+              status="✅ PASSED"
+            fi
+          else
+            output=$(cat "$output_file")
+            has_errors=true
+            status="❌ FAILED"
+          fi
+          
+          # Add to summary file
+          echo "**$csv_file** ($model_class): $status" >> "$summary_file"
+          echo '```' >> "$summary_file"
+          echo "$output" >> "$summary_file"
+          echo '```' >> "$summary_file"
+          echo "" >> "$summary_file"
+          
+          rm "$output_file"
+        done
+        
+        # Save summary for PR comment using proper multiline output
+        {
+          echo "SUMMARY<<EOF"
+          cat "$summary_file"
+          echo "EOF"
+        } >> $GITHUB_OUTPUT
+        
+        rm "$summary_file"
+        
+        # Exit with error if validation failed
+        if [ "$has_errors" = true ]; then
+          echo "❌ CSV validation failed"
+          exit 1
+        else
+          echo "✅ All CSV files are valid"
+        fi
+        
+    - name: Comment on PR
+      if: always() && github.event_name == 'pull_request' && steps.changed-files.outputs.any_changed == 'true'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const summary = process.env.VALIDATION_SUMMARY;
+          const success = '${{ steps.validation.outcome }}' === 'success';
+          
+          const emoji = success ? '✅' : '❌';
+          const title = success ? 
+            'All CSV files passed validation!' : 
+            'CSV validation failed - please fix errors before merging';
+          
+          const body = `${emoji} **CSV Data Validation Results**
+          
+          **${title}**
+          
+          <details>
+          <summary>📋 Detailed Results</summary>
+          
+          ${summary}
+          
+          </details>`;
+          
+          await github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: body
+          });
+      env:
+        VALIDATION_SUMMARY: ${{ steps.validation.outputs.SUMMARY }}
