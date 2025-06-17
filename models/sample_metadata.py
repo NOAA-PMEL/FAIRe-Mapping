@@ -165,18 +165,18 @@ class SampleMetadata(BaseModel):
     hydrogen_ion: Optional[float] = Field(default=None)
     hydrogen_ion_unit: Optional[int] = Field(default=None)
     nitrate_plus_nitrite: Optional[float]
-    nitrate_plus_nitrite_unit: Optional[Literal['']]  # need to add cv here when known
+    nitrate_plus_nitrite_unit: Optional[Literal['µM']]  # need to add cv here when known
     omega_arag: Optional[float]
     omega_calc: Optional[float] = Field(default=None)
     pco2: Optional[float]
     pco2_unit: Optional[Literal['uatm']]
     phosphate: Optional[float]
-    phosphate_unit: Optional[Literal['µmol/L']]
+    phosphate_unit: Optional[Literal['µmol/L', 'µM']]
     phosphate_flag: Optional[int] = Field(default=None)
     pressure: Optional[float]
     pressure_unit: Optional[Literal['dbar']]
     silicate: Optional[float]
-    silicate_unit: Optional[Literal['µmol/L']]
+    silicate_unit: Optional[Literal['µmol/L', 'µM']]
     silicate_flag: Optional[int] = Field(default=None)
     tot_alkalinity: Optional[float]
     tot_alkalinity_unit: Optional[Literal['µmol/kg']]
