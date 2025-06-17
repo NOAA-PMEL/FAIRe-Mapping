@@ -828,8 +828,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         # sort by distance and return top n
         distances.sort(key=lambda x: x['distance_km'])
-        alt_station_names = [item['station'] for item in distances]
-        alt_station_names = ' | '.join([station for station in alt_station_names if station!= station_name])
+        alt_station_names = ' | '.join([item['station'] for item in distances])
         if alt_station_names:
             return alt_station_names
     
