@@ -39,7 +39,7 @@ class SampleMetadata(BaseModel):
     samp_category: Literal['sample', 'negative control', 'positive control', 'PCR standard']
     neg_cont_type: Optional[Literal['site negative', 'field negative', 'process negative', 'extraction negative', 'PCR negative']]
     pos_cont_type: Optional[str]
-    materialSampleID: Optional[int]
+    materialSampleID: Optional[str]
     sample_derived_from: Optional[str] # needs custom list validation
     sample_composed_of: Optional[str] # needs custom list validation
     rel_cont_id: Optional[str] # needs custom list validation
@@ -58,7 +58,7 @@ class SampleMetadata(BaseModel):
     env_broad_scale: Optional[str]
     env_local_scale: Optional[str]
     env_medium: Optional[str]
-    habitat_natural_artificial_0_1: Optional[Literal[0, 1]]
+    habitat_natural_artificial_0_1: Optional[Literal['0', '1', 0, 1]]
     samp_collect_method: Optional[str]
     samp_collect_device: Optional[str]
     samp_size: Optional[float]
@@ -70,7 +70,7 @@ class SampleMetadata(BaseModel):
     dna_store_loc: Optional[str]
     samp_store_method_additional: Optional[str]
     samp_mat_process: Optional[str]
-    filter_passive_active_0_1: Optional[Literal[0, 1]]
+    filter_passive_active_0_1: Optional[Literal['0', '1', 0, 1]]
     stationed_sample_dur: Optional[str]
     pump_flow_rate: Optional[float]
     pump_flow_rate_unit: Optional[Literal['m3/s ', 'm3/min ', 'm3/h', 'L/s', 'L/min', 'L/h']]
@@ -85,7 +85,7 @@ class SampleMetadata(BaseModel):
     precip_force_prep: Optional[float] = Field(description = "x g")
     precip_time_prep: Optional[float] = Field(description = "minute")
     precip_temp_prep: Optional[Union[float, Literal['ambient temperature']]] = Field(description = "degree Celsius")
-    prepped_samp_store_temp: Optional[Union[float, Literal['ambient temperature']]] = Field(description = "degree Celsius")
+    prepped_samp_store_temp: Optional[Union[float, Literal['ambient temperature', 'ambient temperature | -20']]] = Field(description = "degree Celsius")
     prepped_samp_store_sol: Optional[Literal['ethanol', 'sodium acetate', 'longmire', 'lysis buffer']]
     prepped_samp_store_dur: Optional[str]
     prep_method_additional: Optional[str] 
@@ -192,20 +192,20 @@ class SampleMetadata(BaseModel):
     biosample_accession: Optional[str]
     organism: Optional[str]
     samp_collect_notes: Optional[str]
-    percent_oxygen_sat: Optional[float]
-    density: Optional[float]
-    density_unit: Optional[Literal['kg/m3']]
-    air_temperature: Optional[float]
-    air_temperature_unit: Optional[Literal['degree Celsius']]
-    par: Optional[float]
-    par_unit: Optional[Literal['µmol s-1 m-2']]
-    air_pressure_at_sea_level: Optional[float]
-    air_pressure_at_sea_level_unit: Optional[Literal['mb']]
+    percent_oxygen_sat: Optional[float] = None
+    density: Optional[float] = None
+    density_unit: Optional[Literal['kg/m3']] = None
+    air_temperature: Optional[float] = None
+    air_temperature_unit: Optional[Literal['degree Celsius']] = None
+    par: Optional[float] = None
+    par_unit: Optional[Literal['µmol s-1 m-2']] = None
+    air_pressure_at_sea_level: Optional[float] = None
+    air_pressure_at_sea_level_unit: Optional[Literal['mb']] = None
     d18O_permil: Optional[float] = Field(default=None, description='18O oxygen iostope ratio, expressed in per mill (%) unit deviations from the international standard which is Standard Mean Ocean Water, as distributed by the International Atomic Energy Agency.')
     d18O_permil_flag: Optional[int] = Field(default=None)
     expedition_id: Optional[str]
     expedition_name: Optional[str]
-    rosette_position: Optional[int]
+    rosette_position: Optional[int] = None
     collected_by: Optional[str]
     meaurements_from: Optional[str]
     niskin_flag: Optional[int] = Field(default=None)
@@ -252,17 +252,6 @@ class SampleMetadata(BaseModel):
                 if attribute is None:
                     raise ValueError(f"Sample {self.samp_name} mus have {attribute}")
         return self
-
-# TODO: figure this out. commenting out because the validators read_csv is dropping the 0 in front!
-    # # validate materialSampleID as only allowed 4 or 6 digit
-    # @field_validator('materialSampleID')
-    # @classmethod
-    # def validate_parent_samp_digits(cls, v):
-    #     if v:
-    #         digit_count = len(str(abs(v)))
-    #         if digit_count not in [4, 6]:
-    #             raise ValueError(f'materialSampleID must have exactly 4 or 6 digits, got {digit_count}')
-    #         return v
 
     @field_validator('decimalLatitude')
     @classmethod
@@ -317,7 +306,7 @@ class SampleMetadata(BaseModel):
 
             if len(expedition_dates) > 1:
                 date_range_days = (max(expedition_dates) - min(expedition_dates)).days
-                max_days = 400 if 'pps' in self.expedition_id.lower() else 60
+                max_days = 400 if 'pps' in self.materialSampleID.lower() else 60
 
                 if date_range_days > max_days:
                     raise ValueError(f"Expedition '{self.expedition_id}: dat range of {date_range_days} days "

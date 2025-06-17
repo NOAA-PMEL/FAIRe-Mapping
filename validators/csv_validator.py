@@ -1,5 +1,5 @@
 import sys
-sys.path.append("..") # uncomment when running locally, but comment back out for remote.
+# sys.path.append("..") # uncomment when running locally, but comment back out for remote.
 import pandas as pd
 import csv
 import warnings
@@ -118,7 +118,7 @@ def main():
                 print(f"    Row {warning['row']}: {warning['message']}")
 
         if result.errors:
-            print(f"\n🚨 Validation Errors:")
+            print(f"\n🚨 Validation Errors!")
             for error in result.errors:
                 print(f"    {error}")
                 sys.exit(1)

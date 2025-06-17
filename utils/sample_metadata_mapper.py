@@ -509,7 +509,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # the cast will have 'Event1" so need to extract the 1
         cast_val = metadata_row[cast_or_event_col]
         port_num = cast_val.replace('Event','')
-        return f"{prefix}_Port{port_num}"
+        return f"{prefix}_Port{port_num.strip()}"
 
     def create_extract_id(self, extraction_batch: str) -> str:
         # creates the extract_id which is the [extractionName]_extract_set[extractionBatch]
@@ -832,13 +832,14 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # fill empty values for samples after mapping over all sample data without control samples
 
         # check if data frame is sample data frame and if so, then adds not applicable: control sample to control columns
-        if '.NC' not in df[self.faire_sample_name_col].iloc[0] and 'POSITIVE' not in df[self.faire_sample_name_col].iloc[0]:
+        if '.NC' not in df[self.faire_sample_name_col].iloc[0] and 'POSITIVE' not in df[self.faire_sample_name_col].iloc[0] and 'blank' not in df[self.faire_sample_name_col].iloc[0].lower():
             for col, message in self.not_applicable_to_samp_faire_col_dict.items():
                 df[col] = message
         elif '.NC' in df[self.faire_sample_name_col]:
             # for NC sample pos_cont_type is just not applicable
             df['pos_cont_type'] = "not applicable"
 
+    
         # Use default message for all other empty values - handles None, Nan
         df = df.fillna(default_message)
 
@@ -847,6 +848,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         # update unit cols for non-values
         updated_df = self.update_unit_colums_with_no_corresponding_val(df=df)
+
 
         return updated_df
 
