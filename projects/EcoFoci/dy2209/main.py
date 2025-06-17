@@ -50,8 +50,20 @@ def create_dy2209_sample_metadata():
             )
 
         elif faire_col == 'decimalLongitude':
-            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(
+            lon = sample_mapper.sample_metadata_df[metadata_col].apply(
                 sample_mapper.switch_lat_lon_degree_to_neg
+            )
+            sample_metadata_results[faire_col] = lon
+            sample_mapper.sample_metadata_df['lon'] = lon
+
+            alt_stat_metadata_cols = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('alternative_station_ids')
+            metadata_cols = alt_stat_metadata_cols.split(' | ')
+            lat_col = metadata_cols[1]
+            lon_col = 'lon'
+            station_col = metadata_cols[2]
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.get_alternative_station_names(metadata_row=row, lat_col=lat_col, lon_col=lon_col, station_col=station_col), 
+                axis=1
             )
 
         elif faire_col == 'geo_loc_name':
