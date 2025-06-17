@@ -97,7 +97,7 @@ def create_dy2012_sample_metadata():
             lat_col = metadata_cols[1]
             lon_col = metadata_cols[0]
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
-                lambda row: sample_mapper.get_alternative_station_names(metadata_row=row, lat_col=lat_col, lon_col=lon_col), 
+                lambda row: sample_mapper.get_alternative_station_names(metadata_row=row, lat_col=lat_col, lon_col=lon_col, station_col=metadata_cols[2]), 
                 axis=1
             )
 

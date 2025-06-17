@@ -167,8 +167,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         ref_dict = {}
         for _, row in station_ref_df.iterrows():
             station_name = row['station_name']
-            lat = row['LatitudeDegree']
-            lon = row['LongitudeDegree']
+            lat = row['LatitudeDecimalDegree']
+            lon = row['LongitudeDemicalDegree']
             lat_hem = row['LatitudeHem']
             lon_hem = row['LongitudeHem']
 
@@ -803,11 +803,12 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # TODO: move to projectMapper?
         return geodesic((lat1, lon1), (lat2, lon2)).kilometers
         
-    def get_alternative_station_names(self, metadata_row: pd.Series, lat_col: float, lon_col: float) -> str:
-        # Get the top three closes stations based on lat/lon coords. Right now will return a list of dictionaries with station, disttance and coords
-        # TODO: move to projectMapper?
+    def get_alternative_station_names(self, metadata_row: pd.Series, lat_col: float, lon_col: float, station_col: str) -> str:
+        # Get alternate station names based on lat/lon coords and grabs all stations within 1 km as alternate stations
         lat = metadata_row[lat_col]
         lon = metadata_row[lon_col]
+        station_name = metadata_row[station_col]
+      
         # alt_stations = []
         distances = []
 
@@ -818,15 +819,19 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             # calculate distance
             distance = self.calculate_distance_btwn_lat_lon_points(lat1=lat, lon1=lon, lat2=station_lat, lon2=station_lon)
 
-            distances.append({
-                'station': station_name,
-                'distance_km': distance,
-                'coords': coords
-            })
+            if distance <= 1:
+                distances.append({
+                    'station': station_name,
+                    'distance_km': distance,
+                    'coords': coords
+                })
 
         # sort by distance and return top n
         distances.sort(key=lambda x: x['distance_km'])
-        return str(distances[:3])
+        alt_station_names = [item['station'] for item in distances]
+        alt_station_names = ' | '.join([station for station in alt_station_names if station!= station_name])
+        if alt_station_names:
+            return alt_station_names
     
     def fill_empty_sample_values(self, df: pd.DataFrame, default_message="missing: not collected"):
         # fill empty values for samples after mapping over all sample data without control samples
