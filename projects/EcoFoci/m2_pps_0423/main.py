@@ -103,6 +103,16 @@ def create_m2_pps_0423_sample_metadata():
                 axis = 1
             )
 
+        elif faire_col == 'alternative_station_ids':
+            metadata_cols = metadata_col.split(' | ')
+            lat_col = metadata_cols[1]
+            lon_col = metadata_cols[0]
+            station_col = metadata_cols[2]
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.get_alternative_station_names(metadata_row=row, lat_col=lat_col, lon_col=lon_col, station_col=station_col), 
+                axis=1
+            )
+
             
     # Step 4: fill in NA with missing not collected or not applicable because they are samples and adds NC to rel_cont_id
     sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))

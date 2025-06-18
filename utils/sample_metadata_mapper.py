@@ -803,14 +803,15 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # TODO: move to projectMapper?
         return geodesic((lat1, lon1), (lat2, lon2)).kilometers
         
-    def get_alternative_station_names(self, metadata_row: pd.Series, lat_col: float, lon_col: float, station_col: str) -> str:
+    def get_alternative_station_names(self, metadata_row: pd.Series, lat_col: float, lon_col: float, station_col) -> str:
         # Get alternate station names based on lat/lon coords and grabs all stations within 1 km as alternate stations
         lat = metadata_row[lat_col]
         lon = metadata_row[lon_col]
-        station_name = metadata_row[station_col]
+        listed_station = metadata_row[station_col]
       
         # alt_stations = []
         distances = []
+        error_distances = []
 
         for station_name, coords in self.station_ref_dict.items():
             station_lat = coords['lat']
@@ -819,18 +820,28 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             # calculate distance
             distance = self.calculate_distance_btwn_lat_lon_points(lat1=lat, lon1=lon, lat2=station_lat, lon2=station_lon)
 
-            if distance <= 1:
+            if distance <= 2:
                 distances.append({
                     'station': station_name,
                     'distance_km': distance,
                     'coords': coords
                 })
 
+            else:
+                error_distances.append({
+                    'station': station_name,
+                    'distance_km': distance,
+                    'coords': coords
+                })
+                error_distances.sort(key=lambda x: x['distance_km'])
+
         # sort by distance and return top n
         distances.sort(key=lambda x: x['distance_km'])
         alt_station_names = ' | '.join([item['station'] for item in distances])
         if alt_station_names:
             return alt_station_names
+        else:
+            print(ValueError(f"{metadata_row[self.sample_metadata_sample_name_column]} listed station {listed_station}, but it is not picking up on any stations with 2 km based on its lat/lon {lat, lon}. Closest station is {error_distances[0]}!"))
     
     def fill_empty_sample_values(self, df: pd.DataFrame, default_message="missing: not collected"):
         # fill empty values for samples after mapping over all sample data without control samples

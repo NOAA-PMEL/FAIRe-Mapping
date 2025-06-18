@@ -93,7 +93,12 @@ def create_skq21_12S_sample_metadata():
                 sample_metadata_results['tot_depth_water_col'] = sample_mapper.sample_metadata_df.apply(
                 lambda row: sample_mapper.get_tot_depth_water_col_from_lat_lon(metadata_row=row, lat_col='decimalLatitude', lon_col='decimalLongitude', exact_map_col=tot_depth_water_metadata_col),
                 axis=1
-            )
+                )  
+
+                sample_metadata_results['alternative_station_ids'] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.get_alternative_station_names(metadata_row=row, lat_col='decimalLatitude', lon_col='decimalLongitude', station_col='Station'), 
+                axis=1
+            ) 
                 
         elif faire_col == 'geo_loc_name':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(

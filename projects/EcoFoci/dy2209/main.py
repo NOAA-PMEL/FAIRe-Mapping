@@ -60,9 +60,8 @@ def create_dy2209_sample_metadata():
             metadata_cols = alt_stat_metadata_cols.split(' | ')
             lat_col = metadata_cols[1]
             lon_col = 'lon'
-            station_col = metadata_cols[2]
-            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
-                lambda row: sample_mapper.get_alternative_station_names(metadata_row=row, lat_col=lat_col, lon_col=lon_col, station_col=station_col), 
+            sample_metadata_results['alternative_station_ids'] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.get_alternative_station_names(metadata_row=row, lat_col=lat_col, lon_col=lon_col, station_col='Station'), 
                 axis=1
             )
 
