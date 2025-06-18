@@ -4,8 +4,12 @@ sys.path.append("../../..")
 from utils.sample_metadata_mapper import FaireSampleMetadataMapper
 import pandas as pd
 
-# TODO: add related mapping to tot_depth_water_col when GDBC downloads when net cdf finishes copying
+def replace_incorrect_lat_lon(df: pd.DataFrame):
+    # Sean mentioned the lat/lon with 64.0038, -163.06616 are incorrect and gave me the correct values of Lat: 64 00.24 Lon: 167 53.97
+    df.loc[df['decimalLatitude'].astype(str).str.startswith('64.0038'), 'decimalLatitude'] = '64.004'
+    df.loc[df['decimalLongitude'].astype(str).str.startswith('-163.06616'), 'decimalLongitude'] = '-167.8995'
 
+    return df
 
 def create_dy2209_sample_metadata():
 
@@ -133,12 +137,16 @@ def create_dy2209_sample_metadata():
                 axis = 1
             )
     
+
     # Step 4: fill in NA with missing not collected or not applicable because they are samples and adds NC to rel_cont_id
     sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))
+
+    # Fix lat/lon coords
+    lat_lon_fixed_df = replace_incorrect_lat_lon(df=sample_df)
     
     # Step 5: fill NC data frame if there is - DO THIS ONLY IF negative controls were sequenced! They were not for SKQ21
     # nc_df = sample_mapper.fill_nc_metadata()
-    controls_df = sample_mapper.finish_up_controls_df(final_sample_df=sample_df)
+    controls_df = sample_mapper.finish_up_controls_df(final_sample_df=lat_lon_fixed_df)
 
     # Step 6: Combine all mappings at once (add nc_df if negative controls were sequenced)
     faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df,controls_df])

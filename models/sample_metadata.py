@@ -209,6 +209,9 @@ class SampleMetadata(BaseModel):
     collected_by: Optional[str]
     meaurements_from: Optional[str]
     niskin_flag: Optional[int] = Field(default=None)
+    alternative_station_ids: Optional[str] = Field(default=None)
+    sunrise_time_utc: Optional[str] = Field(default=None)
+    sunset_time_utc: Optional[str] = Field(default=None)
 
     
     # class variables loaded once and shared across all datasets
@@ -250,7 +253,7 @@ class SampleMetadata(BaseModel):
         if self.samp_category == 'sample':
             for attribute in required:
                 if attribute is None:
-                    raise ValueError(f"Sample {self.samp_name} mus have {attribute}")
+                    raise ValueError(f"Sample {self.samp_name} must have {attribute}")
         return self
 
     @field_validator('decimalLatitude')
@@ -265,13 +268,14 @@ class SampleMetadata(BaseModel):
     
     @field_validator('decimalLongitude')
     @classmethod
-    def validate_latitude(cls, v, info):
+    def validate_longitude(cls, v, info):
         # only apply to sample records, not controls
         if info.data.get('samp_category') != 'sample':
             return v
         if not(-180 <= v <= 180):
             raise ValueError(f"Longitude {v} is outside valid latitude range (-180 to 180)")
         return v
+    
     
     @field_validator('eventDate')
     @classmethod
