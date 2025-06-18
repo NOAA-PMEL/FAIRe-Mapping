@@ -98,11 +98,6 @@ def create_skq23_12s_sample_metadata():
                     axis = 1
                 )
 
-                sample_metadata_results['alternative_station_ids'] = sample_mapper.sample_metadata_df.apply(
-                lambda row: sample_mapper.get_alternative_station_names(metadata_row=row, lat_col='decimalLatitude', lon_col='decimalLongitude', station_col='Station'), 
-                axis=1
-            ) 
-
         # eventDate needs to be proecessed before prepped_samp_store_dur
         elif faire_col == 'eventDate' or faire_col == 'prepped_samp_store_dur':
             event_dates = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('eventDate')
