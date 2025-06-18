@@ -209,9 +209,9 @@ class SampleMetadata(BaseModel):
     collected_by: Optional[str]
     meaurements_from: Optional[str]
     niskin_flag: Optional[int] = Field(default=None)
-    alternative_station_ids: Optional[str]
-    sunrise_time_utc: Optional[str]
-    sunset_time_utc: Optional[str]
+    alternative_station_ids: Optional[str] = Field(default=None)
+    sunrise_time_utc: Optional[str] = Field(default=None)
+    sunset_time_utc: Optional[str] = Field(default=None)
 
     
     # class variables loaded once and shared across all datasets
