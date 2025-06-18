@@ -50,7 +50,7 @@ def create_dy2209_sample_metadata():
             )
 
         elif faire_col == 'decimalLongitude':
-            lon = sample_mapper.sample_metadata_df[metadata_col].apply(
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(
                 sample_mapper.switch_lat_lon_degree_to_neg
             )
 
