@@ -71,7 +71,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.extraction_name = self.config_file['extraction_name']
         self.samp_dur_info = self.config_file['samp_store_dur_sheet_info'] if 'samp_store_dur_sheet_info' in self.config_file else None
         self.samp_stor_dur_dict = self.create_samp_stor_dict() if 'samp_store_dur_sheet_info' in self.config_file else None
-        # self.station_ref_dict = self.create_reference_station_dict()
 
         self.extraction_blank_rel_cont_dict = {}
         self.sample_metadata_df = self.filter_metadata_dfs()[0]
@@ -160,30 +159,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         samp_dur_dict = dict(zip(samp_dur_df[self.samp_dur_info['samp_name_col']], samp_dur_df[self.samp_dur_info['samp_stor_dur_col']]))
 
         return samp_dur_dict
-
-    # def create_reference_station_dict(self) -> dict:
-    #     # Creates a reference dictionary for station names - hard coded because will be the same across cruises I believe
-    #     station_ref_df = self.load_google_sheet_as_df(google_sheet_id='1bJiX5pXpUuk74tbuoiYRc7iNXAVYU2dD8nTnZAFpZg8', sheet_name='Sheet1', header=0)
-    #     ref_dict = {}
-    #     for _, row in station_ref_df.iterrows():
-    #         station_name = row['station_name']
-    #         lat = row['LatitudeDecimalDegree']
-    #         lon = row['LongitudeDemicalDegree']
-    #         lat_hem = row['LatitudeHem']
-    #         lon_hem = row['LongitudeHem']
-
-    #         # Add direction sign to lat/lon
-    #         if 'S' == lat_hem:
-    #             lat = float(-abs(float(lat)))
-    #         if 'W' == lon_hem:
-    #             lon = float(-abs(float(lon)))
-            
-    #         ref_dict[station_name] = {
-    #             'lat': lat,
-    #             'lon': lon
-    #         }
-
-    #     return ref_dict
 
     def convert_mdy_date_to_iso8061(self, date_string: str) -> str:
         # converts from m/d/y to iso8061
@@ -797,51 +772,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                         print("does not work!")
 
         return df
-
-    # def calculate_distance_btwn_lat_lon_points(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    #     # Calculates the surface distance between two points in lat/lon using the great_circle package of GeoPy
-    #     # TODO: move to projectMapper?
-    #     return geodesic((lat1, lon1), (lat2, lon2)).kilometers
-        
-    # def get_alternative_station_names(self, metadata_row: pd.Series, lat_col: float, lon_col: float, station_col) -> str:
-    #     # Get alternate station names based on lat/lon coords and grabs all stations within 1 km as alternate stations
-    #     lat = metadata_row[lat_col]
-    #     lon = metadata_row[lon_col]
-    #     listed_station = metadata_row[station_col]
-      
-    #     # alt_stations = []
-    #     distances = []
-    #     error_distances = []
-
-    #     for station_name, coords in self.station_ref_dict.items():
-    #         station_lat = coords['lat']
-    #         station_lon = coords ['lon']
-
-    #         # calculate distance
-    #         distance = self.calculate_distance_btwn_lat_lon_points(lat1=lat, lon1=lon, lat2=station_lat, lon2=station_lon)
-
-    #         if distance <= 2:
-    #             distances.append({
-    #                 'station': station_name,
-    #                 'distance_km': distance,
-    #                 'coords': coords
-    #             })
-
-    #         else:
-    #             error_distances.append({
-    #                 'station': station_name,
-    #                 'distance_km': distance,
-    #                 'coords': coords
-    #             })
-    #             error_distances.sort(key=lambda x: x['distance_km'])
-
-    #     # sort by distance and return top n
-    #     distances.sort(key=lambda x: x['distance_km'])
-    #     alt_station_names = ' | '.join([item['station'] for item in distances])
-    #     if alt_station_names:
-    #         return alt_station_names
-    #     else:
-    #         print(ValueError(f"{metadata_row[self.sample_metadata_sample_name_column]} listed station {listed_station}, but it is not picking up on any stations with 2 km based on its lat/lon {lat, lon}. Closest station is {error_distances[0]}!"))
     
     def fill_empty_sample_values(self, df: pd.DataFrame, default_message="missing: not collected"):
         # fill empty values for samples after mapping over all sample data without control samples
