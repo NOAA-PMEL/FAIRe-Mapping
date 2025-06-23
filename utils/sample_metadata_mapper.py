@@ -71,7 +71,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.extraction_name = self.config_file['extraction_name']
         self.samp_dur_info = self.config_file['samp_store_dur_sheet_info'] if 'samp_store_dur_sheet_info' in self.config_file else None
         self.samp_stor_dur_dict = self.create_samp_stor_dict() if 'samp_store_dur_sheet_info' in self.config_file else None
-
+        self.missing_extractions = self.config_file['missing_extractions'] if 'missing_extractions' in self.config_file else None
+        
         self.extraction_blank_rel_cont_dict = {}
         self.sample_metadata_df = self.filter_metadata_dfs()[0]
         self.nc_df = self.filter_metadata_dfs()[1]
@@ -256,12 +257,37 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         return blank_df
 
+    def missing_extraction(self) -> pd.DataFrame:
+        # Creates a data frame of any extra extractions if there were random samples part of a different extraction df
+        # Written for the missing MID.NC.SKQ21 sample that was randomly extracted with WCOA samples
+        # As written assumes that the main extraction and the missing extraction are mapped the same way - but may have different column names - see skq21 config.yaml for more info on how to
+        # get any missing extractions - for samples that were extracted separately - This was created really just for MID.NC.SKQ2021
+        for missing_extraction in self.missing_extractions:
+            missing_extractions_df = self.load_google_sheet_as_df(google_sheet_id=missing_extraction['missing_extraction_google_sheet_id'], sheet_name=missing_extraction['missing_extraction_sheet_name'], header=0)
+            # replace column names to match the main extraction_df
+            missing_extractions_df.rename(columns=missing_extraction['missing_ext_col_to_main_ext_col'], inplace=True)
+            # only keep the main extraction df columns
+            cols_to_keep = list(missing_extraction['missing_ext_col_to_main_ext_col'].values())
+            missing_extractions_df = missing_extractions_df[cols_to_keep]
+            # Fix sample names if they are different
+            if missing_extraction['missing_extraction_samp_names']:
+                for missing_ext_samp_name, metadata_samp_name in missing_extraction['missing_extraction_samp_names'].items():
+                    missing_extractions_df = missing_extractions_df.replace(missing_ext_samp_name, metadata_samp_name)
+        return missing_extractions_df
+    
+    
     def filter_cruise_avg_extraction_conc(self) -> pd.DataFrame:
         # If extractions have multiple measurements for extraction concentrations, calculates the avg.
         # and creates a column called pool_num to show the number of samples pooled
 
         extractions_df = self.load_google_sheet_as_df(
             google_sheet_id=self.extraction_metadata_google_sheet_id, sheet_name=self.extraction_metadata_sheet_name, header=0)
+
+        # get any missing extractions - for samples that were extracted separately - This was created really just for MID.NC.SKQ2021
+        if self.missing_extractions:
+           missing_extraction_df = self.missing_extraction()
+           extractions_df = pd.concat([extractions_df, missing_extraction_df])
+
 
         # Filter extractions df by cruise and calculate avg concentration
         extract_avg_df = extractions_df[extractions_df[self.extraction_sample_name_col].str.contains(self.extraction_cruise_key)].groupby(
