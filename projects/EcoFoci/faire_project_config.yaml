@@ -41,6 +41,8 @@ mismatch_sample_names:
   Larson NC3: NC3
   Larson NC4: NC4 # this one is really the only once that matters being changed, because the rest get pooled, but I still wanted them to match
   Larson NC5: NC5
+  MID.NC.SKQ2021: Mid.NC.SKQ21
+
 
 #pooled samples dict - all pooled samples applicable to this project and the subsamples they make up
 # if sample names are in the mismatch - add the updated sample name as the value here.
