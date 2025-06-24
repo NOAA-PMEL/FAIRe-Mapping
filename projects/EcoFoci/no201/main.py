@@ -7,6 +7,11 @@ import pandas as pd
 
 # TODO: add related mapping to tot_depth_water_col when GDBC downloads when net cdf finishes copying
 
+def replace_incorrect_lat_lon(df: pd.DataFrame):
+    # In NCBI correction email from Sean: E287_1B_NO20 (SAMN35688296) and E288_1B_NO20 (SAMN35688254) longitude need to be corrected to -168.23467
+    df.loc[df['samp_name'].isin(['E287.1B.NO20', 'E287.2B.NO20']), 'decimalLongitude'] = '-168.23467'
+
+    return df
 
 def create_no201_sample_metadata():
     
@@ -109,13 +114,15 @@ def create_no201_sample_metadata():
    
     # Step 4: fill in NA with missing not collected or not applicable because they are samples and adds NC to rel_cont_id
     sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))
+
+    sample_df_lon_fixed = replace_incorrect_lat_lon(df = sample_df)
     
     # Step 5: fill NC data frame if there is - DO THIS ONLY IF negative controls were sequenced! They were not for SKQ21
     # nc_df = sample_mapper.fill_nc_metadata()
-    controls_df = sample_mapper.finish_up_controls_df(final_sample_df=sample_df)
+    controls_df = sample_mapper.finish_up_controls_df(final_sample_df=sample_df_lon_fixed)
 
     # Step 6: Combine all mappings at once (add nc_df if negative controls were sequenced)
-    faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df, controls_df])
+    faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df_lon_fixed, controls_df])
     # Add rel_cont_id
     faire_sample_df_updated = sample_mapper.add_extraction_blanks_to_rel_cont_id(final_sample_df=faire_sample_df)
 

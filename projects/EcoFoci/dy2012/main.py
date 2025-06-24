@@ -3,6 +3,46 @@ import sys
 sys.path.append("../../..")
 from utils.sample_metadata_mapper import FaireSampleMetadataMapper
 
+def swap_e27_e28_sample_metadata(df: pd.DataFrame) -> pd.DataFrame:
+    # According to Sean's email "Note on NCBI submission and swapped metadata" samples, E27_2B_DY20 (SAMN35688246) and E28_1B_DY20 (SAMN35688288) 
+    # metadata need to be swapped for sample collection and environmental data (not extraction and downstream)
+    columns_to_swap = ['samp_name', 'samp_category', 'neg_cont_type', 'pos_cont_type', 'materialSampleID', 'sample_derived_from', 'sample_composed_of', 
+                       'biological_rep_relation', 'decimalLongitude', 'decimalLatitude', 'verbatimLongitude', 'verbatimLatitude', 
+                       'verbatimCoordinateSystem', 'verbatimSRS', 'geo_loc_name', 'eventDate', 'eventDurationValue', 'verbatimEventDate', 'verbatimEventTime', 
+                       'env_broad_scale', 'env_local_scale', 'env_medium', 'habitat_natural_artificial_0_1', 'samp_collect_method', 'samp_collect_device', 
+                       'samp_size', 'samp_size_unit', 'samp_store_temp', 'samp_store_sol', 'samp_store_dur', 'samp_store_loc', 'dna_store_loc', 
+                       'samp_store_method_additional', 'samp_mat_process', 'filter_passive_active_0_1', 'stationed_sample_dur', 'pump_flow_rate', 
+                       'pump_flow_rate_unit', 'prefilter_material', 'size_frac_low', 'size_frac', 'filter_diameter', 'filter_surface_area', 'filter_material', 
+                       'filter_name', 'precip_chem_prep', 'precip_force_prep', 'precip_time_prep', 'precip_temp_prep', 'prepped_samp_store_temp', 
+                       'prepped_samp_store_sol', 'prepped_samp_store_dur', 'prep_method_additional', 'samp_weather', 'minimumDepthInMeters', 
+                       'maximumDepthInMeters', 'tot_depth_water_col', 'elev', 'temp', 'chlorophyll', 'light_intensity', 'ph', 'ph_meth', 'salinity', 
+                       'suspend_part_matter', 'tidal_stage', 'turbidity', 'water_current', 'solar_irradiance', 'wind_direction', 'wind_speed', 'diss_inorg_carb', 
+                       'diss_inorg_carb_unit', 'diss_inorg_nitro', 'diss_inorg_nitro_unit', 'diss_org_carb', 'diss_org_carb_unit', 'diss_org_nitro', 
+                       'diss_org_nitro_unit', 'diss_oxygen', 'diss_oxygen_unit', 'tot_diss_nitro', 'tot_diss_nitro_unit', 'tot_inorg_nitro', 'tot_inorg_nitro_unit', 
+                       'tot_nitro', 'tot_nitro_unit', 'tot_part_carb', 'tot_part_carb_unit', 'tot_org_carb', 'tot_org_carb_unit', 'tot_org_c_meth', 
+                       'tot_nitro_content', 'tot_nitro_content_unit', 'tot_nitro_cont_meth', 'tot_carb', 'tot_carb_unit', 'part_org_carb', 'part_org_carb_unit', 
+                       'part_org_nitro', 'part_org_nitro_unit', 'nitrate', 'nitrate_unit', 'nitrite', 'nitrite_unit', 'nitro', 'nitro_unit', 'org_carb', 
+                       'org_carb_unit', 'org_matter', 'org_matter_unit', 'org_nitro', 'org_nitro_unit', 'ammonium', 'ammonium_unit', 'carbonate', 'carbonate_unit', 
+                       'hydrogen_ion', 'nitrate_plus_nitrite', 'nitrate_plus_nitrite_unit', 'omega_arag', 'pco2', 'pco2_unit', 'phosphate', 'phosphate_unit', 'pressure', 
+                       'pressure_unit', 'silicate', 'silicate_unit', 'tot_alkalinity', 'tot_alkalinity_unit', 'transmittance', 'transmittance_unit', 'serial_number', 
+                       'line_id', 'station_id', 'ctd_cast_number', 'ctd_bottle_number', 'replicate_number', 'organism', 'samp_collect_notes', 
+                       'percent_oxygen_sat', 'density', 'air_temperature', 'par', 'air_pressure_at_sea_level', 'expedition_id', 'expedition_name', 'rosette_position', 
+                       'density_unit', 'air_temperature_unit', 'par_unit', 'air_pressure_at_sea_level_unit', 'meaurements_from', 'collected_by']
+    
+    # Create temporary copies of the values
+    temp_e27_1b = df.loc[df['samp_name'] == 'E27.1B.DY2012', columns_to_swap].copy()
+    temp_e28_1b = df.loc[df['samp_name'] == 'E28.1B.DY2012', columns_to_swap].copy()
+    temp_e27_2b = df.loc[df['samp_name'] == 'E27.2B.DY2012', columns_to_swap].copy()
+    temp_e28_2b = df.loc[df['samp_name'] == 'E28.2B.DY2012', columns_to_swap].copy()
+
+    # Perform the swaps
+    df.loc[df['samp_name'] == 'E27.1B.DY2012', columns_to_swap] = temp_e28_1b.values
+    df.loc[df['samp_name'] == 'E28.1B.DY2012', columns_to_swap] = temp_e27_1b.values
+    df.loc[df['samp_name'] == 'E27.2B.DY2012', columns_to_swap] = temp_e28_2b.values
+    df.loc[df['samp_name'] == 'E28.2B.DY2012', columns_to_swap] = temp_e27_2b.values
+
+    return df
+    
 def create_dy2012_sample_metadata():
 
     # initiate mapper
@@ -95,16 +135,18 @@ def create_dy2012_sample_metadata():
 
     # Step 4: fill in NA with missing not collected or not applicable because they are samples and adds NC to rel_cont_id
     sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))
+
+    swap_samps_sample_df = swap_e27_e28_sample_metadata(df=sample_df)
     
     # Step 5: fill NC data frame if there is - DO THIS ONLY IF negative controls were sequenced! They were not for SKQ21
     # nc_df = sample_mapper.fill_nc_metadata()
-    controls_df = sample_mapper.finish_up_controls_df(final_sample_df=sample_df)
+    controls_df = sample_mapper.finish_up_controls_df(final_sample_df=swap_samps_sample_df)
 
     # Step 6: Combine all mappings at once (add nc_df if negative controls were sequenced)
-    faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df,controls_df])
+    faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, swap_samps_sample_df, controls_df])
     # Add rel_cont_id
     faire_sample_df_updated = sample_mapper.add_extraction_blanks_to_rel_cont_id(final_sample_df=faire_sample_df)
-
+ 
     # step 7: save as csv:
     sample_mapper.save_final_df_as_csv(final_df=faire_sample_df_updated, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2012/data/dy2012_faire.csv')
    
