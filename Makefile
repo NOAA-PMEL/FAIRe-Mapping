@@ -33,8 +33,3 @@ runExperimentMetadata:
 		echo ""; \
 	done
 	@echo "Experiment metadata projects completed!"
-	done
-	@echo "Experiment metadata projects completed!"
-
-# Run both sample and experiment metadata
-runAll: runSampleMetadata runExperimentMetadata
