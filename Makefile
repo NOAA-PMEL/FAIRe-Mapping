@@ -29,8 +29,8 @@ runSampleMetadata:
 runExperimentMetadata:
 	@echo "Running experiment metadata with different configs..."
 	@for config_file in $(EXPERIMENT_CONFIG_FILES); do \
-		echo "-> Running main.py with config $config_file"; \
-		cd runs && python main.py --arg_to_config_file "$config_file" && cd - > /dev/null; \
+		echo "-> Running main.py with config $$config_file"; \
+		cd runs && python main.py "$$config_file" && cd - > /dev/null; \
 		echo "   Waiting $(API_DELAY) seconds to avoid API rate limits..."; \
 		sleep $(API_DELAY); \
 		echo ""; \
