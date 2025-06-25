@@ -122,7 +122,7 @@ class SampleMetadata(BaseModel):
     diss_org_nitro: Optional[float]
     diss_org_nitro_unit: Optional[Literal['µM', 'mol/m3', 'mmol/m3', 'µmol/m3 ', 'mol/L', 'mmol/L', 'µmol/L', 'mg/L',  'µg/L', 'µmol/kg', 'mmol/kg ', 'parts per million']]
     diss_oxygen: Optional[float]
-    diss_oxygen_unit: Optional[Literal['mg/L', 'µg/L', 'µM', 'mol/m3', 'mmol/m3', 'µmol/m3', 'mol/L', 'mmol/L', 'µmol/L' , 'mg/L ', 'µg/L x', 'mL/L', 'mmol/kg', 'parts per million']]
+    diss_oxygen_unit: Optional[Literal['mg/L', 'µg/L', 'µM', 'mol/m3', 'mmol/m3', 'µmol/m3', 'mol/L', 'mmol/L', 'µmol/L' , 'mg/L ', 'µg/L x', 'mL/L', 'mmol/kg', 'parts per million', 'other: µmol/kg']]
     tot_diss_nitro: Optional[float]
     tot_diss_nitro_unit: Optional[Literal['µM', 'mol/m3', 'mmol/m3', 'µmol/m3 ', 'mol/L', 'mmol/L', 'µmol/L', 'mg/L',  'µg/L', 'µmol/kg', 'mmol/kg ', 'parts per million']]
     tot_inorg_nitro: Optional[float]
@@ -158,12 +158,12 @@ class SampleMetadata(BaseModel):
     org_nitro: Optional[float]
     org_nitro_unit: Optional[Literal['µM', 'mol/m3', 'mmol/m3', 'µmol/m3 ', 'mol/L', 'mmol/L', 'µmol/L', 'mg/L',  'µg/L', 'µmol/kg', 'mmol/kg ', 'parts per million']]
     ammonium: Optional[float]
-    ammonium_unit: Optional[Literal['µmol/L']]
+    ammonium_unit: Optional[Literal['µmol/L', 'µmol/kg']]
     ammonium_flag: Optional[int] = Field(default=None)
     carbonate: Optional[float]
     carbonate_unit: Optional[Literal['']]  # need to add cv here when known
     hydrogen_ion: Optional[float] = Field(default=None)
-    hydrogen_ion_unit: Optional[int] = Field(default=None)
+    hydrogen_ion_unit: Optional[Literal['nmol/kg']] = Field(default=None)
     nitrate_plus_nitrite: Optional[float]
     nitrate_plus_nitrite_unit: Optional[Literal['µM']]  # need to add cv here when known
     omega_arag: Optional[float]
@@ -171,12 +171,12 @@ class SampleMetadata(BaseModel):
     pco2: Optional[float]
     pco2_unit: Optional[Literal['uatm']]
     phosphate: Optional[float]
-    phosphate_unit: Optional[Literal['µmol/L', 'µM']]
+    phosphate_unit: Optional[Literal['µmol/L', 'µM', 'µmol/kg']]
     phosphate_flag: Optional[int] = Field(default=None)
     pressure: Optional[float]
     pressure_unit: Optional[Literal['dbar']]
     silicate: Optional[float]
-    silicate_unit: Optional[Literal['µmol/L', 'µM']]
+    silicate_unit: Optional[Literal['µmol/L', 'µM', 'µmol/kg']]
     silicate_flag: Optional[int] = Field(default=None)
     tot_alkalinity: Optional[float]
     tot_alkalinity_unit: Optional[Literal['µmol/kg']]
