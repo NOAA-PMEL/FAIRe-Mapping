@@ -274,8 +274,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                 for missing_ext_samp_name, metadata_samp_name in missing_extraction['missing_extraction_samp_names'].items():
                     missing_extractions_df = missing_extractions_df.replace(missing_ext_samp_name, metadata_samp_name)
         return missing_extractions_df
-    
-    
+     
     def filter_cruise_avg_extraction_conc(self) -> pd.DataFrame:
         # If extractions have multiple measurements for extraction concentrations, calculates the avg.
         # and creates a column called pool_num to show the number of samples pooled

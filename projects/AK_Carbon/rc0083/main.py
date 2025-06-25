@@ -106,6 +106,9 @@ def create_rc0083_sample_metadata():
     # Add rel_cont_id
     faire_sample_df_updated = sample_mapper.add_extraction_blanks_to_rel_cont_id(final_sample_df=faire_sample_df)
 
+    # Remove ~ from samp_size that is ~500
+    faire_sample_df_updated['samp_size'] = faire_sample_df_updated['samp_size'].str.replace('~', '', regex=False)
+    
     # step 7: save as csv:
     sample_mapper.save_final_df_as_csv(final_df=faire_sample_df_updated, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/AK_Carbon/rc0083/data/rc0083_faire.csv')
    
