@@ -6,7 +6,7 @@ from utils.sample_metadata_mapper import FaireSampleMetadataMapper
 def swap_e27_e28_sample_metadata(df: pd.DataFrame) -> pd.DataFrame:
     # According to Sean's email "Note on NCBI submission and swapped metadata" samples, E27_2B_DY20 (SAMN35688246) and E28_1B_DY20 (SAMN35688288) 
     # metadata need to be swapped for sample collection and environmental data (not extraction and downstream)
-    columns_to_swap = ['samp_name', 'samp_category', 'neg_cont_type', 'pos_cont_type', 'materialSampleID', 'sample_derived_from', 'sample_composed_of', 
+    columns_to_swap = ['samp_category', 'neg_cont_type', 'pos_cont_type', 'materialSampleID', 'sample_derived_from', 'sample_composed_of', 
                        'biological_rep_relation', 'decimalLongitude', 'decimalLatitude', 'verbatimLongitude', 'verbatimLatitude', 
                        'verbatimCoordinateSystem', 'verbatimSRS', 'geo_loc_name', 'eventDate', 'eventDurationValue', 'verbatimEventDate', 'verbatimEventTime', 
                        'env_broad_scale', 'env_local_scale', 'env_medium', 'habitat_natural_artificial_0_1', 'samp_collect_method', 'samp_collect_device', 

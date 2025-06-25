@@ -58,6 +58,7 @@ class ProjectMapper(OmeFaireMapper):
         self.bioinformatics_software_name = self.config_file['bioinformatics_software_name']
         self.bebop_config_run_col_name = self.config_file['bebop_config_run_col_name']
         self.bebop_config_marker_col_name = self.config_file['bebop_config_marker_col_name']
+        self.logging_directory = self.config_file['logging_directory']
 
         self.pcr_library_dict = {}
         self.alt_station_ref_dict = self.create_reference_station_dict()
@@ -108,14 +109,19 @@ class ProjectMapper(OmeFaireMapper):
         # Filter primary dataframe based on samp_name values in sequencing run dataframe
         filtered_samp_df, missing_samples = self._filter_samp_df_by_samp_name(samp_df=pcr_updated_df, associated_seq_df=combined_exp_run_df)
         if missing_samples:
-            print(f"samples that will be eliminated from sample metadata/missing from experiment run metadata: {missing_samples}")
+            missing_file_name = 'samps_not_sequenced.csv'
+            self.save_list_to_csv(the_list=missing_samples, file_name=missing_file_name)
+            print(f"\033[35mThere are samples that do not appear to have been sequenced - they don't exist in the experimentRunMetadata, please see {self.logging_directory+missing_file_name} for a list.\33[0m]")
 
         # Fill empty values for POSITIVE and pool samples with "not applicable: control sample"
-        final_sample_metadata_df = self.fill_empty_vals_for_pooled_and_pos_samps(df=filtered_samp_df)
+        final_sample_metadata_df = self.fill_empty_vals(df=filtered_samp_df)
 
         # Filter experiment run metadata to drop rows with sample names missing from SampleMetadata
         final_exp_df, dropped_exp_run_samples = self.filter_exp_run_metadata(final_sample_df=final_sample_metadata_df, exp_run_df=combined_exp_run_df)
-        print(f"samples dropped from experiment run metadata are {dropped_exp_run_samples}, double check these samples are not in the corresponding project")
+        if len(dropped_exp_run_samples) > 0:
+            dropped_file_name = 'unrelated_project_samps_dropped.csv'
+            self.save_list_to_csv(the_list=dropped_exp_run_samples, file_name=dropped_file_name)
+            print(f"\033[35mThere are samples that were dropped from the experiment run metadata. Please check the {self.logging_directory+dropped_file_name} for a list - make sure they are not part of this project.\33[0m]")
 
         # Add assay name to final_sample_df
         final_sample_df = self.add_assay_name_to_samp_df(samp_df=final_sample_metadata_df, exp_run_df=final_exp_df)
@@ -459,15 +465,22 @@ class ProjectMapper(OmeFaireMapper):
 
         return samp_df
 
-    def fill_empty_vals_for_pooled_and_pos_samps(self, df: pd.DataFrame):
+    def fill_empty_vals(self, df: pd.DataFrame):
         modified_df = df.copy()
 
-        mask = df[self.faire_sample_name_col].str.contains('POSITIVE|pool', case=False, na=False)
+        control_mask = df[self.faire_sample_category_col_name].str.contains('negative|positive', case=False, na=False)
+        sample_mask = df[self.faire_sample_category_col_name].str.contains('sample', case=False, na=False)
 
-        # fill only empty/NaN/None values with 'not applicable'
         for col in df.columns:
-            empty_cells = mask & df[col].isna() | (df[col] == '') | (df[col].astype(str) == 'nan')
-            modified_df.loc[empty_cells, col] = 'not applicable: control sample'
+            empty_conditions = df[col].isna() | (df[col] == '') | (df[col].astype(str) == 'nan')
+
+            # Fill empty control samples
+            control_empty = control_mask & empty_conditions
+            modified_df.loc[control_empty, col] = 'not applicable: control sample'
+
+            # fill empty sample values
+            sample_empty = sample_mask & empty_conditions
+            modified_df.loc[sample_empty, col] = 'missing: not collected'
 
         return modified_df
     
@@ -613,7 +626,7 @@ class ProjectMapper(OmeFaireMapper):
             if alt_station_names:
                 return alt_station_names
             else:
-                print(ValueError(f"{metadata_row[self.faire_sample_name_col]} listed station {listed_station}, but it is not picking up on any stations with 2 km based on its lat/lon {lat, lon}. Closest station is {error_distances[0]}!"))
+                print(ValueError(f"\033[31m{metadata_row[self.faire_sample_name_col]} listed station {listed_station}, but it is not picking up on any stations with 2 km based on its lat/lon {lat, lon}. Closest station is {error_distances[0]}!\033[0m]"))
         else:
             return 'not applicable: control sample'
     
@@ -675,3 +688,7 @@ class ProjectMapper(OmeFaireMapper):
         workbook.save(self.final_faire_template_path)
         workbook.close()
 
+    def save_list_to_csv(self, the_list: list, file_name: str) -> None:
+        # Puts a list into a csv and saves
+        df = pd.DataFrame(the_list)
+        df.to_csv(self.logging_directory+file_name, index=False, header=False)
