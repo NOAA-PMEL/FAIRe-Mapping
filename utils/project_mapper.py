@@ -371,13 +371,18 @@ class ProjectMapper(OmeFaireMapper):
 
     def get_pos_cont_type(self, pos_cont_sample_name: str) -> str:
 
-        # Get the marker from the positive control sample name (e.g. run2.ITS1.POSITIVE - this will give you ITS1)
-        shorthand_marker = pos_cont_sample_name.split('.')[1]
+        if 'ferret' in pos_cont_sample_name.lower():
+            pos_cont_type = 'PCR positive of Ferret genomic DNA'
+        elif 'camel' in pos_cont_sample_name.lower():
+            pos_cont_type = 'PCR positive of Camel genomic DNA'
+        else:
+            # Get the marker from the positive control sample name (e.g. run2.ITS1.POSITIVE - this will give you ITS1)
+            shorthand_marker = pos_cont_sample_name.split('.')[1]
 
-        g_block = marker_shorthand_to_pos_cont_gblcok_name.get(
-            shorthand_marker)
+            g_block = marker_shorthand_to_pos_cont_gblcok_name.get(
+                shorthand_marker)
 
-        pos_cont_type = f"PCR positive of synthetic DNA. Gblock name: {g_block}"
+            pos_cont_type = f"PCR positive of synthetic DNA. Gblock name: {g_block}"
 
         return pos_cont_type
    
