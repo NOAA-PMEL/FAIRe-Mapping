@@ -1,6 +1,6 @@
 # Find directories for different metadata types
 SAMPLE_SUBDIRS := $(shell find projects/*/*/ -name "main.py" -exec dirname {} \; 2>/dev/null | sort)
-EXPERIMENT_SUBDIRS := $(shell find runs/ -name "main.py" -exec dirname {} \; 2>/dev/null | sort)
+EXPERIMENT_SUBDIR := $(shell find runs/ -name "main.py" -exec dirname {} \; 2>/dev/null | sort)
 
 # API rate limiting delay (in seconds)
 API_DELAY := 5
@@ -25,9 +25,14 @@ runSampleMetadata:
 # Run experiment metadata projects
 runExperimentMetadata:
 	@echo "Running each experiment metadata..."
-	@for dir in $(EXPERIMENT_SUBDIRS); do \
-		echo "-> Running $$dir/main.py"; \
-		cd $$dir && python main.py && cd - > /dev/null; \
+	@for dir in $(EXPERIMENT_SUBDIR); do \
+		config_file="$$dir/data/config.yaml"; \
+		if [ -f "$$config_file" ]; then \
+			echo "-> Running $$dir/main.py with config $$config_file"; \
+			cd $$dir && python main.py "$$config_file" && cd - > /dev/null; \
+		else \
+			echo "-> Warning: Config file $$config_file not found, skipping $$dir"; \
+		fi; \
 		echo "   Waiting $(API_DELAY) seconds to avoid API rate limits..."; \
 		sleep $(API_DELAY); \
 		echo ""; \
