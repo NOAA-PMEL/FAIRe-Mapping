@@ -15,7 +15,7 @@ runSampleMetadata:
 	@echo "Running each cruise sample metadata..."
 	@for dir in $(SAMPLE_SUBDIRS); do \
 		echo "-> Running $dir/main.py"; \
-		cd $dir && python main.py && cd - > /dev/null; \
+		cd $$dir && python main.py && cd - > /dev/null; \
 		echo "   Waiting $(API_DELAY) seconds to avoid API rate limits..."; \
 		sleep $(API_DELAY); \
 		echo ""; \
@@ -27,7 +27,7 @@ runExperimentMetadata:
 	@echo "Running each experiment metadata..."
 	@for dir in $(EXPERIMENT_SUBDIRS); do \
 		echo "-> Running $dir/main.py"; \
-		cd $dir && python main.py && cd - > /dev/null; \
+		cd $$dir && python main.py && cd - > /dev/null; \
 		echo "   Waiting $(API_DELAY) seconds to avoid API rate limits..."; \
 		sleep $(API_DELAY); \
 		echo ""; \

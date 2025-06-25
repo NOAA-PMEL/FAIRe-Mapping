@@ -142,7 +142,7 @@ class OmeFaireMapper:
         value = value.split(' | ') if '|' in value else [value]
 
         for word in value:
-            if word not in controlled_vocab and word not in self.faire_missing_values:
+            if word not in controlled_vocab and word not in self.faire_missing_values and 'other:' not in word:
                 warnings.warn(f'The following {faire_attribute} does not exist in the FAIRe standard controlled vocabulary: {word}, the allowed values are {controlled_vocab}')
             else:
                 new_value = ' | '.join(value)
