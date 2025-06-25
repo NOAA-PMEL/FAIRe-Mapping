@@ -590,7 +590,9 @@ class ProjectMapper(OmeFaireMapper):
                 # calculate distance
                 distance = self.calculate_distance_btwn_lat_lon_points(lat1=lat, lon1=lon, lat2=station_lat, lon2=station_lon)
 
-                if distance <= 2:
+                # Account for DBO1.9 which moved but coordinates haven't been updated yet - see email from Shaun
+                # Also make exception for DBO4.1
+                if distance <= 2 or (station_name == 'DBO1.9' and distance <=10.5) or (station_name == 'DBO4.1N' and distance <= 3):
                     distances.append({
                         'station': station_name,
                         'distance_km': distance,
