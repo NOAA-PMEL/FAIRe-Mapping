@@ -2,6 +2,9 @@
 SAMPLE_SUBDIRS := $(shell find projects/*/*/ -name "main.py" -exec dirname {} \; 2>/dev/null | sort)
 EXPERIMENT_SUBDIRS := $(shell find runs/ -maxdepth 1 -type d ! -name runs 2>/dev/null | sort)
 
+# Find config.yaml files in experiment subdirectories
+EXPERIMENT_CONFIG_FILES := $(shell find runs/ -maxdepth 2 -name "config.yaml" 2>/dev/null | sort)
+
 # API rate limiting delay (in seconds)
 API_DELAY := 5
 
@@ -26,8 +29,8 @@ runSampleMetadata:
 runExperimentMetadata:
 	@echo "Running experiment metadata with different configs..."
 	@for config_file in $(EXPERIMENT_CONFIG_FILES); do \
-		echo "-> Running runs/main.py with config $config_file"; \
-		cd runs && python main.py "$config_file" && cd - > /dev/null; \
+		echo "-> Running runs/main.py with config $$config_file"; \
+		cd runs && python main.py "$$config_file" && cd - > /dev/null; \
 		echo "   Waiting $(API_DELAY) seconds to avoid API rate limits..."; \
 		sleep $(API_DELAY); \
 		echo ""; \
