@@ -47,7 +47,10 @@ nc_faire_field_cols = ['samp_name',
                     'concentration_method',
                     'ratioOfAbsorbance260_280',
                     'pool_dna_num',
-                    'nucl_acid_ext_method_additional'
+                    'nucl_acid_ext_method_additional', 
+                    'expedition_id', 
+                    'collected_by', 
+                    'samp_collect_notes'
                     ]
 
 

@@ -24,6 +24,14 @@ datasets: # a list of sample_metadata.csvs and their associated experimentRun cs
       sequence_run_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/osu867/data/osu867_faire.csv
     - sequencing_run_name: osu873
       sequence_run_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/osu873/data/osu873_faire.csv
+    - sequencing_run_name: osu876
+      sequence_run_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/osu876/data/osu876_faire.csv
+    - sequencing_run_name: osu894
+      sequence_run_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/osu894/data/osu894_faire.csv
+    - sequencing_run_name: osu1034
+      sequence_run_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/osu1034/data/osu1034_faire.csv
+    - sequencing_run_name: osu1037
+      sequence_run_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/osu1037/data/osu1037_faire.csv
     - sequencing_run_name: osu1089
       sequence_run_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/osu1089/data/osu1089_faire.csv
     - sequencing_run_name: run2
@@ -90,6 +98,7 @@ bebop_config_marker_col_name: Marker
 
 faire_template_file: /home/poseidon/zalmanek/FAIRe-Mapping/faire_template.xlsx
 final_faire_template_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/data/ecoFoci_faire.xlsx
+logging_directory: /home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/data/logging/
 
 json_creds: /home/poseidon/zalmanek/FAIRe-Mapping/credentials.json
  
