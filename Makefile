@@ -6,7 +6,7 @@ EXPERIMENT_SUBDIRS := $(shell find runs/ -maxdepth 1 -type d ! -name runs 2>/dev
 EXPERIMENT_CONFIG_FILES := $(shell cd runs && find . -maxdepth 2 -name "config.yaml" 2>/dev/null | sort)
 
 # API rate limiting delay (in seconds)
-API_DELAY := 5
+API_DELAY := 10
 
 # Default target - .PHONY says that targets are not actual files, they're command names
 .PHONY: all runSampleMetadata runExperimentMetadata
