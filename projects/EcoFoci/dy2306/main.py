@@ -5,7 +5,6 @@ from utils.sample_metadata_mapper import FaireSampleMetadataMapper
 from utils.experiment_run_metadata_mapper import ExperimentRunMetadataMapper
 import pandas as pd
 
-
 def create_dy2306_sample_metadata():
     
     # initiate mapper
