@@ -79,7 +79,7 @@ class SampleMetadata(BaseModel):
     size_frac: Optional[float] = Field(description = "in µm")
     filter_diameter: Optional[float] = Field(description = "in mm")
     filter_surface_area: Optional[float] = Field(description = "in mm2")
-    filter_material: Optional[Literal['cellulose', 'cellulose ester',  'glass fiber', 'thermoplastic membrane', 'track etched polycarbonate', ' nylon', 'polyethersulfone']]
+    filter_material: Optional[Literal['cellulose', 'cellulose ester',  'glass fiber', 'thermoplastic membrane', 'track etched polycarbonate', ' nylon', 'polyethersulfone', 'other: polycarbonate membrane']]
     filter_name: Optional[str]
     precip_chem_prep: Optional[Literal['ethanol', 'isopropanol', 'sodium chloride']]
     precip_force_prep: Optional[float] = Field(description = "x g")
