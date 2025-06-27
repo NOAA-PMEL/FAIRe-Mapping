@@ -10,7 +10,7 @@ import xarray as xr
 import geopandas as gpd
 import gsw
 from shapely.geometry import Point
-from geopy.distance import geodesic
+# from geopy.distance import geodesic
 from bs4 import BeautifulSoup
 from .custom_exception import NoInsdcGeoLocError
 from .lists import nc_faire_field_cols, marker_shorthand_to_pos_cont_gblcok_name
@@ -71,8 +71,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.extraction_name = self.config_file['extraction_name']
         self.samp_dur_info = self.config_file['samp_store_dur_sheet_info'] if 'samp_store_dur_sheet_info' in self.config_file else None
         self.samp_stor_dur_dict = self.create_samp_stor_dict() if 'samp_store_dur_sheet_info' in self.config_file else None
-        self.station_ref_dict = self.create_reference_station_dict()
-
+        self.missing_extractions = self.config_file['missing_extractions'] if 'missing_extractions' in self.config_file else None
+        
         self.extraction_blank_rel_cont_dict = {}
         self.sample_metadata_df = self.filter_metadata_dfs()[0]
         self.nc_df = self.filter_metadata_dfs()[1]
@@ -160,30 +160,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         samp_dur_dict = dict(zip(samp_dur_df[self.samp_dur_info['samp_name_col']], samp_dur_df[self.samp_dur_info['samp_stor_dur_col']]))
 
         return samp_dur_dict
-
-    def create_reference_station_dict(self) -> dict:
-        # Creates a reference dictionary for station names - hard coded because will be the same across cruises I believe
-        station_ref_df = self.load_google_sheet_as_df(google_sheet_id='1bJiX5pXpUuk74tbuoiYRc7iNXAVYU2dD8nTnZAFpZg8', sheet_name='Sheet1', header=0)
-        ref_dict = {}
-        for _, row in station_ref_df.iterrows():
-            station_name = row['station_name']
-            lat = row['LatitudeDegree']
-            lon = row['LongitudeDegree']
-            lat_hem = row['LatitudeHem']
-            lon_hem = row['LongitudeHem']
-
-            # Add direction sign to lat/lon
-            if 'S' == lat_hem:
-                lat = float(-abs(float(lat)))
-            if 'W' == lon_hem:
-                lon = float(-abs(float(lon)))
-            
-            ref_dict[station_name] = {
-                'lat': lat,
-                'lon': lon
-            }
-
-        return ref_dict
 
     def convert_mdy_date_to_iso8061(self, date_string: str) -> str:
         # converts from m/d/y to iso8061
@@ -281,12 +257,36 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         return blank_df
 
+    def missing_extraction(self) -> pd.DataFrame:
+        # Creates a data frame of any extra extractions if there were random samples part of a different extraction df
+        # Written for the missing MID.NC.SKQ21 sample that was randomly extracted with WCOA samples
+        # As written assumes that the main extraction and the missing extraction are mapped the same way - but may have different column names - see skq21 config.yaml for more info on how to
+        # get any missing extractions - for samples that were extracted separately - This was created really just for MID.NC.SKQ2021
+        for missing_extraction in self.missing_extractions:
+            missing_extractions_df = self.load_google_sheet_as_df(google_sheet_id=missing_extraction['missing_extraction_google_sheet_id'], sheet_name=missing_extraction['missing_extraction_sheet_name'], header=0)
+            # replace column names to match the main extraction_df
+            missing_extractions_df.rename(columns=missing_extraction['missing_ext_col_to_main_ext_col'], inplace=True)
+            # only keep the main extraction df columns
+            cols_to_keep = list(missing_extraction['missing_ext_col_to_main_ext_col'].values())
+            missing_extractions_df = missing_extractions_df[cols_to_keep]
+            # Fix sample names if they are different
+            if missing_extraction['missing_extraction_samp_names']:
+                for missing_ext_samp_name, metadata_samp_name in missing_extraction['missing_extraction_samp_names'].items():
+                    missing_extractions_df = missing_extractions_df.replace(missing_ext_samp_name, metadata_samp_name)
+        return missing_extractions_df
+     
     def filter_cruise_avg_extraction_conc(self) -> pd.DataFrame:
         # If extractions have multiple measurements for extraction concentrations, calculates the avg.
         # and creates a column called pool_num to show the number of samples pooled
 
         extractions_df = self.load_google_sheet_as_df(
             google_sheet_id=self.extraction_metadata_google_sheet_id, sheet_name=self.extraction_metadata_sheet_name, header=0)
+
+        # get any missing extractions - for samples that were extracted separately - This was created really just for MID.NC.SKQ2021
+        if self.missing_extractions:
+           missing_extraction_df = self.missing_extraction()
+           extractions_df = pd.concat([extractions_df, missing_extraction_df])
+
 
         # Filter extractions df by cruise and calculate avg concentration
         extract_avg_df = extractions_df[extractions_df[self.extraction_sample_name_col].str.contains(self.extraction_cruise_key)].groupby(
@@ -336,6 +336,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         samp_metadata_df[self.sample_metadata_cast_no_col_name] = samp_metadata_df[self.sample_metadata_cast_no_col_name].apply(
             self.remove_extraneous_cast_no_chars)
 
+
         return samp_metadata_df
 
     def join_sample_and_extract_df(self):
@@ -377,6 +378,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # Fixes samples names (really just for SKQ23 sample names to replace _ with -. As the extraction and run sheets use -)
         if '_' in sample_name:
             sample_name = sample_name.replace('_', '-')
+        if '.DY23-06' in sample_name:
+            sample_name = sample_name.replace('-', '')
 
         return sample_name
 
@@ -797,36 +800,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                         print("does not work!")
 
         return df
-
-    def calculate_distance_btwn_lat_lon_points(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-        # Calculates the surface distance between two points in lat/lon using the great_circle package of GeoPy
-        # TODO: move to projectMapper?
-        return geodesic((lat1, lon1), (lat2, lon2)).kilometers
-        
-    def get_alternative_station_names(self, metadata_row: pd.Series, lat_col: float, lon_col: float) -> str:
-        # Get the top three closes stations based on lat/lon coords. Right now will return a list of dictionaries with station, disttance and coords
-        # TODO: move to projectMapper?
-        lat = metadata_row[lat_col]
-        lon = metadata_row[lon_col]
-        # alt_stations = []
-        distances = []
-
-        for station_name, coords in self.station_ref_dict.items():
-            station_lat = coords['lat']
-            station_lon = coords ['lon']
-
-            # calculate distance
-            distance = self.calculate_distance_btwn_lat_lon_points(lat1=lat, lon1=lon, lat2=station_lat, lon2=station_lon)
-
-            distances.append({
-                'station': station_name,
-                'distance_km': distance,
-                'coords': coords
-            })
-
-        # sort by distance and return top n
-        distances.sort(key=lambda x: x['distance_km'])
-        return str(distances[:3])
     
     def fill_empty_sample_values(self, df: pd.DataFrame, default_message="missing: not collected"):
         # fill empty values for samples after mapping over all sample data without control samples

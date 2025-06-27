@@ -11,6 +11,28 @@ import pandas as pd
 # TODO: geo_loc_name - write function to get geo_loc_name by lat/long
 # TODO: add par as user defined field
 
+def fix_ic_station_ids(df: pd.DataFrame) -> pd.DataFrame:
+    # According to email with Shaun Bell, the station names for the IC stations were incorrectly added (historically they were in a different order)
+    # This function fixes station_id for these stations.
+
+    station_id_mapping = {
+        'IC11': 'IC01',
+        'IC10': 'IC02',
+        'IC09': 'IC03',
+        'IC08': 'IC04',
+        'IC07': 'IC05',
+        'IC06': 'IC06',
+        'IC05': 'IC07',
+        'IC04': 'IC08',
+        'IC03': 'IC09',
+        'IC02': 'IC10',
+        'IC01': 'IC11'
+        }
+
+    df['station_id'] = df['station_id'].map(station_id_mapping).where(df['station_id'].str.startswith('IC'), df['station_id'])
+
+    return df
+
 
 def create_skq23_12s_sample_metadata():
     
@@ -151,13 +173,15 @@ def create_skq23_12s_sample_metadata():
     
     # Step 4: fill in NA with missing not collected or not applicable because they are samples and adds NC to rel_cont_id
     sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))
+
+    sample_df_updated_stations = fix_ic_station_ids(df=sample_df)
     
     # Step 5: fill NC data frame if there is - DO THIS ONLY IF negative controls were sequenced! They were not for SKQ21
     # nc_df = sample_mapper.fill_nc_metadata()
-    controls_df = sample_mapper.finish_up_controls_df(final_sample_df=sample_df)
+    controls_df = sample_mapper.finish_up_controls_df(final_sample_df=sample_df_updated_stations)
 
     # Step 6: Combine all mappings at once (add nc_df if negative controls were sequenced)
-    faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df,controls_df])
+    faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df_updated_stations ,controls_df])
     # Add rel_cont_id
     faire_sample_df_updated = sample_mapper.add_extraction_blanks_to_rel_cont_id(final_sample_df=faire_sample_df)
 

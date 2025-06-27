@@ -1,13 +1,18 @@
 from .faire_mapper import OmeFaireMapper
 from .analysis_metadata_mapper import AnalysisMetadataMapper
 from .lists import marker_shorthand_to_pos_cont_gblcok_name, project_pcr_library_prep_mapping_dict
-from datetime import date
+from datetime import date, datetime
 import pandas as pd
 import re
 import requests
 import base64
 import tempfile
 import openpyxl
+from astral import LocationInfo
+from astral.sun import sun
+from geopy.distance import geodesic
+import pytz
+
 
 # TODO: add project_id to process_whole_project_and_save_to_excel when calling process_analysis_metadata when extracted from projectMetadata input
 # TODO: add assay_name to sampleMetadata
@@ -27,6 +32,13 @@ class ProjectMapper(OmeFaireMapper):
     faire_sample_category_col_name = "samp_category"
     faire_sample_composed_of_col_name = "sample_composed_of"
     faire_assay_name_col = 'assay_name'
+    faire_latitude_col = 'decimalLatitude'
+    faire_longitude_col = 'decimalLongitude'
+    faire_eventDate_col = 'eventDate'
+    faire_station_col = 'station_id'
+    faire_alt_station_col = 'alternative_station_ids'
+    faire_sunrise_col = 'sunrise_time_utc'
+    faire_sunset_col = 'sunset_time_utc'
     project_sheet_term_name_col_num = 3
     project_sheet_assay_start_col_num = 5
     project_sheet_project_level_col_num = 4
@@ -46,8 +58,10 @@ class ProjectMapper(OmeFaireMapper):
         self.bioinformatics_software_name = self.config_file['bioinformatics_software_name']
         self.bebop_config_run_col_name = self.config_file['bebop_config_run_col_name']
         self.bebop_config_marker_col_name = self.config_file['bebop_config_marker_col_name']
+        self.logging_directory = self.config_file['logging_directory']
 
         self.pcr_library_dict = {}
+        self.alt_station_ref_dict = self.create_reference_station_dict()
 
     def process_whole_project_and_save_to_excel(self):
 
@@ -69,7 +83,6 @@ class ProjectMapper(OmeFaireMapper):
     def process_sample_run_data(self):
         # Process all csv sets defined in the config file.
         # 1. Combine all sample metadata spreadsheets into one and combine all experiment run metadata spreadsheets into one
-
 
         combined_sample_metadata_df = self.create_sample_metadata_df()
         combined_exp_run_df = self.create_exp_run_metadata_df()
@@ -96,18 +109,27 @@ class ProjectMapper(OmeFaireMapper):
         # Filter primary dataframe based on samp_name values in sequencing run dataframe
         filtered_samp_df, missing_samples = self._filter_samp_df_by_samp_name(samp_df=pcr_updated_df, associated_seq_df=combined_exp_run_df)
         if missing_samples:
-            print(f"samples that will be eliminated from sample metadata/missing from experiment run metadata: {missing_samples}")
+            missing_file_name = 'samps_not_sequenced.csv'
+            self.save_list_to_csv(the_list=missing_samples, file_name=missing_file_name)
+            print(f"\033[35mThere are samples that do not appear to have been sequenced - they don't exist in the experimentRunMetadata, please see {self.logging_directory+missing_file_name} for a list.\33[0m]")
 
         # Fill empty values for POSITIVE and pool samples with "not applicable: control sample"
-        final_sample_metadata_df = self.fill_empty_vals_for_pooled_and_pos_samps(df=filtered_samp_df)
+        final_sample_metadata_df = self.fill_empty_vals(df=filtered_samp_df)
 
         # Filter experiment run metadata to drop rows with sample names missing from SampleMetadata
         final_exp_df, dropped_exp_run_samples = self.filter_exp_run_metadata(final_sample_df=final_sample_metadata_df, exp_run_df=combined_exp_run_df)
-        print(f"samples dropped from experiment run metadata are {dropped_exp_run_samples}, double check these samples are not in the corresponding project")
+        if len(dropped_exp_run_samples) > 0:
+            dropped_file_name = 'unrelated_project_samps_dropped.csv'
+            self.save_list_to_csv(the_list=dropped_exp_run_samples, file_name=dropped_file_name)
+            print(f"\033[35mThere are samples that were dropped from the experiment run metadata. Please check the {self.logging_directory+dropped_file_name} for a list - make sure they are not part of this project.\33[0m]")
 
         # Add assay name to final_sample_df
         final_sample_df = self.add_assay_name_to_samp_df(samp_df=final_sample_metadata_df, exp_run_df=final_exp_df)
-        self.save_final_df_as_csv(final_df=final_sample_df, sheet_name='sampleMetadata', header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/sample_metadata.csv') 
+
+        # Add calculated columns to sample df (like sunset, sunrise, and alt_station_names)
+        final_sample_df_with_calc_cols = self.add_post_sample_metadata_calculated_cols(df=final_sample_df)
+        
+        self.save_final_df_as_csv(final_df=final_sample_df_with_calc_cols, sheet_name='sampleMetadata', header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/sample_metadata.csv') 
 
         return final_sample_metadata_df, final_exp_df
 
@@ -159,6 +181,43 @@ class ProjectMapper(OmeFaireMapper):
 
         return combined_exp_run_df
 
+    def add_post_sample_metadata_calculated_cols(self, df: pd.DataFrame) -> pd.DataFrame:
+        # Adds columns to sample metadata that are calculated from other columns. (e.g. sunset, sunrise, atlernative station names)
+        
+        # Add sunrise and sunset utc times
+        sun_info = df.apply(lambda row: self.get_sun_times_from_iso(metadata_row=row), axis=1, result_type = 'expand')
+        df[self.faire_sunrise_col] = sun_info[0]
+        df[self.faire_sunset_col] = sun_info[1]
+
+        # Add alternative station names
+        df[self.faire_alt_station_col] = df.apply(lambda row: self.get_alternative_station_names(metadata_row=row), axis=1)
+
+        return df
+
+    def create_reference_station_dict(self) -> dict:
+        # Creates a reference dictionary for station names - hard coded because will be the same across cruises I believe
+        station_ref_df = self.load_google_sheet_as_df(google_sheet_id='1bJiX5pXpUuk74tbuoiYRc7iNXAVYU2dD8nTnZAFpZg8', sheet_name='Sheet1', header=0)
+        ref_dict = {}
+        for _, row in station_ref_df.iterrows():
+            station_name = row['station_name']
+            lat = row['LatitudeDecimalDegree']
+            lon = row['LongitudeDemicalDegree']
+            lat_hem = row['LatitudeHem']
+            lon_hem = row['LongitudeHem']
+
+            # Add direction sign to lat/lon
+            if 'S' == lat_hem:
+                lat = float(-abs(float(lat)))
+            if 'W' == lon_hem:
+                lon = float(-abs(float(lon)))
+            
+            ref_dict[station_name] = {
+                'lat': lat,
+                'lon': lon
+            }
+
+        return ref_dict
+    
     def update_mismatch_sample_names(self, sample_name: str) -> str:
         # Update sample metadata sample name to be the sample name that needs to match in experiment run metadata
         if sample_name in self.mismatch_samp_names_dict:
@@ -318,13 +377,18 @@ class ProjectMapper(OmeFaireMapper):
 
     def get_pos_cont_type(self, pos_cont_sample_name: str) -> str:
 
-        # Get the marker from the positive control sample name (e.g. run2.ITS1.POSITIVE - this will give you ITS1)
-        shorthand_marker = pos_cont_sample_name.split('.')[1]
+        if 'ferret' in pos_cont_sample_name.lower():
+            pos_cont_type = 'PCR positive of Ferret genomic DNA'
+        elif 'camel' in pos_cont_sample_name.lower():
+            pos_cont_type = 'PCR positive of Camel genomic DNA'
+        else:
+            # Get the marker from the positive control sample name (e.g. run2.ITS1.POSITIVE - this will give you ITS1)
+            shorthand_marker = pos_cont_sample_name.split('.')[1]
 
-        g_block = marker_shorthand_to_pos_cont_gblcok_name.get(
-            shorthand_marker)
+            g_block = marker_shorthand_to_pos_cont_gblcok_name.get(
+                shorthand_marker)
 
-        pos_cont_type = f"PCR positive of synthetic DNA. Gblock name: {g_block}"
+            pos_cont_type = f"PCR positive of synthetic DNA. Gblock name: {g_block}"
 
         return pos_cont_type
    
@@ -401,16 +465,22 @@ class ProjectMapper(OmeFaireMapper):
 
         return samp_df
 
-
-    def fill_empty_vals_for_pooled_and_pos_samps(self, df: pd.DataFrame):
+    def fill_empty_vals(self, df: pd.DataFrame):
         modified_df = df.copy()
 
-        mask = df[self.faire_sample_name_col].str.contains('POSITIVE|pool', case=False, na=False)
+        control_mask = df[self.faire_sample_category_col_name].str.contains('negative|positive', case=False, na=False)
+        sample_mask = df[self.faire_sample_category_col_name].str.contains('sample', case=False, na=False)
 
-        # fill only empty/NaN/None values with 'not applicable'
         for col in df.columns:
-            empty_cells = mask & df[col].isna() | (df[col] == '') | (df[col].astype(str) == 'nan')
-            modified_df.loc[empty_cells, col] = 'not applicable: control sample'
+            empty_conditions = df[col].isna() | (df[col] == '') | (df[col].astype(str) == 'nan')
+
+            # Fill empty control samples
+            control_empty = control_mask & empty_conditions
+            modified_df.loc[control_empty, col] = 'not applicable: control sample'
+
+            # fill empty sample values
+            sample_empty = sample_mask & empty_conditions
+            modified_df.loc[sample_empty, col] = 'missing: not collected'
 
         return modified_df
     
@@ -508,6 +578,87 @@ class ProjectMapper(OmeFaireMapper):
         workbook.save(self.final_faire_template_path)
         workbook.close()
 
+    def calculate_distance_btwn_lat_lon_points(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+            # Calculates the surface distance between two points in lat/lon using the great_circle package of GeoPy
+            return geodesic((lat1, lon1), (lat2, lon2)).kilometers
+        
+    def get_alternative_station_names(self, metadata_row: pd.Series) -> str:
+        # Get alternate station names based on lat/lon coords and grabs all stations within 1 km as alternate stations
+        lat = metadata_row[self.faire_latitude_col]
+        lon = metadata_row[self.faire_longitude_col]
+        listed_station = metadata_row[self.faire_station_col]
+
+        samp_cat = metadata_row[self.faire_sample_category_col_name]
+        if samp_cat == 'sample':
+        
+            # alt_stations = []
+            distances = []
+            error_distances = []
+
+            for station_name, coords in self.alt_station_ref_dict.items():
+                station_lat = coords['lat']
+                station_lon = coords ['lon']
+
+                # calculate distance
+                distance = self.calculate_distance_btwn_lat_lon_points(lat1=lat, lon1=lon, lat2=station_lat, lon2=station_lon)
+
+                # Account for DBO1.9 which moved but coordinates haven't been updated yet - see email from Shaun
+                # Also make exception for DBO4.1
+                if distance <= 2 or (station_name == 'DBO1.9' and distance <=10.5) or (station_name == 'DBO4.1N' and distance <= 3):
+                    distances.append({
+                        'station': station_name,
+                        'distance_km': distance,
+                        'coords': coords
+                    })
+
+                else:
+                    error_distances.append({
+                        'station': station_name,
+                        'distance_km': distance,
+                        'coords': coords
+                    })
+                    error_distances.sort(key=lambda x: x['distance_km'])
+
+            # sort by distance and return top n
+            distances.sort(key=lambda x: x['distance_km'])
+            alt_station_names = ' | '.join([item['station'] for item in distances])
+            if alt_station_names:
+                return alt_station_names
+            else:
+                print(ValueError(f"\033[31m{metadata_row[self.faire_sample_name_col]} listed station {listed_station}, but it is not picking up on any stations with 2 km based on its lat/lon {lat, lon}. Closest station is {error_distances[0]}!\033[0m]"))
+        else:
+            return 'not applicable: control sample'
+    
+    def get_sun_times_from_iso(self, metadata_row: pd.Series):
+        # Gets the sunrise and sunset from ISO dattime str, return sunrise, sunset
+        lat = metadata_row[self.faire_latitude_col]
+        lon = metadata_row[self.faire_longitude_col]
+        event_date = metadata_row[self.faire_eventDate_col]
+
+        sample_cat = metadata_row[self.faire_sample_category_col_name]
+
+        if sample_cat == 'sample':
+            # Handle both "Z" and "+00:00" UTC formats
+            if event_date.endswith('Z'):
+                event_date = event_date[:-1] + '+00:00'
+
+            dt_utc = datetime.fromisoformat(event_date)
+            date_obj = dt_utc.date()
+
+            # create location
+            location = LocationInfo(latitude=lat, longitude=lon)
+
+            # Calculate sun times in UTC
+            s = sun(location.observer, date=date_obj, tzinfo=pytz.UTC)
+
+            # Convert to ISO format with 'Z' suffix
+            sunrise_iso = s['sunrise'].isoformat().replace('+00:00', 'Z')
+            sunset_iso = s['sunset'].isoformat().replace('+00:00', 'Z')
+
+            return sunrise_iso, sunset_iso
+        else:
+            return 'not applicable: control sample', 'not applicable: control sample'
+
     def load_project_level_metadata_to_excel(self) -> None:
         # Maps the project level metadata to the projectMetadata excel sheet
         
@@ -535,3 +686,8 @@ class ProjectMapper(OmeFaireMapper):
 
         workbook.save(self.final_faire_template_path)
         workbook.close()
+
+    def save_list_to_csv(self, the_list: list, file_name: str) -> None:
+        # Puts a list into a csv and saves
+        df = pd.DataFrame(the_list)
+        df.to_csv(self.logging_directory+file_name, index=False, header=False)

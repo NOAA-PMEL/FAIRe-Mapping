@@ -7,6 +7,7 @@ from pathlib import Path
 import math
 from datetime import datetime
 from collections import defaultdict
+import xarray as xr
  # Field(default=None) is for USer defined fields that might be missing in each csv
 # TODO: Add custom data validation for controlled vocabs that accept 'other: <description>' (samp_category, neg_cont_type, verbatimCoordinateSystem, verbatimSRS,
 # samp_size_unit, samp_store_temp, samp_store_sol, precip_chem_prep, filter_material)
@@ -79,7 +80,7 @@ class SampleMetadata(BaseModel):
     size_frac: Optional[float] = Field(description = "in µm")
     filter_diameter: Optional[float] = Field(description = "in mm")
     filter_surface_area: Optional[float] = Field(description = "in mm2")
-    filter_material: Optional[Literal['cellulose', 'cellulose ester',  'glass fiber', 'thermoplastic membrane', 'track etched polycarbonate', ' nylon', 'polyethersulfone']]
+    filter_material: Optional[Literal['cellulose', 'cellulose ester',  'glass fiber', 'thermoplastic membrane', 'track etched polycarbonate', ' nylon', 'polyethersulfone', 'other: polycarbonate membrane']]
     filter_name: Optional[str]
     precip_chem_prep: Optional[Literal['ethanol', 'isopropanol', 'sodium chloride']]
     precip_force_prep: Optional[float] = Field(description = "x g")
@@ -122,7 +123,7 @@ class SampleMetadata(BaseModel):
     diss_org_nitro: Optional[float]
     diss_org_nitro_unit: Optional[Literal['µM', 'mol/m3', 'mmol/m3', 'µmol/m3 ', 'mol/L', 'mmol/L', 'µmol/L', 'mg/L',  'µg/L', 'µmol/kg', 'mmol/kg ', 'parts per million']]
     diss_oxygen: Optional[float]
-    diss_oxygen_unit: Optional[Literal['mg/L', 'µg/L', 'µM', 'mol/m3', 'mmol/m3', 'µmol/m3', 'mol/L', 'mmol/L', 'µmol/L' , 'mg/L ', 'µg/L x', 'mL/L', 'mmol/kg', 'parts per million']]
+    diss_oxygen_unit: Optional[Literal['mg/L', 'µg/L', 'µM', 'mol/m3', 'mmol/m3', 'µmol/m3', 'mol/L', 'mmol/L', 'µmol/L' , 'mg/L ', 'µg/L x', 'mL/L', 'mmol/kg', 'parts per million', 'other: µmol/kg']]
     tot_diss_nitro: Optional[float]
     tot_diss_nitro_unit: Optional[Literal['µM', 'mol/m3', 'mmol/m3', 'µmol/m3 ', 'mol/L', 'mmol/L', 'µmol/L', 'mg/L',  'µg/L', 'µmol/kg', 'mmol/kg ', 'parts per million']]
     tot_inorg_nitro: Optional[float]
@@ -158,12 +159,12 @@ class SampleMetadata(BaseModel):
     org_nitro: Optional[float]
     org_nitro_unit: Optional[Literal['µM', 'mol/m3', 'mmol/m3', 'µmol/m3 ', 'mol/L', 'mmol/L', 'µmol/L', 'mg/L',  'µg/L', 'µmol/kg', 'mmol/kg ', 'parts per million']]
     ammonium: Optional[float]
-    ammonium_unit: Optional[Literal['µmol/L']]
+    ammonium_unit: Optional[Literal['µmol/L', 'µmol/kg']]
     ammonium_flag: Optional[int] = Field(default=None)
     carbonate: Optional[float]
     carbonate_unit: Optional[Literal['']]  # need to add cv here when known
     hydrogen_ion: Optional[float] = Field(default=None)
-    hydrogen_ion_unit: Optional[int] = Field(default=None)
+    hydrogen_ion_unit: Optional[Literal['nmol/kg']] = Field(default=None)
     nitrate_plus_nitrite: Optional[float]
     nitrate_plus_nitrite_unit: Optional[Literal['µM']]  # need to add cv here when known
     omega_arag: Optional[float]
@@ -171,12 +172,12 @@ class SampleMetadata(BaseModel):
     pco2: Optional[float]
     pco2_unit: Optional[Literal['uatm']]
     phosphate: Optional[float]
-    phosphate_unit: Optional[Literal['µmol/L', 'µM']]
+    phosphate_unit: Optional[Literal['µmol/L', 'µM', 'µmol/kg']]
     phosphate_flag: Optional[int] = Field(default=None)
     pressure: Optional[float]
     pressure_unit: Optional[Literal['dbar']]
     silicate: Optional[float]
-    silicate_unit: Optional[Literal['µmol/L', 'µM']]
+    silicate_unit: Optional[Literal['µmol/L', 'µM', 'µmol/kg']]
     silicate_flag: Optional[int] = Field(default=None)
     tot_alkalinity: Optional[float]
     tot_alkalinity_unit: Optional[Literal['µmol/kg']]
@@ -209,6 +210,9 @@ class SampleMetadata(BaseModel):
     collected_by: Optional[str]
     meaurements_from: Optional[str]
     niskin_flag: Optional[int] = Field(default=None)
+    alternative_station_ids: Optional[str] = Field(default=None)
+    sunrise_time_utc: Optional[str] = Field(default=None)
+    sunset_time_utc: Optional[str] = Field(default=None)
 
     
     # class variables loaded once and shared across all datasets
@@ -250,7 +254,7 @@ class SampleMetadata(BaseModel):
         if self.samp_category == 'sample':
             for attribute in required:
                 if attribute is None:
-                    raise ValueError(f"Sample {self.samp_name} mus have {attribute}")
+                    raise ValueError(f"Sample {self.samp_name} must have {attribute}")
         return self
 
     @field_validator('decimalLatitude')
@@ -265,13 +269,14 @@ class SampleMetadata(BaseModel):
     
     @field_validator('decimalLongitude')
     @classmethod
-    def validate_latitude(cls, v, info):
+    def validate_longitude(cls, v, info):
         # only apply to sample records, not controls
         if info.data.get('samp_category') != 'sample':
             return v
         if not(-180 <= v <= 180):
             raise ValueError(f"Longitude {v} is outside valid latitude range (-180 to 180)")
         return v
+    
     
     @field_validator('eventDate')
     @classmethod
@@ -354,13 +359,28 @@ class SampleMetadata(BaseModel):
                 supposed_sea = region.get('NAME')
                 # Check if any of the arctic keywords exist in the supposed sea to make sure the lat/lon coords are indeed in the Arctic
                 if not any(keyword in supposed_sea.lower() for keyword in self._artic_region_keywords):
-                    raise ValueError(f"{self.samp_name} has a lat/lon with found in the area of {supposed_sea}, which does not have keywords {self._artic_region_keywords}")
+                    raise ValueError(f"{self.samp_name} has a lat/lon ({self.decimalLatitude}/{self.decimalLongitude}) found in the area of {supposed_sea}, which does not have keywords {self._artic_region_keywords}")
                 
                 # Check geo_loc kind of matches
                 if supposed_sea.lower().strip() != geo_loc_sea_area.lower().strip():
-                    warnings.warn(f"{self.samp_name} has lat lon coordinates that point to {supposed_sea}, but geo_loc is listed as {geo_loc_sea_area}, double check this!")
+                    warnings.warn(f"{self.samp_name} (ctd:{self.ctd_cast_number}) has lat/lon coordinates ({self.decimalLatitude}/{self.decimalLongitude}) that point to {supposed_sea}, but geo_loc is listed as {geo_loc_sea_area}, double check this!")
                 break
         return self # Always return self in mode='after' validators
+
+    @model_validator(mode='after')
+    def validate_depth_broadly(self):
+        """Validates that the max/and min depth are not deeper than the tot_depth"""
+
+        # skip validation for non-sample records that won't have lat lon or geo_loc
+        if self.samp_category != 'sample':
+            return self
+        
+        # TODO: may need to adjust difference threshold depending on case
+        if self.maximumDepthInMeters > self.tot_depth_water_col and (self.tot_depth_water_col - self.maximumDepthInMeters) > 1:
+            warnings.warn(f"{self.samp_name} (cast:{self.ctd_cast_number}, bottle:{self.ctd_bottle_number}) appears to have a max depth ({self.maximumDepthInMeters}) greater than the total depth ({self.tot_depth_water_col}).")
+        if self.minimumDepthInMeters > self.tot_depth_water_col and (self.tot_depth_water_col - self.maximumDepthInMeters) > 1:
+            warnings.warn(f"{self.samp_name} appears to have a max depth ({self.minimumDepthInMeters}) greater than the total depth ({self.tot_depth_water_col}).")
+        return self
 
     @model_validator(mode='after')
     def validate_neg_cont_type_conditions(self):

@@ -5,7 +5,6 @@ from utils.sample_metadata_mapper import FaireSampleMetadataMapper
 from utils.experiment_run_metadata_mapper import ExperimentRunMetadataMapper
 import pandas as pd
 
-
 def create_dy2306_sample_metadata():
     
     # initiate mapper
@@ -89,8 +88,9 @@ def create_dy2306_sample_metadata():
                 lambda row: sample_mapper.convert_min_depth_from_minus_one_meter(metadata_row=row, max_depth_col_name='FinalDepth'),
                 axis=1
             )
+            
             sample_metadata_results['env_local_scale'] = sample_mapper.sample_metadata_df['FinalDepth'].apply(sample_mapper.calculate_env_local_scale)
-        
+    
         
         elif faire_col == 'geo_loc_name':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
