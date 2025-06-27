@@ -336,6 +336,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         samp_metadata_df[self.sample_metadata_cast_no_col_name] = samp_metadata_df[self.sample_metadata_cast_no_col_name].apply(
             self.remove_extraneous_cast_no_chars)
 
+
         return samp_metadata_df
 
     def join_sample_and_extract_df(self):
@@ -377,6 +378,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # Fixes samples names (really just for SKQ23 sample names to replace _ with -. As the extraction and run sheets use -)
         if '_' in sample_name:
             sample_name = sample_name.replace('_', '-')
+        if '.DY23-06' in sample_name:
+            sample_name = sample_name.replace('-', '')
 
         return sample_name
 
