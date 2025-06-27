@@ -580,7 +580,6 @@ class ProjectMapper(OmeFaireMapper):
 
     def calculate_distance_btwn_lat_lon_points(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
             # Calculates the surface distance between two points in lat/lon using the great_circle package of GeoPy
-            # TODO: move to projectMapper?
             return geodesic((lat1, lon1), (lat2, lon2)).kilometers
         
     def get_alternative_station_names(self, metadata_row: pd.Series) -> str:

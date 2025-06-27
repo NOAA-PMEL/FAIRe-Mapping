@@ -7,6 +7,7 @@ from pathlib import Path
 import math
 from datetime import datetime
 from collections import defaultdict
+import xarray as xr
  # Field(default=None) is for USer defined fields that might be missing in each csv
 # TODO: Add custom data validation for controlled vocabs that accept 'other: <description>' (samp_category, neg_cont_type, verbatimCoordinateSystem, verbatimSRS,
 # samp_size_unit, samp_store_temp, samp_store_sol, precip_chem_prep, filter_material)
@@ -365,6 +366,20 @@ class SampleMetadata(BaseModel):
                     warnings.warn(f"{self.samp_name} has lat lon coordinates that point to {supposed_sea}, but geo_loc is listed as {geo_loc_sea_area}, double check this!")
                 break
         return self # Always return self in mode='after' validators
+
+    @model_validator(mode='after')
+    def validate_depth_broadly(self):
+        """Validates that the max/and min depth are not deeper than the tot_depth"""
+
+        # skip validation for non-sample records that won't have lat lon or geo_loc
+        if self.samp_category != 'sample':
+            return self
+        
+        if self.maximumDepthInMeters > self.tot_depth_water_col:
+            raise ValueError(f"{self.samp_name} appears to have a max depth ({self.maximumDepthInMeters}) greater than the calculated total depth ({self.tot_depth_water_col}) based on gebco")
+        if self.minimumDepthInMeters > self.tot_depth_water_col:
+            raise ValueError(f"{self.samp_name} appears to have a max depth ({self.minimumDepthInMeters}) greater than the calculated total depth ({self.tot_depth_water_col}) based on gebco")
+        return self
 
     @model_validator(mode='after')
     def validate_neg_cont_type_conditions(self):
