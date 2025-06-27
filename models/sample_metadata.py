@@ -363,7 +363,7 @@ class SampleMetadata(BaseModel):
                 
                 # Check geo_loc kind of matches
                 if supposed_sea.lower().strip() != geo_loc_sea_area.lower().strip():
-                    warnings.warn(f"{self.samp_name} (ctd:{self.ctd_cast_number}, bottle:{self.ctd_bottle_number}) has lat/lon coordinates ({self.decimalLatitude}/{self.decimalLongitude}) that point to {supposed_sea}, but geo_loc is listed as {geo_loc_sea_area}, double check this!")
+                    warnings.warn(f"{self.samp_name} (ctd:{self.ctd_cast_number}) has lat/lon coordinates ({self.decimalLatitude}/{self.decimalLongitude}) that point to {supposed_sea}, but geo_loc is listed as {geo_loc_sea_area}, double check this!")
                 break
         return self # Always return self in mode='after' validators
 
@@ -375,10 +375,11 @@ class SampleMetadata(BaseModel):
         if self.samp_category != 'sample':
             return self
         
-        if self.maximumDepthInMeters > self.tot_depth_water_col:
-            raise ValueError(f"{self.samp_name} appears to have a max depth ({self.maximumDepthInMeters}) greater than the calculated total depth ({self.tot_depth_water_col}) based on gebco")
-        if self.minimumDepthInMeters > self.tot_depth_water_col:
-            raise ValueError(f"{self.samp_name} appears to have a max depth ({self.minimumDepthInMeters}) greater than the calculated total depth ({self.tot_depth_water_col}) based on gebco")
+        # TODO: may need to adjust difference threshold depending on case
+        if self.maximumDepthInMeters > self.tot_depth_water_col and (self.tot_depth_water_col - self.maximumDepthInMeters) > 1:
+            warnings.warn(f"{self.samp_name} (cast:{self.ctd_cast_number}, bottle:{self.ctd_bottle_number}) appears to have a max depth ({self.maximumDepthInMeters}) greater than the total depth ({self.tot_depth_water_col}).")
+        if self.minimumDepthInMeters > self.tot_depth_water_col and (self.tot_depth_water_col - self.maximumDepthInMeters) > 1:
+            warnings.warn(f"{self.samp_name} appears to have a max depth ({self.minimumDepthInMeters}) greater than the total depth ({self.tot_depth_water_col}).")
         return self
 
     @model_validator(mode='after')
