@@ -359,11 +359,11 @@ class SampleMetadata(BaseModel):
                 supposed_sea = region.get('NAME')
                 # Check if any of the arctic keywords exist in the supposed sea to make sure the lat/lon coords are indeed in the Arctic
                 if not any(keyword in supposed_sea.lower() for keyword in self._artic_region_keywords):
-                    raise ValueError(f"{self.samp_name} has a lat/lon with found in the area of {supposed_sea}, which does not have keywords {self._artic_region_keywords}")
+                    raise ValueError(f"{self.samp_name} has a lat/lon ({self.decimalLatitude}/{self.decimalLongitude}) found in the area of {supposed_sea}, which does not have keywords {self._artic_region_keywords}")
                 
                 # Check geo_loc kind of matches
                 if supposed_sea.lower().strip() != geo_loc_sea_area.lower().strip():
-                    warnings.warn(f"{self.samp_name} has lat lon coordinates that point to {supposed_sea}, but geo_loc is listed as {geo_loc_sea_area}, double check this!")
+                    warnings.warn(f"{self.samp_name} (ctd:{self.ctd_cast_number}, bottle:{self.ctd_bottle_number}) has lat/lon coordinates ({self.decimalLatitude}/{self.decimalLongitude}) that point to {supposed_sea}, but geo_loc is listed as {geo_loc_sea_area}, double check this!")
                 break
         return self # Always return self in mode='after' validators
 
