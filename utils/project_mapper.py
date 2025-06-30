@@ -3,11 +3,11 @@ from .analysis_metadata_mapper import AnalysisMetadataMapper
 from .lists import marker_shorthand_to_pos_cont_gblcok_name, project_pcr_library_prep_mapping_dict
 from datetime import date, datetime
 import pandas as pd
-import re
 import requests
 import base64
 import tempfile
 import openpyxl
+import os
 from astral import LocationInfo
 from astral.sun import sun
 from geopy.distance import geodesic
@@ -36,7 +36,7 @@ class ProjectMapper(OmeFaireMapper):
     faire_longitude_col = 'decimalLongitude'
     faire_eventDate_col = 'eventDate'
     faire_station_col = 'station_id'
-    faire_alt_station_col = 'alternative_station_ids'
+    faire_alt_station_col = 'station_ids_within_3km_of_lat_lon'
     faire_sunrise_col = 'sunrise_time_utc'
     faire_sunset_col = 'sunset_time_utc'
     project_sheet_term_name_col_num = 3
@@ -49,8 +49,10 @@ class ProjectMapper(OmeFaireMapper):
 
         self.config_yaml = config_yaml
         self.config_file = self.load_config(config_yaml)
-        self.project_info_goole_sheet_id = self.config_file['project_info_goole_sheet_id']
-        self.project_info_df = self.load_google_sheet_as_df(google_sheet_id=self.project_info_goole_sheet_id, sheet_name='Sheet1', header=0)
+        self.project_name = self.config_file['project_name']
+        self.project_info_google_sheet_id = self.config_file['project_info_goole_sheet_id']
+        self.station_name_reference_google_sheet_id = self.config_file['station_name_reference_google_sheet_id']
+        self.project_info_df = self.load_google_sheet_as_df(google_sheet_id=self.project_info_google_sheet_id, sheet_name='Sheet1', header=0)
         self.mismatch_samp_names_dict = self.config_file['mismatch_sample_names']
         self.pooled_samps_dict = self.config_file['pooled_samps']
         self.bioinformatics_bebop_path = self.config_file['bioinformatics_bebop_path']
@@ -61,15 +63,25 @@ class ProjectMapper(OmeFaireMapper):
         self.logging_directory = self.config_file['logging_directory']
 
         self.pcr_library_dict = {}
-        self.alt_station_ref_dict = self.create_reference_station_dict()
+
+        # Create reference station dicts
+        station_dicts = self.create_station_ref_dicts()
+        self.station_lat_lon_ref_dict = station_dicts[0]
+        self.standardized_station_dict = station_dicts[1]
+        print([key for key, value in self.standardized_station_dict.items() if len(value) > 0 and '' not in value])
 
     def process_whole_project_and_save_to_excel(self):
 
         sample_metadata_df, experiment_run_metadata_df = self.process_sample_run_data()
 
-        # Save sample metadata first to excel file, and then use that excel file and save experimentRunMetadata df
+        data_dir = os.path.dirname(self.final_faire_template_path)
+
+        # Save sample metadata first to excel file and csv, and then use that excel file and save experimentRunMetadata df
         self.add_final_df_to_FAIRe_excel(excel_file_to_read_from=self.faire_template_file, sheet_name=self.faire_sample_metadata_sheet_name, faire_template_df=sample_metadata_df)
+        self.save_final_df_as_csv(final_df=sample_metadata_df, sheet_name=self.faire_sample_metadata_sheet_name, header=2, csv_path=f"{data_dir}/{self.project_name}_faire_sampleMetadata.csv")
+
         self.add_final_df_to_FAIRe_excel(excel_file_to_read_from=self.final_faire_template_path, sheet_name=self.faire_experiment_run_metadata_sheet_name, faire_template_df=experiment_run_metadata_df)
+        self.save_final_df_as_csv(final_df=experiment_run_metadata_df, sheet_name=self.faire_experiment_run_metadata_sheet_name, header=2, csv_path=f"{data_dir}/{self.project_name}_faire_experimentRunMetadata.csv")
 
         # Add projectMetadata, first project_level metadata then assay level metadata
         self.load_project_level_metadata_to_excel()
@@ -128,10 +140,8 @@ class ProjectMapper(OmeFaireMapper):
 
         # Add calculated columns to sample df (like sunset, sunrise, and alt_station_names)
         final_sample_df_with_calc_cols = self.add_post_sample_metadata_calculated_cols(df=final_sample_df)
-        
-        self.save_final_df_as_csv(final_df=final_sample_df_with_calc_cols, sheet_name='sampleMetadata', header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/sample_metadata.csv') 
 
-        return final_sample_metadata_df, final_exp_df
+        return final_sample_df_with_calc_cols, final_exp_df
 
     def process_analysis_metadata(self, project_id: str, final_exp_run_df: pd.DataFrame): 
         # Process analysis metadata using AnalyisMetadata class
@@ -190,14 +200,25 @@ class ProjectMapper(OmeFaireMapper):
         df[self.faire_sunset_col] = sun_info[1]
 
         # Add alternative station names
-        df[self.faire_alt_station_col] = df.apply(lambda row: self.get_alternative_station_names(metadata_row=row), axis=1)
+        df[self.faire_alt_station_col] = df.apply(lambda row: self.get_stations_within_3km(metadata_row=row), axis=1)
+
+        # standardize station names
+        df[self.faire_station_col] = df.apply(lambda row: self.standardize_station_id(metadata_row=row), axis=1)
 
         return df
 
-    def create_reference_station_dict(self) -> dict:
-        # Creates a reference dictionary for station names - hard coded because will be the same across cruises I believe
-        station_ref_df = self.load_google_sheet_as_df(google_sheet_id='1bJiX5pXpUuk74tbuoiYRc7iNXAVYU2dD8nTnZAFpZg8', sheet_name='Sheet1', header=0)
-        ref_dict = {}
+    def create_station_ref_dicts(self) -> dict:
+        # Creates a lat_lon_station_ref_dict reference dictionary for station names and their lat_lon coords (e.g. {'BF2': {'lat': '71.75076', 'lon': -154.4567}, 'DBO1.1': {'lat': '62.01', 'lon': -175.06}}
+        # Also creates a standardized station dict
+        
+        station_ref_df = self.load_google_sheet_as_df(google_sheet_id=self.station_name_reference_google_sheet_id, sheet_name='Sheet1', header=0)
+        station_lat_lon_ref_dict = self.create_station_lat_lon_ref_dict(station_ref_df=station_ref_df)
+        station_standardized_name_dict = self.create_standardized_station_name_ref_dict(station_ref_df=station_ref_df)
+
+        return station_lat_lon_ref_dict, station_standardized_name_dict
+
+    def create_station_lat_lon_ref_dict(self, station_ref_df: pd.DataFrame) -> dict:
+        station_lat_lon_ref_dict = {}
         for _, row in station_ref_df.iterrows():
             station_name = row['station_name']
             lat = row['LatitudeDecimalDegree']
@@ -211,13 +232,23 @@ class ProjectMapper(OmeFaireMapper):
             if 'W' == lon_hem:
                 lon = float(-abs(float(lon)))
             
-            ref_dict[station_name] = {
+            station_lat_lon_ref_dict[station_name] = {
                 'lat': lat,
                 'lon': lon
             }
 
-        return ref_dict
+        return station_lat_lon_ref_dict
     
+    def create_standardized_station_name_ref_dict(self, station_ref_df: pd.DataFrame) -> dict:
+        station_standardized_name_dict = {}
+        for _, row in station_ref_df.iterrows():
+            standardized_name = row['station_name']
+            non_standardized_names = row['ome_station'].split(' | ')
+
+            station_standardized_name_dict[standardized_name] = non_standardized_names
+
+        return station_standardized_name_dict
+
     def update_mismatch_sample_names(self, sample_name: str) -> str:
         # Update sample metadata sample name to be the sample name that needs to match in experiment run metadata
         if sample_name in self.mismatch_samp_names_dict:
@@ -581,8 +612,24 @@ class ProjectMapper(OmeFaireMapper):
     def calculate_distance_btwn_lat_lon_points(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
             # Calculates the surface distance between two points in lat/lon using the great_circle package of GeoPy
             return geodesic((lat1, lon1), (lat2, lon2)).kilometers
+
+    def standardize_station_id(self, metadata_row: pd.Series) -> str:
+        station_id = metadata_row[self.faire_station_col]
+        sample_cat = metadata_row[self.faire_sample_category_col_name]
+
+        if sample_cat == 'sample':
+            # Standardizes station ids to be from the reference station sheet
+            for standard_station_name, unstandardized_station_list in self.standardized_station_dict.items():
+                if station_id in unstandardized_station_list or station_id == standard_station_name:
+                    return standard_station_name
         
-    def get_alternative_station_names(self, metadata_row: pd.Series) -> str:
+            # only print if not match was found after whole iteration
+            print(f"\033[33m{station_id} listed for sample {metadata_row[self.faire_sample_name_col]} is missing from station reference dictionary as an ome_station. Please check\033[0m]")
+            return station_id
+        else:
+            return station_id
+        
+    def get_stations_within_3km(self, metadata_row: pd.Series) -> str:
         # Get alternate station names based on lat/lon coords and grabs all stations within 1 km as alternate stations
         lat = metadata_row[self.faire_latitude_col]
         lon = metadata_row[self.faire_longitude_col]
@@ -595,7 +642,7 @@ class ProjectMapper(OmeFaireMapper):
             distances = []
             error_distances = []
 
-            for station_name, coords in self.alt_station_ref_dict.items():
+            for station_name, coords in self.station_lat_lon_ref_dict.items():
                 station_lat = coords['lat']
                 station_lon = coords ['lon']
 
@@ -603,8 +650,8 @@ class ProjectMapper(OmeFaireMapper):
                 distance = self.calculate_distance_btwn_lat_lon_points(lat1=lat, lon1=lon, lat2=station_lat, lon2=station_lon)
 
                 # Account for DBO1.9 which moved but coordinates haven't been updated yet - see email from Shaun
-                # Also make exception for DBO4.1
-                if distance <= 2 or (station_name == 'DBO1.9' and distance <=10.5) or (station_name == 'DBO4.1N' and distance <= 3):
+                # Also make exception for DBO4.1 (took this out since changing from 1 km to 3 km)
+                if distance <= 6 or (station_name == 'DBO1.9' and distance <=10.5):
                     distances.append({
                         'station': station_name,
                         'distance_km': distance,
@@ -625,7 +672,7 @@ class ProjectMapper(OmeFaireMapper):
             if alt_station_names:
                 return alt_station_names
             else:
-                print(ValueError(f"\033[31m{metadata_row[self.faire_sample_name_col]} listed station {listed_station}, but it is not picking up on any stations with 2 km based on its lat/lon {lat, lon}. Closest station is {error_distances[0]}!\033[0m]"))
+                print(ValueError(f"\033[31m{metadata_row[self.faire_sample_name_col]} listed station {listed_station}, but it is not picking up on any stations with 5 km based on its lat/lon {lat, lon}. Closest station is {error_distances[0]}!\033[0m]"))
         else:
             return 'not applicable: control sample'
     
