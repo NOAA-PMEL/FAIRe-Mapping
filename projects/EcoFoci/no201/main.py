@@ -7,10 +7,18 @@ import pandas as pd
 
 # TODO: add related mapping to tot_depth_water_col when GDBC downloads when net cdf finishes copying
 
-def replace_incorrect_lat_lon(df: pd.DataFrame):
+def replace_incorrect_lat_lon_and_fix_geo_loc(df: pd.DataFrame):
     # In NCBI correction email from Sean: E287_1B_NO20 (SAMN35688296) and E288_1B_NO20 (SAMN35688254) longitude need to be corrected to -168.23467
     df.loc[df['samp_name'].isin(['E287.1B.NO20', 'E287.2B.NO20']), 'decimalLongitude'] = '-168.23467'
 
+    def update_geo_loc(row: pd.Series) -> str:
+        # updates the geo_loc so that if the lat is greater than 66 its the Chukchi Sea - after discussing with Lee
+        if row['decimalLatitude'] > 66:
+            return "USA: Chukchi Sea"
+        else:
+            return "USA: Bering Sea"
+    
+    df['geo_loc_name'] = df.apply(update_geo_loc, axis=1)
     return df
 
 def create_no201_sample_metadata():
@@ -115,7 +123,7 @@ def create_no201_sample_metadata():
     # Step 4: fill in NA with missing not collected or not applicable because they are samples and adds NC to rel_cont_id
     sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))
 
-    sample_df_lon_fixed = replace_incorrect_lat_lon(df = sample_df)
+    sample_df_lon_fixed = replace_incorrect_lat_lon_and_fix_geo_loc(df = sample_df)
     
     # Step 5: fill NC data frame if there is - DO THIS ONLY IF negative controls were sequenced! They were not for SKQ21
     # nc_df = sample_mapper.fill_nc_metadata()
