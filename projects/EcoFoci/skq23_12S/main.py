@@ -11,7 +11,7 @@ import pandas as pd
 # TODO: geo_loc_name - write function to get geo_loc_name by lat/long
 # TODO: add par as user defined field
 
-def fix_ic_station_ids(df: pd.DataFrame) -> pd.DataFrame:
+def fix_stations(df: pd.DataFrame) -> pd.DataFrame:
     # According to email with Shaun Bell, the station names for the IC stations were incorrectly added (historically they were in a different order)
     # This function fixes station_id for these stations.
 
@@ -30,6 +30,9 @@ def fix_ic_station_ids(df: pd.DataFrame) -> pd.DataFrame:
         }
 
     df['station_id'] = df['station_id'].map(station_id_mapping).where(df['station_id'].str.startswith('IC'), df['station_id'])
+
+    # AFter solving station problems with Shannon, found errors where DBO2.09 was listed as station name for three samples, should be DBO2.0
+    df.loc[df['station_id'] == 'DBO2.09', 'station_id'] = 'DBO2.0'
 
     return df
 
@@ -174,7 +177,7 @@ def create_skq23_12s_sample_metadata():
     # Step 4: fill in NA with missing not collected or not applicable because they are samples and adds NC to rel_cont_id
     sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))
 
-    sample_df_updated_stations = fix_ic_station_ids(df=sample_df)
+    sample_df_updated_stations = fix_stations(df=sample_df)
     
     # Step 5: fill NC data frame if there is - DO THIS ONLY IF negative controls were sequenced! They were not for SKQ21
     # nc_df = sample_mapper.fill_nc_metadata()
