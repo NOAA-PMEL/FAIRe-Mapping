@@ -4,6 +4,8 @@ on:
     paths: 
       - 'runs/**/data/*.csv'
       - 'projects/**/**/data/*.csv'
+      - 'projects/**/data/*experimentRunMetadata.csv'
+      - 'projects/**/data/*sampleMetadata.csv'
 
 permissions:
   contents: read
@@ -57,6 +59,8 @@ jobs:
         files: | 
           runs/**/data/*.csv
           projects/**/**/data/*.csv
+          projects/**/data/*experimentRunMetadata.csv
+          projects/**/data/*sampleMetadata.csv
           
     - name: Validate CSV files
       if: steps.changed-files.outputs.any_changed == 'true'
@@ -72,8 +76,8 @@ jobs:
         # Function to determine model class
         get_model_class() {
           case "$1" in
-            *runs/*/data/*.csv) echo "ExperimentRunMetadata" ;;
-            *projects/*/data/*.csv) echo "SampleMetadata" ;;
+            *runs/*/data/*.csv|projects/**/data/*experimentRunMetadata.csv) echo "ExperimentRunMetadata" ;;
+            *projects/*/data/*.csv|projects/**/data/*sampleMetadata.csv) echo "SampleMetadata" ;;
             *) echo "SampleMetadata" ;;
           esac
         }
