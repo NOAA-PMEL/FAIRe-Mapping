@@ -225,6 +225,7 @@ class SampleMetadata(BaseModel):
     station_ids_within_3km_of_lat_lon: Optional[str] = Field(default=None)
     sunrise_time_utc: Optional[str] = Field(default=None)
     sunset_time_utc: Optional[str] = Field(default=None)
+    verbatimStationName: Optional[str] = Field(default=None)
 
     
     # class variables loaded once and shared across all datasets

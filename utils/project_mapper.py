@@ -35,7 +35,8 @@ class ProjectMapper(OmeFaireMapper):
     faire_latitude_col = 'decimalLatitude'
     faire_longitude_col = 'decimalLongitude'
     faire_eventDate_col = 'eventDate'
-    faire_station_col = 'station_id'
+    faire_station_id_col = 'station_id'
+    faire_verbatim_station_name_col = 'verbatimStationName'
     faire_alt_station_col = 'station_ids_within_3km_of_lat_lon'
     faire_sunrise_col = 'sunrise_time_utc'
     faire_sunset_col = 'sunset_time_utc'
@@ -68,7 +69,6 @@ class ProjectMapper(OmeFaireMapper):
         station_dicts = self.create_station_ref_dicts()
         self.station_lat_lon_ref_dict = station_dicts[0]
         self.standardized_station_dict = station_dicts[1]
-        print([key for key, value in self.standardized_station_dict.items() if len(value) > 0 and '' not in value])
 
     def process_whole_project_and_save_to_excel(self):
 
@@ -202,8 +202,9 @@ class ProjectMapper(OmeFaireMapper):
         # Add alternative station names
         df[self.faire_alt_station_col] = df.apply(lambda row: self.get_stations_within_3km(metadata_row=row), axis=1)
 
-        # standardize station names
-        df[self.faire_station_col] = df.apply(lambda row: self.standardize_station_id(metadata_row=row), axis=1)
+        # first create verbatimStationName and copy station id over, then standardize station ids
+        df[self.faire_verbatim_station_name_col] = df[self.faire_station_id_col]
+        df[self.faire_station_id_col] = df.apply(lambda row: self.standardize_station_id(metadata_row=row), axis=1)
 
         return df
 
@@ -614,7 +615,7 @@ class ProjectMapper(OmeFaireMapper):
             return geodesic((lat1, lon1), (lat2, lon2)).kilometers
 
     def standardize_station_id(self, metadata_row: pd.Series) -> str:
-        station_id = metadata_row[self.faire_station_col]
+        station_id = metadata_row[self.faire_station_id_col]
         sample_cat = metadata_row[self.faire_sample_category_col_name]
 
         if sample_cat == 'sample':
@@ -633,7 +634,7 @@ class ProjectMapper(OmeFaireMapper):
         # Get alternate station names based on lat/lon coords and grabs all stations within 1 km as alternate stations
         lat = metadata_row[self.faire_latitude_col]
         lon = metadata_row[self.faire_longitude_col]
-        listed_station = metadata_row[self.faire_station_col]
+        listed_station = metadata_row[self.faire_station_id_col]
 
         samp_cat = metadata_row[self.faire_sample_category_col_name]
         if samp_cat == 'sample':
@@ -651,7 +652,7 @@ class ProjectMapper(OmeFaireMapper):
 
                 # Account for DBO1.9 which moved but coordinates haven't been updated yet - see email from Shaun
                 # Also make exception for DBO4.1 (took this out since changing from 1 km to 3 km)
-                if distance <= 6 or (station_name == 'DBO1.9' and distance <=10.5):
+                if distance <= 3 or (station_name == 'DBO1.9' and distance <=10.5):
                     distances.append({
                         'station': station_name,
                         'distance_km': distance,
