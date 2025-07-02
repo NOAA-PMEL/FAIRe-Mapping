@@ -428,7 +428,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                 locations.append(li.get_text(strip=True))
 
         return locations
-
+        
     def extract_replicate_sample_parent(self, sample_name):
         # Extracts the E number in the sample name
         if pd.notna(sample_name):
@@ -613,7 +613,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         for idx, region in marine_regions.iterrows():
             if region.geometry.contains(point):
                 sea = region.get('NAME')
-
+            
                 if sea == 'Arctic Ocean':
                     geo_loc = sea
                 else:
@@ -628,6 +628,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                         f'There is no geographic location in INSDC that matches {geo_loc_name}, check sea_name and try again')
                 else:
                     return geo_loc
+            # else:
+            #     raise ValueError(f"No sea is found at the lat/lon ({lat}/{lon}) of sample: {metadata_row[self.sample_metadata_sample_name_column]}")
 
     def calculate_env_local_scale(self, depth: float) -> str:
         # uses the depth to assign env_local_scale
@@ -976,3 +978,13 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
        
         return final_sample_df
    
+    def add_constant_value_based_on_str_in_col(self, metadata_row: pd.Series, col_name: str, str_condition: str, pos_condition_const: str, neg_condition_const: str) -> str:
+        # Adds a constant value based on a str being present in a column. col_value is the column value where the str will or won't be present, 
+        # str_condition is the str that might be present to test against
+        # pos_condition_const is the value that should be return if the str_condition is present in col_value
+        # neg_condition_const is the value that should be returned if the str_condition is absent in col_value
+        col_value = metadata_row[col_name]
+        if str_condition.lower() in col_value.lower():
+            return pos_condition_const
+        else:
+            return neg_condition_const

@@ -143,6 +143,16 @@ def create_dy2306_sample_metadata():
                 lambda row: sample_mapper.calculate_dna_yield(metadata_row=row, sample_vol_metadata_col=sample_vol_col),
                 axis = 1
             )
+
+        elif faire_col == 'nucl_acid_ext' or faire_col == 'nucl_acid_ext_modify':
+            metadata_cols = metadata_col.split(' | ')
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.add_constant_value_based_on_str_in_col(metadata_row=row, 
+                                                                                 col_name=metadata_cols[0], 
+                                                                                 str_condition='QiaVac', 
+                                                                                 pos_condition_const=metadata_cols[2],
+                                                                                 neg_condition_const=metadata_cols[1]),
+                                                                                 axis=1)
     
     # Step 4: fill in NA with missing not collected or not applicable because they are samples and adds NC to rel_cont_id
     sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))

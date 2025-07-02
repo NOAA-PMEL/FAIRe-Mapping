@@ -78,10 +78,12 @@ def create_dy2012_sample_metadata():
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(sample_mapper.convert_wind_degrees_to_direction)
         
         elif faire_col == 'geo_loc_name':
+            lat = metadata_col.split(' | ')[0]
+            lon = metadata_col.split(' | ')[1]
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
-                lambda row: sample_mapper.format_geo_loc(metadata_row=row, geo_loc_metadata_col=metadata_col),
-                axis=1
-            )
+                lambda row: sample_mapper.find_geo_loc_by_lat_lon(metadata_row=row, metadata_lat_col=lat, metadata_lon_col=lon), 
+                    axis = 1
+                )
 
         elif faire_col == 'prepped_samp_store_dur':
             date_col_names = metadata_col.split(' | ')

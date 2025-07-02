@@ -95,11 +95,11 @@ def create_skq21_12S_sample_metadata():
                 axis=1
                 )  
                 
-        elif faire_col == 'geo_loc_name':
-            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
-                lambda row: sample_mapper.format_geo_loc(metadata_row=row, geo_loc_metadata_col=metadata_col),
-                axis=1
-            )
+                # geo loc calculated from lat lon
+                sample_metadata_results['geo_loc_name'] = sample_mapper.sample_metadata_df.apply(
+                    lambda row: sample_mapper.find_geo_loc_by_lat_lon(metadata_row=row, metadata_lat_col='decimalLatitude', metadata_lon_col='decimalLongitude'), 
+                        axis = 1
+                    )
 
         # eventDate needs to be proecessed before prepped_samp_store_dur
         elif faire_col == 'eventDate' or faire_col == 'prepped_samp_store_dur':

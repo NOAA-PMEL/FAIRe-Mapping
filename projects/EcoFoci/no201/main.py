@@ -5,21 +5,7 @@ from utils.sample_metadata_mapper import FaireSampleMetadataMapper
 from utils.experiment_run_metadata_mapper import ExperimentRunMetadataMapper
 import pandas as pd
 
-# TODO: add related mapping to tot_depth_water_col when GDBC downloads when net cdf finishes copying
-
-def replace_incorrect_lat_lon_and_fix_geo_loc(df: pd.DataFrame):
-    # In NCBI correction email from Sean: E287_1B_NO20 (SAMN35688296) and E288_1B_NO20 (SAMN35688254) longitude need to be corrected to -168.23467
-    df.loc[df['samp_name'].isin(['E287.1B.NO20', 'E287.2B.NO20']), 'decimalLongitude'] = '-168.23467'
-
-    def update_geo_loc(row: pd.Series) -> str:
-        # updates the geo_loc so that if the lat is greater than 66 its the Chukchi Sea - after discussing with Lee
-        if row['decimalLatitude'] > 66:
-            return "USA: Chukchi Sea"
-        else:
-            return "USA: Bering Sea"
-    
-    df['geo_loc_name'] = df.apply(update_geo_loc, axis=1)
-    return df
+# switched direct mapping of geo_loc_name by Area.within.region because trying to keep consistent as Shaun Bell suggested. Just using IHO reference for this.
 
 def create_no201_sample_metadata():
     
@@ -60,10 +46,12 @@ def create_no201_sample_metadata():
             )
 
         elif faire_col == 'geo_loc_name':
+            lat = metadata_col.split(' | ')[0]
+            lon = metadata_col.split(' | ')[1]
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
-                lambda row: sample_mapper.format_geo_loc(metadata_row=row, geo_loc_metadata_col=metadata_col),
-                axis=1
-            )
+                lambda row: sample_mapper.find_geo_loc_by_lat_lon(metadata_row=row, metadata_lat_col=lat, metadata_lon_col=lon), 
+                    axis = 1
+                )
         
         elif faire_col == 'eventDate':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(
@@ -123,14 +111,13 @@ def create_no201_sample_metadata():
     # Step 4: fill in NA with missing not collected or not applicable because they are samples and adds NC to rel_cont_id
     sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))
 
-    sample_df_lon_fixed = replace_incorrect_lat_lon_and_fix_geo_loc(df = sample_df)
-    
+
     # Step 5: fill NC data frame if there is - DO THIS ONLY IF negative controls were sequenced! They were not for SKQ21
     # nc_df = sample_mapper.fill_nc_metadata()
-    controls_df = sample_mapper.finish_up_controls_df(final_sample_df=sample_df_lon_fixed)
+    controls_df = sample_mapper.finish_up_controls_df(final_sample_df=sample_df)
 
     # Step 6: Combine all mappings at once (add nc_df if negative controls were sequenced)
-    faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df_lon_fixed, controls_df])
+    faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df, controls_df])
     # Add rel_cont_id
     faire_sample_df_updated = sample_mapper.add_extraction_blanks_to_rel_cont_id(final_sample_df=faire_sample_df)
 
