@@ -15,8 +15,8 @@ asv_counts_tsvs_for_run: #dloop left out because Sean said dLoop did not work fo
     secondary_path: /home/poseidon/mcallister/eDNA_bioinformatics/OSU/OSU894_Redo1_NorsemanWOAC1_lane1/Machida18S_REVAMP_out/dada2/ASVs_counts.tsv
     merged: /home/poseidon/mcallister/eDNA_bioinformatics/Run3/Machida18S_REVAMP_MERGE_NEW/dada2/ASVs_counts.tsv
   'Parada16S': 
-  secondary_path: /home/poseidon/mcallister/eDNA_bioinformatics/OSU/MiSeq1034_NorsemanWOAC_Pool1_lane2/Parada16S_REVAMP_out/dada2/ASVs_counts.tsv
-  merged: /home/poseidon/mcallister/eDNA_bioinformatics/Run3_rerun/Parada16S_REVAMP_merged/dada2/ASVs_counts.tsv
+    secondary_path: /home/poseidon/mcallister/eDNA_bioinformatics/OSU/MiSeq1034_NorsemanWOAC_Pool1_lane2/Parada16S_REVAMP_out/dada2/ASVs_counts.tsv
+    merged: /home/poseidon/mcallister/eDNA_bioinformatics/Run3_rerun/Parada16S_REVAMP_merged/dada2/ASVs_counts.tsv
 otu_num_tax_assigned_files_for_run: # The files used to calculate the otu_num_tax_assigned - Sean said it depends on the version of taxonomy we are using
   'Machida18S': /home/poseidon/mcallister/eDNA_bioinformatics/Run3/Machida18S_REVAMP_MERGE_NEW/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
   'Parada16S': /home/poseidon/mcallister/eDNA_bioinformatics/Run3_rerun/Parada16S_REVAMP_merged/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
