@@ -40,6 +40,8 @@ class ProjectMapper(OmeFaireMapper):
     faire_alt_station_col = 'station_ids_within_3km_of_lat_lon'
     faire_sunrise_col = 'sunrise_time_utc'
     faire_sunset_col = 'sunset_time_utc'
+    faire_input_read_count_col = 'input_read_count'
+    faire_output_read_count_col = 'output_read_count'
     project_sheet_term_name_col_num = 3
     project_sheet_assay_start_col_num = 5
     project_sheet_project_level_col_num = 4
@@ -189,8 +191,21 @@ class ProjectMapper(OmeFaireMapper):
         combined_exp_run_df = pd.DataFrame()
         combined_exp_run_df = pd.concat(associated_exp_run_dfs, ignore_index=True)
 
-        return combined_exp_run_df
+        exp_run_df_with_merged_counts = self.update_output_input_counts_for_merged_runs(exp_df = combined_exp_run_df)
 
+        return exp_run_df_with_merged_counts
+
+    def update_output_input_counts_for_merged_runs(self, exp_df: pd.DataFrame) -> pd.DataFrame:
+        # For OSU/Run3 where there will be the same sample_name and assay_name (part of assay name since different for runs)
+        exp_df['assay_group'] = exp_df[self.faire_assay_name_col].str.split('_', n=1).str[0]
+        exp_df[self.faire_input_read_count_col] = exp_df.groupby([self.faire_sample_name_col, 'assay_group'])[self.faire_input_read_count_col].transform('sum')
+        exp_df[self.faire_output_read_count_col] = exp_df.groupby([self.faire_sample_name_col, 'assay_group'])[self.faire_output_read_count_col].transform('sum')
+
+        # Drop assay_group
+        exp_df = exp_df.drop(columns=['assay_group'])
+
+        return exp_df
+    
     def add_post_sample_metadata_calculated_cols(self, df: pd.DataFrame) -> pd.DataFrame:
         # Adds columns to sample metadata that are calculated from other columns. (e.g. sunset, sunrise, atlernative station names)
         
