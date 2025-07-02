@@ -539,7 +539,6 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         # normalize marker to shorthand
         marker = marker_to_shorthand_mapping.get(metadata_row[self.run_metadata_marker_col_name])
         sample_name = metadata_row[self.run_metadata_sample_name_column]
-
         # Get the count
         try:
             count = self.asv_data_dict.get(marker).get(sample_name).get(faire_col)
