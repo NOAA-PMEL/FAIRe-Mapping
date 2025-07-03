@@ -139,10 +139,11 @@ class OmeFaireMapper:
         
         controlled_vocab = self.extract_controlled_vocab(faire_attribute=faire_attribute)
         # make static_value a list (to account for more than one value as the static_value)
+
         value = value.split(' | ') if '|' in value else [value]
 
         for word in value:
-            if word not in controlled_vocab and word not in self.faire_missing_values:
+            if word not in controlled_vocab and word not in self.faire_missing_values and 'other:' not in word:
                 warnings.warn(f'The following {faire_attribute} does not exist in the FAIRe standard controlled vocabulary: {word}, the allowed values are {controlled_vocab}')
             else:
                 new_value = ' | '.join(value)
@@ -238,7 +239,7 @@ class OmeFaireMapper:
 
         faire_final_df = pd.concat([faire_template_df, final_df], ignore_index=True)
 
-        faire_final_df.to_csv(csv_path, quoting=csv.QUOTE_NONNUMERIC)
+        faire_final_df.to_csv(csv_path, quoting=csv.QUOTE_NONNUMERIC, index=False)
 
     def add_final_df_to_FAIRe_excel(self, excel_file_to_read_from: str, sheet_name: str, faire_template_df: pd.DataFrame):
 

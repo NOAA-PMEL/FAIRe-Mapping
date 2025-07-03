@@ -1,6 +1,7 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 from typing import Literal, Optional
 import math
+import warnings
 
 # TODO: Need to add validator for controlled vocabulary attributes to have other: <description> (e.g. lib_conc_unit)
 # TODO: Need to add validator for pipe separated string lists (associatedSequences)
@@ -39,6 +40,13 @@ class ExperimentRunMetadata(BaseModel):
                     (isinstance(v, float) and math.isnan(v))):
                     return None
                 return v
+    
+    @model_validator(mode='after')
+    def valdate_input_read_count_is_bigger_than_output_read_count(self):
+        # Checks ito make sure that input_read_count is bigger than output_read_count
+        if self.input_read_count < self.output_read_count:
+            raise ValueError(f"Sample: {self.samp_name} has an input_read_count of {self.input_read_count} which is less than the output_read_count of {self.output_read_count}")
+        return self
 
 
 

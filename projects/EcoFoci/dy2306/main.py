@@ -5,7 +5,6 @@ from utils.sample_metadata_mapper import FaireSampleMetadataMapper
 from utils.experiment_run_metadata_mapper import ExperimentRunMetadataMapper
 import pandas as pd
 
-
 def create_dy2306_sample_metadata():
     
     # initiate mapper
@@ -89,8 +88,27 @@ def create_dy2306_sample_metadata():
                 lambda row: sample_mapper.convert_min_depth_from_minus_one_meter(metadata_row=row, max_depth_col_name='FinalDepth'),
                 axis=1
             )
+            
             sample_metadata_results['env_local_scale'] = sample_mapper.sample_metadata_df['FinalDepth'].apply(sample_mapper.calculate_env_local_scale)
-        
+
+            # Get stations info
+            station_id_metadata_col = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('station_id')
+            station_id = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.get_station_id_from_unstandardized_station_name(metadata_row=row, unstandardized_station_name_col=station_id_metadata_col), 
+                axis=1
+            )
+
+            sample_metadata_results['station_id'] = station_id
+            sample_mapper.sample_metadata_df['station_id'] = station_id
+
+            # Use standardized station to get stations within 3 km
+            station_metadata_cols = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('station_ids_within_3km_of_lat_lon').split(' | ')
+            lat_col = station_metadata_cols[1]
+            lon_col = station_metadata_cols[2]
+            sample_metadata_results['station_ids_within_3km_of_lat_lon'] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.get_stations_within_3km(metadata_row=row, station_name_col='station_id', lat_col=lat_col, lon_col=lon_col), 
+                axis=1)
+    
         
         elif faire_col == 'geo_loc_name':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
@@ -143,6 +161,16 @@ def create_dy2306_sample_metadata():
                 lambda row: sample_mapper.calculate_dna_yield(metadata_row=row, sample_vol_metadata_col=sample_vol_col),
                 axis = 1
             )
+
+        elif faire_col == 'nucl_acid_ext' or faire_col == 'nucl_acid_ext_modify':
+            metadata_cols = metadata_col.split(' | ')
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.add_constant_value_based_on_str_in_col(metadata_row=row, 
+                                                                                 col_name=metadata_cols[0], 
+                                                                                 str_condition='QiaVac', 
+                                                                                 pos_condition_const=metadata_cols[2],
+                                                                                 neg_condition_const=metadata_cols[1]),
+                                                                                 axis=1)
     
     # Step 4: fill in NA with missing not collected or not applicable because they are samples and adds NC to rel_cont_id
     sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))

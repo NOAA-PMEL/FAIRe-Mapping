@@ -7,6 +7,9 @@ from pathlib import Path
 import math
 from datetime import datetime
 from collections import defaultdict
+import xarray as xr
+
+#TODO: Add beam_attenuation and beam_attenuation_units? and fix beam_attenutation_units to be unit
  # Field(default=None) is for USer defined fields that might be missing in each csv
 # TODO: Add custom data validation for controlled vocabs that accept 'other: <description>' (samp_category, neg_cont_type, verbatimCoordinateSystem, verbatimSRS,
 # samp_size_unit, samp_store_temp, samp_store_sol, precip_chem_prep, filter_material)
@@ -79,7 +82,7 @@ class SampleMetadata(BaseModel):
     size_frac: Optional[float] = Field(description = "in µm")
     filter_diameter: Optional[float] = Field(description = "in mm")
     filter_surface_area: Optional[float] = Field(description = "in mm2")
-    filter_material: Optional[Literal['cellulose', 'cellulose ester',  'glass fiber', 'thermoplastic membrane', 'track etched polycarbonate', ' nylon', 'polyethersulfone']]
+    filter_material: Optional[Literal['cellulose', 'cellulose ester',  'glass fiber', 'thermoplastic membrane', 'track etched polycarbonate', ' nylon', 'polyethersulfone', 'other: polycarbonate membrane']]
     filter_name: Optional[str]
     precip_chem_prep: Optional[Literal['ethanol', 'isopropanol', 'sodium chloride']]
     precip_force_prep: Optional[float] = Field(description = "x g")
@@ -89,10 +92,7 @@ class SampleMetadata(BaseModel):
     prepped_samp_store_sol: Optional[Literal['ethanol', 'sodium acetate', 'longmire', 'lysis buffer']]
     prepped_samp_store_dur: Optional[str]
     prep_method_additional: Optional[str] 
-    assay_name: Optional[Union[Literal['ssu18sv9_amaralzettler', 'dloopv1.5v4_baker', 'lsu16s_2434-2571_kelly', 
-                        'COI_1835-2198_lerayfolmer', 'ssu18sv8_machida', 'ssu18sv8_machida_OSUmod', 
-                        'ssu16sv4v5_parada', 'ssu16sv4v5_parada_OSUmod', 'ssu18sv4_stoeck', 
-                        'ITS1_sterling', 'ssu12sv5v6_mifish_u_sales'], None]] = None
+    assay_name: Optional[str] = Field(default=None)
     samp_weather: Optional[str]
     minimumDepthInMeters: Optional[float]
     maximumDepthInMeters: Optional[float]
@@ -104,7 +104,7 @@ class SampleMetadata(BaseModel):
     ph: Optional[float]
     ph_meth: Optional[str]
     salinity: Optional[float] = Field(description = 'partical salinity unit (psu)')
-    salinity_flag: Optional[int] = Field(default=None)
+    salinity_WOCE_flag: Optional[int] = Field(default=None)
     suspend_part_matter: Optional[float] = Field(description = 'in mg/L')
     tidal_stage: Optional[str]
     turbidity: Optional[float] = Field(description = 'nephelometric turbidity unit (ntu)')
@@ -114,7 +114,6 @@ class SampleMetadata(BaseModel):
     wind_speed: Optional[float] = Field(descripton = 'in m/s')
     diss_inorg_carb: Optional[float]
     diss_inorg_carb_unit: Optional[str]
-    diss_inorg_carb_flag: Optional[int] = Field(default=None)
     diss_inorg_nitro: Optional[float]
     diss_inorg_nitro_unit: Optional[Literal['µM', 'mol/m3', 'mmol/m3', 'µmol/m3 ', 'mol/L', 'mmol/L', 'µmol/L', 'mg/L',  'µg/L', 'µmol/kg', 'mmol/kg ', 'parts per million']]
     diss_org_carb: Optional[float]
@@ -122,7 +121,7 @@ class SampleMetadata(BaseModel):
     diss_org_nitro: Optional[float]
     diss_org_nitro_unit: Optional[Literal['µM', 'mol/m3', 'mmol/m3', 'µmol/m3 ', 'mol/L', 'mmol/L', 'µmol/L', 'mg/L',  'µg/L', 'µmol/kg', 'mmol/kg ', 'parts per million']]
     diss_oxygen: Optional[float]
-    diss_oxygen_unit: Optional[Literal['mg/L', 'µg/L', 'µM', 'mol/m3', 'mmol/m3', 'µmol/m3', 'mol/L', 'mmol/L', 'µmol/L' , 'mg/L ', 'µg/L x', 'mL/L', 'mmol/kg', 'parts per million']]
+    diss_oxygen_unit: Optional[Literal['mg/L', 'µg/L', 'µM', 'mol/m3', 'mmol/m3', 'µmol/m3', 'mol/L', 'mmol/L', 'µmol/L' , 'mg/L ', 'µg/L x', 'mL/L', 'mmol/kg', 'parts per million', 'other: µmol/kg']]
     tot_diss_nitro: Optional[float]
     tot_diss_nitro_unit: Optional[Literal['µM', 'mol/m3', 'mmol/m3', 'µmol/m3 ', 'mol/L', 'mmol/L', 'µmol/L', 'mg/L',  'µg/L', 'µmol/kg', 'mmol/kg ', 'parts per million']]
     tot_inorg_nitro: Optional[float]
@@ -145,10 +144,10 @@ class SampleMetadata(BaseModel):
     part_org_nitro_unit: Optional[Literal['µM', 'mol/m3', 'mmol/m3', 'µmol/m3 ', 'mol/L', 'mmol/L', 'µmol/L', 'mg/L',  'µg/L', 'µmol/kg', 'mmol/kg ', 'parts per million']]
     nitrate: Optional[float]
     nitrate_unit: Optional[Literal['µM', 'mol/m3', 'mmol/m3', 'µmol/m3 ', 'mol/L', 'mmol/L', 'µmol/L', 'mg/L',  'µg/L', 'µmol/kg', 'mmol/kg ', 'parts per million']]
-    nitrate_flag: Optional[str] = Field(default=None)
+    nitrate_WOCE_flag: Optional[str] = Field(default=None)
     nitrite: Optional[float]
     nitrite_unit: Optional[Literal['µM', 'mol/m3', 'mmol/m3', 'µmol/m3 ', 'mol/L', 'mmol/L', 'µmol/L', 'mg/L',  'µg/L', 'µmol/kg', 'mmol/kg ', 'parts per million']]
-    nitrite_flag: Optional[int] = Field(default=None)
+    nitrite_WOCE_flag: Optional[int] = Field(default=None)
     nitro: Optional[float]
     nitro_unit: Optional[Literal['µM', 'mol/m3', 'mmol/m3', 'µmol/m3 ', 'mol/L', 'mmol/L', 'µmol/L', 'mg/L',  'µg/L', 'µmol/kg', 'mmol/kg ', 'parts per million']]
     org_carb: Optional[float]
@@ -158,12 +157,12 @@ class SampleMetadata(BaseModel):
     org_nitro: Optional[float]
     org_nitro_unit: Optional[Literal['µM', 'mol/m3', 'mmol/m3', 'µmol/m3 ', 'mol/L', 'mmol/L', 'µmol/L', 'mg/L',  'µg/L', 'µmol/kg', 'mmol/kg ', 'parts per million']]
     ammonium: Optional[float]
-    ammonium_unit: Optional[Literal['µmol/L']]
-    ammonium_flag: Optional[int] = Field(default=None)
+    ammonium_unit: Optional[Literal['µmol/L', 'µmol/kg']]
+    ammonium_WOCE_flag: Optional[int] = Field(default=None)
     carbonate: Optional[float]
     carbonate_unit: Optional[Literal['']]  # need to add cv here when known
     hydrogen_ion: Optional[float] = Field(default=None)
-    hydrogen_ion_unit: Optional[int] = Field(default=None)
+    hydrogen_ion_unit: Optional[Literal['nmol/kg']] = Field(default=None)
     nitrate_plus_nitrite: Optional[float]
     nitrate_plus_nitrite_unit: Optional[Literal['µM']]  # need to add cv here when known
     omega_arag: Optional[float]
@@ -171,21 +170,36 @@ class SampleMetadata(BaseModel):
     pco2: Optional[float]
     pco2_unit: Optional[Literal['uatm']]
     phosphate: Optional[float]
-    phosphate_unit: Optional[Literal['µmol/L', 'µM']]
-    phosphate_flag: Optional[int] = Field(default=None)
+    phosphate_unit: Optional[Literal['µmol/L', 'µM', 'µmol/kg']]
+    phosphate_WOCE_flag: Optional[int] = Field(default=None)
     pressure: Optional[float]
     pressure_unit: Optional[Literal['dbar']]
     silicate: Optional[float]
-    silicate_unit: Optional[Literal['µmol/L', 'µM']]
-    silicate_flag: Optional[int] = Field(default=None)
+    silicate_unit: Optional[Literal['µmol/L', 'µM', 'µmol/kg']]
+    silicate_WOCE_flag: Optional[int] = Field(default=None)
     tot_alkalinity: Optional[float]
     tot_alkalinity_unit: Optional[Literal['µmol/kg']]
-    tot_alkalinity_flag: Optional[int] = Field(default=None)
+    tot_alkalinity_WOCE_flag: Optional[int] = Field(default=None)
     transmittance: Optional[float]
     transmittance_unit: Optional[Literal['']] # need to add cv here when known
     serial_number: Optional[str]
     line_id: Optional[str]
-    station_id: Optional[str]
+    station_id: Optional[Literal['BF2', 'DBO1.1', 'DBO1.2', 'DBO1.3', 'DBO1.4', 'DBO1.5', 'DBO1.6', 'DBO1.7', 'DBO1.8', 'DBO1.9', 
+               'DBO1.10', 'DBO2.0', 'DBO2.1', 'DBO2.2', 'DBO2.3', 'DBO2.4', 'DBO2.5', 'DBO2.6', 'DBO2.7', 
+               'DBO3.1', 'DBO3.2', 'DBO3.3', 'DBO3.4', 'DBO3.5', 'DBO3.6', 'DBO3.7', 'DBO3.8', 'DBO4.1', 
+               'DBO4.2', 'DBO4.3', 'DBO4.4', 'DBO4.5', 'DBO4.6', 'DBO5.1', 'DBO5.2', 'DBO5.3', 'DBO5.4', 'DBO5.5', 
+               'DBO5.6', 'DBO5.7', 'DBO5.8', 'DBO5.9', 'DBO5.10', 'DBO4.1N', 'DBO4.2N', 'DBO4.3N', 'DBO4.4N', 
+               'DBO4.5N', 'DBO4.6N', 'IC02', 'IC03', 'IC04', 'IC05', 'IC06', 'IC07', 'IC08', 'IC09', 'IC10', 
+               'IC01', 'IC11', 'IC12', '70M40', '70M39/M5W', '70M38/M5N', '70m38/M5', 'M5S', 'M5E', '70M36', '70M35', 
+               '70M34', '70M33', '70M32', '70M31', '70M30', '70M29', '70M28', '70M27', '70M26', '70M25', '70M24', 
+               '70M23', 'M4N', '70M22/M4W', '70M21/M4', 'M4E', '70M19/M4S', '70M18', '70M17', '70M16', '70M15', '70M14', 
+               '70M13', '70M12', '70M11', '70M10', '70M09', '70M08', '70M07', '70M06', '70M05', '70M04', '70M03', '70M02/M2', 
+               'M2S', 'M2W', 'M2N', 'M2E', 'Unimak box S1', 'Unimak box S2', 'Unimak box S3', 'Unimak box S4', 
+               'Unimak box W4', 'Unimak box W3', 'Unimak box W2', 'Unimak box W1', 'Unimak box E1', 'Unimak box E2', 
+               'Unimak box E3', 'Unimak box N1', 'Unimak box N2', 'Unimak box N3', 'Unimak box N4', 'Unimak box N5', 
+               'Unimak box N6', 'AW5', 'AW4', 'AW3', 'AW2', 'AW1', 'AE1', 'AE2', 'AE3', 'AE4', 'AE5', 'UT1', 'UT2', 'UT3', 
+               'UT5', 'UT4', 'BS-14', 'CEO', 'CK9', 'UTN3', 'UTN2', 'UTN1', 'BRS-5', 'BRS-3', 'BRS-1', 'BS8', 'BS6', 'BS3', 
+               'C2', 'KUM-2A', 'BS-1', 'M8', 'BS1']]
     ctd_cast_number: Optional[int]
     ctd_bottle_number: Optional[int]
     replicate_number: Optional[int]
@@ -209,6 +223,10 @@ class SampleMetadata(BaseModel):
     collected_by: Optional[str]
     meaurements_from: Optional[str]
     niskin_flag: Optional[int] = Field(default=None)
+    station_ids_within_3km_of_lat_lon: Optional[str] = Field(default=None)
+    sunrise_time_utc: Optional[str] = Field(default=None)
+    sunset_time_utc: Optional[str] = Field(default=None)
+    verbatimStationName: Optional[str] = Field(default=None)
 
     
     # class variables loaded once and shared across all datasets
@@ -250,7 +268,7 @@ class SampleMetadata(BaseModel):
         if self.samp_category == 'sample':
             for attribute in required:
                 if attribute is None:
-                    raise ValueError(f"Sample {self.samp_name} mus have {attribute}")
+                    raise ValueError(f"Sample {self.samp_name} must have {attribute}")
         return self
 
     @field_validator('decimalLatitude')
@@ -265,13 +283,14 @@ class SampleMetadata(BaseModel):
     
     @field_validator('decimalLongitude')
     @classmethod
-    def validate_latitude(cls, v, info):
+    def validate_longitude(cls, v, info):
         # only apply to sample records, not controls
         if info.data.get('samp_category') != 'sample':
             return v
         if not(-180 <= v <= 180):
             raise ValueError(f"Longitude {v} is outside valid latitude range (-180 to 180)")
         return v
+    
     
     @field_validator('eventDate')
     @classmethod
@@ -354,13 +373,28 @@ class SampleMetadata(BaseModel):
                 supposed_sea = region.get('NAME')
                 # Check if any of the arctic keywords exist in the supposed sea to make sure the lat/lon coords are indeed in the Arctic
                 if not any(keyword in supposed_sea.lower() for keyword in self._artic_region_keywords):
-                    raise ValueError(f"{self.samp_name} has a lat/lon with found in the area of {supposed_sea}, which does not have keywords {self._artic_region_keywords}")
+                    raise ValueError(f"{self.samp_name} has a lat/lon ({self.decimalLatitude}/{self.decimalLongitude}) found in the area of {supposed_sea}, which does not have keywords {self._artic_region_keywords}")
                 
                 # Check geo_loc kind of matches
                 if supposed_sea.lower().strip() != geo_loc_sea_area.lower().strip():
-                    warnings.warn(f"{self.samp_name} has lat lon coordinates that point to {supposed_sea}, but geo_loc is listed as {geo_loc_sea_area}, double check this!")
+                    warnings.warn(f"{self.samp_name} (ctd:{self.ctd_cast_number}) has lat/lon coordinates ({self.decimalLatitude}/{self.decimalLongitude}) that point to {supposed_sea}, but geo_loc is listed as {geo_loc_sea_area}, double check this!")
                 break
         return self # Always return self in mode='after' validators
+
+    @model_validator(mode='after')
+    def validate_depth_broadly(self):
+        """Validates that the max/and min depth are not deeper than the tot_depth"""
+
+        # skip validation for non-sample records that won't have lat lon or geo_loc
+        if self.samp_category != 'sample':
+            return self
+        
+        # TODO: may need to adjust difference threshold depending on case
+        if self.maximumDepthInMeters > self.tot_depth_water_col and (self.tot_depth_water_col - self.maximumDepthInMeters) > 1:
+            warnings.warn(f"{self.samp_name} (cast:{self.ctd_cast_number}, bottle:{self.ctd_bottle_number}) appears to have a max depth ({self.maximumDepthInMeters}) greater than the total depth ({self.tot_depth_water_col}).")
+        if self.minimumDepthInMeters > self.tot_depth_water_col and (self.tot_depth_water_col - self.maximumDepthInMeters) > 1:
+            warnings.warn(f"{self.samp_name} appears to have a max depth ({self.minimumDepthInMeters}) greater than the total depth ({self.tot_depth_water_col}).")
+        return self
 
     @model_validator(mode='after')
     def validate_neg_cont_type_conditions(self):
@@ -378,6 +412,18 @@ class SampleMetadata(BaseModel):
                 raise ValueError(f"{self.samp_name}: pos_cont_type is required when samp_category is 'positive control'")
         return self
     
+    @model_validator(mode='after')
+    def valdate_station_id_with_stations_within_3km(self):
+        # Checks if the station_id exists in the station_ids_within_3km_of_lat_lon, and if it doesn't warns
+        if self.samp_category != 'sample':
+            return self
+        if self.station_ids_within_3km_of_lat_lon != None:
+            alt_stations = self.station_ids_within_3km_of_lat_lon.split(' | ')
+            if self.station_id not in alt_stations:
+                warnings.warn(f"{self.samp_name} has station {self.station_id} listed, but it was not picked up in the stations within 3 km: {self.station_ids_within_3km_of_lat_lon}") 
+            return self
+        else:
+            return self
 
 ## Notes: without @classmethod you can access self.other_field, but iwth @class_method you cannot. Use @classmethod when you only need to validate a single field.
 ## mode='after' runs after all the fields are processed and vliadted

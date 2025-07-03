@@ -94,6 +94,16 @@ def create_rc0083_sample_metadata():
                 axis = 1
             )
 
+        elif faire_col == 'nucl_acid_ext' or faire_col == 'nucl_acid_ext_modify':
+            metadata_cols = metadata_col.split(' | ')
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.add_constant_value_based_on_str_in_col(metadata_row=row, 
+                                                                                 col_name=metadata_cols[0], 
+                                                                                 str_condition='QiaVac', 
+                                                                                 pos_condition_const=metadata_cols[2],
+                                                                                 neg_condition_const=metadata_cols[1]),
+                                                                                 axis=1)
+
     # Step 4: fill in NA with missing not collected or not applicable because they are samples and adds NC to rel_cont_id
     sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))
     
@@ -106,13 +116,16 @@ def create_rc0083_sample_metadata():
     # Add rel_cont_id
     faire_sample_df_updated = sample_mapper.add_extraction_blanks_to_rel_cont_id(final_sample_df=faire_sample_df)
 
+    # Remove ~ from samp_size that is ~500
+    faire_sample_df_updated['samp_size'] = faire_sample_df_updated['samp_size'].str.replace('~', '', regex=False)
+    
     # step 7: save as csv:
     sample_mapper.save_final_df_as_csv(final_df=faire_sample_df_updated, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/AK_Carbon/rc0083/data/rc0083_faire.csv')
    
     # step 8: save to excel file
-    sample_mapper.add_final_df_to_FAIRe_excel(excel_file_to_read_from=sample_mapper.faire_template_file,
-                                              sheet_name=sample_mapper.sample_mapping_sheet_name, 
-                                              faire_template_df=faire_sample_df_updated)
+    # sample_mapper.add_final_df_to_FAIRe_excel(excel_file_to_read_from=sample_mapper.faire_template_file,
+    #                                           sheet_name=sample_mapper.sample_mapping_sheet_name, 
+    #                                           faire_template_df=faire_sample_df_updated)
 
     return sample_mapper, faire_sample_df
 

@@ -10,10 +10,11 @@ import xarray as xr
 import geopandas as gpd
 import gsw
 from shapely.geometry import Point
-from geopy.distance import geodesic
+# from geopy.distance import geodesic
 from bs4 import BeautifulSoup
 from .custom_exception import NoInsdcGeoLocError
-from .lists import nc_faire_field_cols, marker_shorthand_to_pos_cont_gblcok_name
+from .lists import nc_faire_field_cols
+from geopy.distance import geodesic
 
 # TODO: Need to figure out how to incorporate blanks from extractions into data frame. If they are in the same extraction set as the samples
 # with the shorthand cruise nmae, need to include as extraction blank (see Alaska extractions for examples)
@@ -71,8 +72,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.extraction_name = self.config_file['extraction_name']
         self.samp_dur_info = self.config_file['samp_store_dur_sheet_info'] if 'samp_store_dur_sheet_info' in self.config_file else None
         self.samp_stor_dur_dict = self.create_samp_stor_dict() if 'samp_store_dur_sheet_info' in self.config_file else None
-        self.station_ref_dict = self.create_reference_station_dict()
-
+        self.missing_extractions = self.config_file['missing_extractions'] if 'missing_extractions' in self.config_file else None
+        
         self.extraction_blank_rel_cont_dict = {}
         self.sample_metadata_df = self.filter_metadata_dfs()[0]
         self.nc_df = self.filter_metadata_dfs()[1]
@@ -82,6 +83,12 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.replicates_dict = self.create_biological_replicates_dict()
         self.insdc_locations = self.extract_insdc_geographic_locations()
         self.mapping_dict = self.create_sample_mapping_dict()
+
+        # stations/reference stations stuff
+        self.station_name_reference_google_sheet_id = self.config_file['station_name_reference_google_sheet_id'] if 'station_name_reference_google_sheet_id' in self.config_file else None # Some projects won't have reference stations (RC0083)
+        station_dicts = self.create_station_ref_dicts() if 'station_name_reference_google_sheet_id' in self.config_file else None # Some projects won't have reference stations (RC0083)
+        self.station_lat_lon_ref_dict = station_dicts[0] if 'station_name_reference_google_sheet_id' in self.config_file else None # Some projects won't have reference stations (RC0083)
+        self.standardized_station_dict = station_dicts[1] if 'station_name_reference_google_sheet_id' in self.config_file else None # Some projects won't have reference stations (RC0083)
 
     def create_sample_mapping_dict(self) -> dict:
         # creates a mapping dictionary and saves as self.mapping_dict
@@ -161,14 +168,22 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         return samp_dur_dict
 
-    def create_reference_station_dict(self) -> dict:
-        # Creates a reference dictionary for station names - hard coded because will be the same across cruises I believe
-        station_ref_df = self.load_google_sheet_as_df(google_sheet_id='1bJiX5pXpUuk74tbuoiYRc7iNXAVYU2dD8nTnZAFpZg8', sheet_name='Sheet1', header=0)
-        ref_dict = {}
+    def create_station_ref_dicts(self) -> dict:
+        # Creates a lat_lon_station_ref_dict reference dictionary for station names and their lat_lon coords (e.g. {'BF2': {'lat': '71.75076', 'lon': -154.4567}, 'DBO1.1': {'lat': '62.01', 'lon': -175.06}}
+        # Also creates a standardized station dict
+        
+        station_ref_df = self.load_google_sheet_as_df(google_sheet_id=self.station_name_reference_google_sheet_id, sheet_name='Sheet1', header=0)
+        station_lat_lon_ref_dict = self.create_station_lat_lon_ref_dict(station_ref_df=station_ref_df)
+        station_standardized_name_dict = self.create_standardized_station_name_ref_dict(station_ref_df=station_ref_df)
+
+        return station_lat_lon_ref_dict, station_standardized_name_dict
+    
+    def create_station_lat_lon_ref_dict(self, station_ref_df: pd.DataFrame) -> dict:
+        station_lat_lon_ref_dict = {}
         for _, row in station_ref_df.iterrows():
             station_name = row['station_name']
-            lat = row['LatitudeDegree']
-            lon = row['LongitudeDegree']
+            lat = row['LatitudeDecimalDegree']
+            lon = row['LongitudeDemicalDegree']
             lat_hem = row['LatitudeHem']
             lon_hem = row['LongitudeHem']
 
@@ -178,13 +193,23 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             if 'W' == lon_hem:
                 lon = float(-abs(float(lon)))
             
-            ref_dict[station_name] = {
+            station_lat_lon_ref_dict[station_name] = {
                 'lat': lat,
                 'lon': lon
             }
 
-        return ref_dict
+        return station_lat_lon_ref_dict
+    
+    def create_standardized_station_name_ref_dict(self, station_ref_df: pd.DataFrame) -> dict:
+        station_standardized_name_dict = {}
+        for _, row in station_ref_df.iterrows():
+            standardized_name = row['station_name']
+            non_standardized_names = row['ome_station'].split(' | ')
 
+            station_standardized_name_dict[standardized_name] = non_standardized_names
+
+        return station_standardized_name_dict
+    
     def convert_mdy_date_to_iso8061(self, date_string: str) -> str:
         # converts from m/d/y to iso8061
         date_string = str(date_string).strip()
@@ -281,12 +306,36 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         return blank_df
 
+    def missing_extraction(self) -> pd.DataFrame:
+        # Creates a data frame of any extra extractions if there were random samples part of a different extraction df
+        # Written for the missing MID.NC.SKQ21 sample that was randomly extracted with WCOA samples
+        # As written assumes that the main extraction and the missing extraction are mapped the same way - but may have different column names - see skq21 config.yaml for more info on how to
+        # get any missing extractions - for samples that were extracted separately - This was created really just for MID.NC.SKQ2021
+        for missing_extraction in self.missing_extractions:
+            missing_extractions_df = self.load_google_sheet_as_df(google_sheet_id=missing_extraction['missing_extraction_google_sheet_id'], sheet_name=missing_extraction['missing_extraction_sheet_name'], header=0)
+            # replace column names to match the main extraction_df
+            missing_extractions_df.rename(columns=missing_extraction['missing_ext_col_to_main_ext_col'], inplace=True)
+            # only keep the main extraction df columns
+            cols_to_keep = list(missing_extraction['missing_ext_col_to_main_ext_col'].values())
+            missing_extractions_df = missing_extractions_df[cols_to_keep]
+            # Fix sample names if they are different
+            if missing_extraction['missing_extraction_samp_names']:
+                for missing_ext_samp_name, metadata_samp_name in missing_extraction['missing_extraction_samp_names'].items():
+                    missing_extractions_df = missing_extractions_df.replace(missing_ext_samp_name, metadata_samp_name)
+        return missing_extractions_df
+     
     def filter_cruise_avg_extraction_conc(self) -> pd.DataFrame:
         # If extractions have multiple measurements for extraction concentrations, calculates the avg.
         # and creates a column called pool_num to show the number of samples pooled
 
         extractions_df = self.load_google_sheet_as_df(
             google_sheet_id=self.extraction_metadata_google_sheet_id, sheet_name=self.extraction_metadata_sheet_name, header=0)
+
+        # get any missing extractions - for samples that were extracted separately - This was created really just for MID.NC.SKQ2021
+        if self.missing_extractions:
+           missing_extraction_df = self.missing_extraction()
+           extractions_df = pd.concat([extractions_df, missing_extraction_df])
+
 
         # Filter extractions df by cruise and calculate avg concentration
         extract_avg_df = extractions_df[extractions_df[self.extraction_sample_name_col].str.contains(self.extraction_cruise_key)].groupby(
@@ -336,6 +385,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         samp_metadata_df[self.sample_metadata_cast_no_col_name] = samp_metadata_df[self.sample_metadata_cast_no_col_name].apply(
             self.remove_extraneous_cast_no_chars)
 
+
         return samp_metadata_df
 
     def join_sample_and_extract_df(self):
@@ -377,6 +427,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # Fixes samples names (really just for SKQ23 sample names to replace _ with -. As the extraction and run sheets use -)
         if '_' in sample_name:
             sample_name = sample_name.replace('_', '-')
+        if '.DY23-06' in sample_name:
+            sample_name = sample_name.replace('-', '')
 
         return sample_name
 
@@ -425,7 +477,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                 locations.append(li.get_text(strip=True))
 
         return locations
-
+        
     def extract_replicate_sample_parent(self, sample_name):
         # Extracts the E number in the sample name
         if pd.notna(sample_name):
@@ -610,7 +662,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         for idx, region in marine_regions.iterrows():
             if region.geometry.contains(point):
                 sea = region.get('NAME')
-
+            
                 if sea == 'Arctic Ocean':
                     geo_loc = sea
                 else:
@@ -625,6 +677,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                         f'There is no geographic location in INSDC that matches {geo_loc_name}, check sea_name and try again')
                 else:
                     return geo_loc
+            # else:
+            #     raise ValueError(f"No sea is found at the lat/lon ({lat}/{lon}) of sample: {metadata_row[self.sample_metadata_sample_name_column]}")
 
     def calculate_env_local_scale(self, depth: float) -> str:
         # uses the depth to assign env_local_scale
@@ -771,6 +825,75 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         else:
             return ''
 
+    def get_station_id_from_unstandardized_station_name(self, metadata_row: pd.Series, unstandardized_station_name_col: str) -> str:
+        # Gets the standardized station name from the unstandardized station name
+        station_name = metadata_row[unstandardized_station_name_col]
+        sample_name = metadata_row[self.sample_metadata_sample_name_column]
+
+        if 'NC' not in sample_name or 'blank' not in sample_name.lower():
+            # Standardizes station ids to be from the reference station sheet
+            for standard_station_name, unstandardized_station_list in self.standardized_station_dict.items():
+                if station_name in unstandardized_station_list or station_name == standard_station_name:
+                    return standard_station_name
+        
+            # only print if no match was found after whole iteration
+            print(f"\033[33m{station_name} listed for sample {sample_name} is missing from station reference dictionary as an ome_station. Please check\033[0m]")
+            return station_name
+        else:
+            return station_name
+
+    def calculate_distance_btwn_lat_lon_points(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+            # Calculates the surface distance between two points in lat/lon using the great_circle package of GeoPy
+            return geodesic((lat1, lon1), (lat2, lon2)).kilometers   
+    
+    def get_stations_within_3km(self, metadata_row: pd.Series, station_name_col: str, lat_col: str, lon_col: str) -> str:
+        # Get alternate station names based on lat/lon coords and grabs all stations within 1 km as alternate stations - need to use standardized station names for station_name_col to be able to look 
+        # up in station_lat_lon_dict
+        lat = metadata_row[lat_col]
+        lon = metadata_row[lon_col]
+        listed_station = metadata_row[station_name_col]
+        sample_name = metadata_row[self.sample_metadata_sample_name_column]
+
+        if 'NC' not in sample_name or 'blank' not in sample_name.lower():
+        
+            # alt_stations = []
+            distances = []
+            error_distances = []
+
+            for station_name, coords in self.station_lat_lon_ref_dict.items():
+                station_lat = coords['lat']
+                station_lon = coords ['lon']
+
+                # calculate distance
+                distance = self.calculate_distance_btwn_lat_lon_points(lat1=lat, lon1=lon, lat2=station_lat, lon2=station_lon)
+
+                # Account for DBO1.9 which moved but coordinates haven't been updated yet - see email from Shaun
+                # Also make exception for DBO4.1 (took this out since changing from 1 km to 3 km)
+                if distance <= 3 or (station_name == 'DBO1.9' and distance <=10.5):
+                    distances.append({
+                        'station': station_name,
+                        'distance_km': distance,
+                        'coords': coords
+                    })
+
+                else:
+                    error_distances.append({
+                        'station': station_name,
+                        'distance_km': distance,
+                        'coords': coords
+                    })
+                    error_distances.sort(key=lambda x: x['distance_km'])
+
+            # sort by distance and return top n
+            distances.sort(key=lambda x: x['distance_km'])
+            alt_station_names = ' | '.join([item['station'] for item in distances])
+            if alt_station_names:
+                return alt_station_names
+            else:
+                print(ValueError(f"\033[31m{sample_name} listed station {listed_station}, but it is not picking up on any stations with 5 km based on its lat/lon {lat, lon}. Closest station is {error_distances[0]}!\033[0m]"))
+        else:
+            return 'not applicable: control sample'
+    
     def update_unit_colums_with_no_corresponding_val(self, df: pd.DataFrame) -> pd.DataFrame:
         # Update the final sample dataframe unit columns to be "not applicable" if there is no value in its corresponding column
         unit_cols = [col for col in df.columns if col.endswith('unit')]
@@ -797,36 +920,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                         print("does not work!")
 
         return df
-
-    def calculate_distance_btwn_lat_lon_points(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-        # Calculates the surface distance between two points in lat/lon using the great_circle package of GeoPy
-        # TODO: move to projectMapper?
-        return geodesic((lat1, lon1), (lat2, lon2)).kilometers
-        
-    def get_alternative_station_names(self, metadata_row: pd.Series, lat_col: float, lon_col: float) -> str:
-        # Get the top three closes stations based on lat/lon coords. Right now will return a list of dictionaries with station, disttance and coords
-        # TODO: move to projectMapper?
-        lat = metadata_row[lat_col]
-        lon = metadata_row[lon_col]
-        # alt_stations = []
-        distances = []
-
-        for station_name, coords in self.station_ref_dict.items():
-            station_lat = coords['lat']
-            station_lon = coords ['lon']
-
-            # calculate distance
-            distance = self.calculate_distance_btwn_lat_lon_points(lat1=lat, lon1=lon, lat2=station_lat, lon2=station_lon)
-
-            distances.append({
-                'station': station_name,
-                'distance_km': distance,
-                'coords': coords
-            })
-
-        # sort by distance and return top n
-        distances.sort(key=lambda x: x['distance_km'])
-        return str(distances[:3])
     
     def fill_empty_sample_values(self, df: pd.DataFrame, default_message="missing: not collected"):
         # fill empty values for samples after mapping over all sample data without control samples
@@ -1003,3 +1096,13 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
        
         return final_sample_df
    
+    def add_constant_value_based_on_str_in_col(self, metadata_row: pd.Series, col_name: str, str_condition: str, pos_condition_const: str, neg_condition_const: str) -> str:
+        # Adds a constant value based on a str being present in a column. col_value is the column value where the str will or won't be present, 
+        # str_condition is the str that might be present to test against
+        # pos_condition_const is the value that should be return if the str_condition is present in col_value
+        # neg_condition_const is the value that should be returned if the str_condition is absent in col_value
+        col_value = metadata_row[col_name]
+        if str_condition.lower() in col_value.lower():
+            return pos_condition_const
+        else:
+            return neg_condition_const
