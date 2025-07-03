@@ -36,6 +36,7 @@ class NCBIMapper:
                             "missing: restricted access: human-identifiable", 
                             "missing: restricted access"
                             ]
+    faire_samp_name_col = "samp_name"
 
     def __init__(self, final_faire_sample_metadata_df: pd.DataFrame, 
                  final_faire_experiment_run_metadata_df: pd.DataFrame,
@@ -94,7 +95,7 @@ class NCBIMapper:
             faire_col = faire_mapping['faire_col']
 
             if faire_col not in self.faire_sample_df:
-                print(faire_col)
+                continue
             else:
                 # Check if we have a constant unit or a unit column
                 if 'constant_unit_val' in faire_mapping:
@@ -127,8 +128,11 @@ class NCBIMapper:
         # Fifth add description for PCR technical replicates and additional column - needed to differentiate their metadata for submission to be accepted
         updated_df['description'] = self.faire_sample_df['samp_name'].apply(self.add_description_for_pcr_reps)
         updated_df['technical_rep_id'] = self.faire_sample_df['samp_name'].apply(self.add_pcr_technical_rep)
+
+        # 6th add additional column in FAIRe sample df that do not exist in ncbi template
+        final_ncbi_df = self.add_additional_faire_cols(faire_samp_df=self.faire_sample_df, updated_ncbi_df=updated_df)
             
-        return updated_df
+        return final_ncbi_df
 
     def get_sra_df(self) -> pd.DataFrame:
 
@@ -157,6 +161,71 @@ class NCBIMapper:
             post = frontmatter.load(f)
             return post
 
+    def get_faire_cols_that_map_to_ncbi(self) -> list:
+        # Creates a list of all the columns in FAIRe that map to NCBI (from the .lists)
+        faire_maps_to_ncbi_cols = []
+
+        # Add unit/and constant value faire cols
+        for key, details in faire_to_ncbi_units.items():
+            if "faire_col" in details:
+                faire_maps_to_ncbi_cols.append(details["faire_col"])
+            if "faire_unit_col" in details:
+                faire_maps_to_ncbi_cols.append(details["faire_unit_col"])
+
+        # Add exact mapping faire cols
+        for key in ncbi_faire_to_ncbi_column_mappings_exact.keys():
+            faire_maps_to_ncbi_cols.append(key)
+
+        return faire_maps_to_ncbi_cols
+    
+    def get_additional_faire_unit_cols_dict(self, faire_cols: list) -> dict:
+        # Creates a dictionary of the additional faire_cols with that have corresponding unit cols and creates a dict with faire col as key and unit col as value
+        unit_col_dict = {}
+        for col in faire_cols:
+            unit_col = f"{col}_unit"
+            units_col = f"{col}_units"
+            if unit_col in faire_cols:
+                unit_col_dict[col] = unit_col
+            if units_col in faire_cols:
+                unit_col_dict[col] = units_col
+
+        # remove columns from list that exist in dictionary
+        to_remove = set(unit_col_dict.keys()) 
+        to_remove.update(unit_col_dict.values())
+        filtered_faire_list = [col for col in faire_cols if col not in to_remove]
+        
+        return unit_col_dict, filtered_faire_list
+
+    def add_additional_faire_cols(self, faire_samp_df: pd.DataFrame, updated_ncbi_df: pd.DataFrame) -> pd.DataFrame:
+        # Adds additional FAIRe columns not in the NCBI sample template
+       
+        # Get unit cols and regular cols - additional_reg_faire_cols is a list of regular columsn (not unit corresponding ones)
+        # And additional_cols_units_dict is columns with unit columsn
+        faire_cols_that_map = set(self.get_faire_cols_that_map_to_ncbi())
+        faire_cols = set(faire_samp_df.columns)
+        additional_faire_cols = list(faire_cols - faire_cols_that_map)
+        cols = self.get_additional_faire_unit_cols_dict(faire_cols=additional_faire_cols)
+        additional_cols_units_dict = cols[0]
+        additional_reg_faire_cols = cols[1]
+
+        # Add unit cols first
+        for key, value in additional_cols_units_dict.items():
+            updated_ncbi_df[key] = faire_samp_df[key].astype(str) + ' ' + faire_samp_df[value].astype(str)
+
+        # Then add regular columns (those with no corresponding units)
+        for faire_col in additional_reg_faire_cols:
+            updated_ncbi_df[faire_col] = faire_samp_df[faire_col]
+
+        # Drop columns that are empty for all rows that were additional faire columsn
+        columns_to_drop = []
+        for col in additional_faire_cols:
+            if col in updated_ncbi_df.columns:
+                if updated_ncbi_df[col].isna().all() or updated_ncbi_df[col].astype(str).str.strip().eq('').all():
+                    columns_to_drop.append(col)
+        final_ncbi_df = updated_ncbi_df.drop(columns=columns_to_drop)
+
+        return final_ncbi_df
+
     def get_ncbi_depth(self, metadata_row: pd.Series) -> str:
         # Get the ncbi formatted value for depth, which is the interval of minimumDepthInMeters - maximumDepthInMeters
         min_depth = metadata_row['minimumDepthInMeters']
@@ -169,27 +238,36 @@ class NCBIMapper:
         elif min_depth == max_depth and max_depth != '':
             ncbi_depth = min_depth + ' ' + 'm'
         else:
-            raise ValueError(f"Something wrong with the depth. Min depth is {min_depth} and max_depth is {max_depth}. {metadata_row}")
+            if min_depth == '' and max_depth == '': # for controll samples
+                return ''
+            else:
+                raise ValueError(f"Something wrong with the depth. Min depth is {min_depth} and max_depth is {max_depth}. {metadata_row}")
 
         return ncbi_depth
 
     def get_ncbi_lat_lon(self, metadata_row: pd.Series) -> str:
-        lat = float(metadata_row['decimalLatitude'])
-        lon = float(metadata_row['decimalLongitude'])
+        try:
+            lat = float(metadata_row['decimalLatitude'])
+            lon = float(metadata_row['decimalLongitude'])
 
-        lat_dir = 'N' if lat >= 0 else 'S'
-        lon_dir = 'E' if lon >= 0 else 'W'
+            lat_dir = 'N' if lat >= 0 else 'S'
+            lon_dir = 'E' if lon >= 0 else 'W'
 
-        # Take absolute values
-        lat_abs = abs(lat)
-        lon_abs = abs (lon)
+            # Take absolute values
+            lat_abs = abs(lat)
+            lon_abs = abs (lon)
 
-        lat_formatted = f"{lat_abs:.4f} {lat_dir}"
-        lon_formatted = f"{lon_abs:.4f} {lon_dir}"
+            lat_formatted = f"{lat_abs:.4f} {lat_dir}"
+            lon_formatted = f"{lon_abs:.4f} {lon_dir}"
 
-        ncbi_lat_lon = f"{lat_formatted} {lon_formatted}"
+            ncbi_lat_lon = f"{lat_formatted} {lon_formatted}"
 
-        return ncbi_lat_lon
+            return ncbi_lat_lon
+        except:
+            if metadata_row['decimalLatitude'] == '' and metadata_row['decimalLongitude'] == '':
+                return ''
+            else:
+                raise ValueError(f"Something wrong with lat lon and can't transform for sample: {metadata_row[self.faire_samp_name_col]} with lat/lon {metadata_row['decimalLatitude']}/{metadata_row['decimalLongitude']}")
     
     def add_description_for_pcr_reps(self, sample_name: str) -> str:
         # Add a description for the PCR technical replicates (they have to be distinguishable to submit)

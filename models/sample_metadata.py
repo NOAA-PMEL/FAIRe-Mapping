@@ -8,6 +8,8 @@ import math
 from datetime import datetime
 from collections import defaultdict
 import xarray as xr
+
+#TODO: Add beam_attenuation and beam_attenuation_units? and fix beam_attenutation_units to be unit
  # Field(default=None) is for USer defined fields that might be missing in each csv
 # TODO: Add custom data validation for controlled vocabs that accept 'other: <description>' (samp_category, neg_cont_type, verbatimCoordinateSystem, verbatimSRS,
 # samp_size_unit, samp_store_temp, samp_store_sol, precip_chem_prep, filter_material)
