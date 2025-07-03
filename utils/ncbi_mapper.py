@@ -94,7 +94,7 @@ class NCBIMapper:
             faire_col = faire_mapping['faire_col']
 
             if faire_col not in self.faire_sample_df:
-                continue
+                print(faire_col)
             else:
                 # Check if we have a constant unit or a unit column
                 if 'constant_unit_val' in faire_mapping:

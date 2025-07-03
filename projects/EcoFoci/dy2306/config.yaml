@@ -29,6 +29,9 @@ google_sheet_mapping_file_id: 1Y3p_eUd4wDSfRutd-petZ9tfOshWY1PokfFyF6YuXGk
 nc_samp_mat_process:  'Water samples were filtered through a 0.22 micron sterivex filter using a peristaltic pump with tubing attached to the outlet end of the sterivex.' # mapping for negative controls for nc_samp_mapt_process
 nc_prepped_samp_store_dur: 'missing: not collected' # which columns the NC prepped samp_store_dur map to (will most likely be different than rest of samples because no ctd or bottle dates for NC)
 
+# Station reference file
+station_name_reference_google_sheet_id: 1bJiX5pXpUuk74tbuoiYRc7iNXAVYU2dD8nTnZAFpZg8
+
 # FAIRe template related
 faire_template_file: /home/poseidon/zalmanek/FAIRe-Mapping/faire_template.xlsx
 final_faire_template_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2306/data/dy2306_faire.xlsx

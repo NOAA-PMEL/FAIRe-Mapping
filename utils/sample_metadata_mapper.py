@@ -13,7 +13,8 @@ from shapely.geometry import Point
 # from geopy.distance import geodesic
 from bs4 import BeautifulSoup
 from .custom_exception import NoInsdcGeoLocError
-from .lists import nc_faire_field_cols, marker_shorthand_to_pos_cont_gblcok_name
+from .lists import nc_faire_field_cols
+from geopy.distance import geodesic
 
 # TODO: Need to figure out how to incorporate blanks from extractions into data frame. If they are in the same extraction set as the samples
 # with the shorthand cruise nmae, need to include as extraction blank (see Alaska extractions for examples)
@@ -82,6 +83,12 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.replicates_dict = self.create_biological_replicates_dict()
         self.insdc_locations = self.extract_insdc_geographic_locations()
         self.mapping_dict = self.create_sample_mapping_dict()
+
+        # stations/reference stations stuff
+        self.station_name_reference_google_sheet_id = self.config_file['station_name_reference_google_sheet_id'] if 'station_name_reference_google_sheet_id' in self.config_file else None # Some projects won't have reference stations (RC0083)
+        station_dicts = self.create_station_ref_dicts() if 'station_name_reference_google_sheet_id' in self.config_file else None # Some projects won't have reference stations (RC0083)
+        self.station_lat_lon_ref_dict = station_dicts[0] if 'station_name_reference_google_sheet_id' in self.config_file else None # Some projects won't have reference stations (RC0083)
+        self.standardized_station_dict = station_dicts[1] if 'station_name_reference_google_sheet_id' in self.config_file else None # Some projects won't have reference stations (RC0083)
 
     def create_sample_mapping_dict(self) -> dict:
         # creates a mapping dictionary and saves as self.mapping_dict
@@ -161,6 +168,48 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         return samp_dur_dict
 
+    def create_station_ref_dicts(self) -> dict:
+        # Creates a lat_lon_station_ref_dict reference dictionary for station names and their lat_lon coords (e.g. {'BF2': {'lat': '71.75076', 'lon': -154.4567}, 'DBO1.1': {'lat': '62.01', 'lon': -175.06}}
+        # Also creates a standardized station dict
+        
+        station_ref_df = self.load_google_sheet_as_df(google_sheet_id=self.station_name_reference_google_sheet_id, sheet_name='Sheet1', header=0)
+        station_lat_lon_ref_dict = self.create_station_lat_lon_ref_dict(station_ref_df=station_ref_df)
+        station_standardized_name_dict = self.create_standardized_station_name_ref_dict(station_ref_df=station_ref_df)
+
+        return station_lat_lon_ref_dict, station_standardized_name_dict
+    
+    def create_station_lat_lon_ref_dict(self, station_ref_df: pd.DataFrame) -> dict:
+        station_lat_lon_ref_dict = {}
+        for _, row in station_ref_df.iterrows():
+            station_name = row['station_name']
+            lat = row['LatitudeDecimalDegree']
+            lon = row['LongitudeDemicalDegree']
+            lat_hem = row['LatitudeHem']
+            lon_hem = row['LongitudeHem']
+
+            # Add direction sign to lat/lon
+            if 'S' == lat_hem:
+                lat = float(-abs(float(lat)))
+            if 'W' == lon_hem:
+                lon = float(-abs(float(lon)))
+            
+            station_lat_lon_ref_dict[station_name] = {
+                'lat': lat,
+                'lon': lon
+            }
+
+        return station_lat_lon_ref_dict
+    
+    def create_standardized_station_name_ref_dict(self, station_ref_df: pd.DataFrame) -> dict:
+        station_standardized_name_dict = {}
+        for _, row in station_ref_df.iterrows():
+            standardized_name = row['station_name']
+            non_standardized_names = row['ome_station'].split(' | ')
+
+            station_standardized_name_dict[standardized_name] = non_standardized_names
+
+        return station_standardized_name_dict
+    
     def convert_mdy_date_to_iso8061(self, date_string: str) -> str:
         # converts from m/d/y to iso8061
         date_string = str(date_string).strip()
@@ -776,6 +825,75 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         else:
             return ''
 
+    def get_station_id_from_unstandardized_station_name(self, metadata_row: pd.Series, unstandardized_station_name_col: str) -> str:
+        # Gets the standardized station name from the unstandardized station name
+        station_name = metadata_row[unstandardized_station_name_col]
+        sample_name = metadata_row[self.sample_metadata_sample_name_column]
+
+        if 'NC' not in sample_name or 'blank' not in sample_name.lower():
+            # Standardizes station ids to be from the reference station sheet
+            for standard_station_name, unstandardized_station_list in self.standardized_station_dict.items():
+                if station_name in unstandardized_station_list or station_name == standard_station_name:
+                    return standard_station_name
+        
+            # only print if no match was found after whole iteration
+            print(f"\033[33m{station_name} listed for sample {sample_name} is missing from station reference dictionary as an ome_station. Please check\033[0m]")
+            return station_name
+        else:
+            return station_name
+
+    def calculate_distance_btwn_lat_lon_points(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+            # Calculates the surface distance between two points in lat/lon using the great_circle package of GeoPy
+            return geodesic((lat1, lon1), (lat2, lon2)).kilometers   
+    
+    def get_stations_within_3km(self, metadata_row: pd.Series, station_name_col: str, lat_col: str, lon_col: str) -> str:
+        # Get alternate station names based on lat/lon coords and grabs all stations within 1 km as alternate stations - need to use standardized station names for station_name_col to be able to look 
+        # up in station_lat_lon_dict
+        lat = metadata_row[lat_col]
+        lon = metadata_row[lon_col]
+        listed_station = metadata_row[station_name_col]
+        sample_name = metadata_row[self.sample_metadata_sample_name_column]
+
+        if 'NC' not in sample_name or 'blank' not in sample_name.lower():
+        
+            # alt_stations = []
+            distances = []
+            error_distances = []
+
+            for station_name, coords in self.station_lat_lon_ref_dict.items():
+                station_lat = coords['lat']
+                station_lon = coords ['lon']
+
+                # calculate distance
+                distance = self.calculate_distance_btwn_lat_lon_points(lat1=lat, lon1=lon, lat2=station_lat, lon2=station_lon)
+
+                # Account for DBO1.9 which moved but coordinates haven't been updated yet - see email from Shaun
+                # Also make exception for DBO4.1 (took this out since changing from 1 km to 3 km)
+                if distance <= 3 or (station_name == 'DBO1.9' and distance <=10.5):
+                    distances.append({
+                        'station': station_name,
+                        'distance_km': distance,
+                        'coords': coords
+                    })
+
+                else:
+                    error_distances.append({
+                        'station': station_name,
+                        'distance_km': distance,
+                        'coords': coords
+                    })
+                    error_distances.sort(key=lambda x: x['distance_km'])
+
+            # sort by distance and return top n
+            distances.sort(key=lambda x: x['distance_km'])
+            alt_station_names = ' | '.join([item['station'] for item in distances])
+            if alt_station_names:
+                return alt_station_names
+            else:
+                print(ValueError(f"\033[31m{sample_name} listed station {listed_station}, but it is not picking up on any stations with 5 km based on its lat/lon {lat, lon}. Closest station is {error_distances[0]}!\033[0m]"))
+        else:
+            return 'not applicable: control sample'
+    
     def update_unit_colums_with_no_corresponding_val(self, df: pd.DataFrame) -> pd.DataFrame:
         # Update the final sample dataframe unit columns to be "not applicable" if there is no value in its corresponding column
         unit_cols = [col for col in df.columns if col.endswith('unit')]

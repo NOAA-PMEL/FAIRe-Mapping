@@ -1,6 +1,6 @@
 # Use same config file as projectMapper
 # TODO: RC0083 and M2-PPS-0523 sampleMetadata mapping needs to be complete before this mapping is accurate - uncomment RC0083 when ready.
-
+logging_directory: /home/poseidon/zalmanek/FAIRe-Mapping/runs/run4/ncbi_mapping/ncbi_submission_data/logging/
 datasets: # a list of sample_metadata.csvs and their associated experimentRun csvs
   sample_metadata_csvs:
     - cruise_name: dy2206

@@ -107,6 +107,22 @@ def create_no201_sample_metadata():
                 lambda row: sample_mapper.calculate_dna_yield(metadata_row=row, sample_vol_metadata_col=sample_vol_col),
                 axis = 1
             )
+
+        elif faire_col == 'station_id':
+            station_id = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.get_station_id_from_unstandardized_station_name(metadata_row=row, unstandardized_station_name_col=metadata_col), 
+                axis=1
+            )
+            sample_metadata_results[faire_col] = station_id
+            sample_mapper.sample_metadata_df['station_id'] = station_id
+
+            # Use standardized station to get stations within 3 km
+            station_metadata_cols = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('station_ids_within_3km_of_lat_lon').split(' | ')
+            lat_col = station_metadata_cols[1]
+            lon_col = station_metadata_cols[2]
+            sample_metadata_results['station_ids_within_3km_of_lat_lon'] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.get_stations_within_3km(metadata_row=row, station_name_col='station_id', lat_col=lat_col, lon_col=lon_col), 
+                axis=1)
    
     # Step 4: fill in NA with missing not collected or not applicable because they are samples and adds NC to rel_cont_id
     sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))

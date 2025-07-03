@@ -29,10 +29,10 @@ def fix_stations(df: pd.DataFrame) -> pd.DataFrame:
         'IC01': 'IC11'
         }
 
-    df['station_id'] = df['station_id'].map(station_id_mapping).where(df['station_id'].str.startswith('IC'), df['station_id'])
+    df['Station'] = df['Station'].map(station_id_mapping).where(df['Station'].str.startswith('IC'), df['Station'])
 
     # AFter solving station problems with Shannon, found errors where DBO2.09 was listed as station name for three samples, should be DBO2.0
-    df.loc[df['station_id'] == 'DBO2.09', 'station_id'] = 'DBO2.0'
+    df.loc[df['Station'] == 'DBO2.09', 'Station'] = 'DBO2.0'
 
     return df
 
@@ -123,6 +123,24 @@ def create_skq23_12s_sample_metadata():
                     axis = 1
                 )
 
+                # Get station info
+                station_id_metadata_col = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('station_id')
+                station_id = sample_mapper.sample_metadata_df.apply(
+                    lambda row: sample_mapper.get_station_id_from_unstandardized_station_name(metadata_row=row, unstandardized_station_name_col=station_id_metadata_col), 
+                    axis=1
+                )
+
+                sample_metadata_results['station_id'] = station_id
+                sample_mapper.sample_metadata_df['station_id'] = station_id
+
+                # Use standardized station to get stations within 3 km
+                station_metadata_cols = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('station_ids_within_3km_of_lat_lon').split(' | ')
+                lat_col = station_metadata_cols[1]
+                lon_col = station_metadata_cols[2]
+                sample_metadata_results['station_ids_within_3km_of_lat_lon'] = sample_mapper.sample_metadata_df.apply(
+                    lambda row: sample_mapper.get_stations_within_3km(metadata_row=row, station_name_col='station_id', lat_col=lat_col, lon_col=lon_col), 
+                    axis=1)
+
         # eventDate needs to be proecessed before prepped_samp_store_dur
         elif faire_col == 'eventDate' or faire_col == 'prepped_samp_store_dur':
             event_dates = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('eventDate')
@@ -186,15 +204,13 @@ def create_skq23_12s_sample_metadata():
     
     # Step 4: fill in NA with missing not collected or not applicable because they are samples and adds NC to rel_cont_id
     sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))
-
-    sample_df_updated_stations = fix_stations(df=sample_df)
     
     # Step 5: fill NC data frame if there is - DO THIS ONLY IF negative controls were sequenced! They were not for SKQ21
     # nc_df = sample_mapper.fill_nc_metadata()
-    controls_df = sample_mapper.finish_up_controls_df(final_sample_df=sample_df_updated_stations)
+    controls_df = sample_mapper.finish_up_controls_df(final_sample_df=sample_df)
 
     # Step 6: Combine all mappings at once (add nc_df if negative controls were sequenced)
-    faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df_updated_stations ,controls_df])
+    faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df ,controls_df])
     # Add rel_cont_id
     faire_sample_df_updated = sample_mapper.add_extraction_blanks_to_rel_cont_id(final_sample_df=faire_sample_df)
 

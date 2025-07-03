@@ -1,6 +1,5 @@
 project_name: ecoFoci
-project_info_goole_sheet_id: 1E8fHmfnTQA1CV8GTVuFoOXlgeUwTaVy9uXao9mUzG1Q # google sheet id for where project and data management metadata are.
-station_name_reference_google_sheet_id: 1bJiX5pXpUuk74tbuoiYRc7iNXAVYU2dD8nTnZAFpZg8
+project_info_google_sheet_id: 1E8fHmfnTQA1CV8GTVuFoOXlgeUwTaVy9uXao9mUzG1Q # google sheet id for where project and data management metadata are.
 
 datasets: # a list of sample_metadata.csvs and their associated experimentRun csvs
   sample_metadata_csvs:

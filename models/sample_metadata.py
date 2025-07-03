@@ -102,7 +102,7 @@ class SampleMetadata(BaseModel):
     ph: Optional[float]
     ph_meth: Optional[str]
     salinity: Optional[float] = Field(description = 'partical salinity unit (psu)')
-    salinity_flag: Optional[int] = Field(default=None)
+    salinity_WOCE_flag: Optional[int] = Field(default=None)
     suspend_part_matter: Optional[float] = Field(description = 'in mg/L')
     tidal_stage: Optional[str]
     turbidity: Optional[float] = Field(description = 'nephelometric turbidity unit (ntu)')
@@ -112,7 +112,6 @@ class SampleMetadata(BaseModel):
     wind_speed: Optional[float] = Field(descripton = 'in m/s')
     diss_inorg_carb: Optional[float]
     diss_inorg_carb_unit: Optional[str]
-    diss_inorg_carb_flag: Optional[int] = Field(default=None)
     diss_inorg_nitro: Optional[float]
     diss_inorg_nitro_unit: Optional[Literal['µM', 'mol/m3', 'mmol/m3', 'µmol/m3 ', 'mol/L', 'mmol/L', 'µmol/L', 'mg/L',  'µg/L', 'µmol/kg', 'mmol/kg ', 'parts per million']]
     diss_org_carb: Optional[float]
@@ -143,10 +142,10 @@ class SampleMetadata(BaseModel):
     part_org_nitro_unit: Optional[Literal['µM', 'mol/m3', 'mmol/m3', 'µmol/m3 ', 'mol/L', 'mmol/L', 'µmol/L', 'mg/L',  'µg/L', 'µmol/kg', 'mmol/kg ', 'parts per million']]
     nitrate: Optional[float]
     nitrate_unit: Optional[Literal['µM', 'mol/m3', 'mmol/m3', 'µmol/m3 ', 'mol/L', 'mmol/L', 'µmol/L', 'mg/L',  'µg/L', 'µmol/kg', 'mmol/kg ', 'parts per million']]
-    nitrate_flag: Optional[str] = Field(default=None)
+    nitrate_WOCE_flag: Optional[str] = Field(default=None)
     nitrite: Optional[float]
     nitrite_unit: Optional[Literal['µM', 'mol/m3', 'mmol/m3', 'µmol/m3 ', 'mol/L', 'mmol/L', 'µmol/L', 'mg/L',  'µg/L', 'µmol/kg', 'mmol/kg ', 'parts per million']]
-    nitrite_flag: Optional[int] = Field(default=None)
+    nitrite_WOCE_flag: Optional[int] = Field(default=None)
     nitro: Optional[float]
     nitro_unit: Optional[Literal['µM', 'mol/m3', 'mmol/m3', 'µmol/m3 ', 'mol/L', 'mmol/L', 'µmol/L', 'mg/L',  'µg/L', 'µmol/kg', 'mmol/kg ', 'parts per million']]
     org_carb: Optional[float]
@@ -157,7 +156,7 @@ class SampleMetadata(BaseModel):
     org_nitro_unit: Optional[Literal['µM', 'mol/m3', 'mmol/m3', 'µmol/m3 ', 'mol/L', 'mmol/L', 'µmol/L', 'mg/L',  'µg/L', 'µmol/kg', 'mmol/kg ', 'parts per million']]
     ammonium: Optional[float]
     ammonium_unit: Optional[Literal['µmol/L', 'µmol/kg']]
-    ammonium_flag: Optional[int] = Field(default=None)
+    ammonium_WOCE_flag: Optional[int] = Field(default=None)
     carbonate: Optional[float]
     carbonate_unit: Optional[Literal['']]  # need to add cv here when known
     hydrogen_ion: Optional[float] = Field(default=None)
@@ -170,15 +169,15 @@ class SampleMetadata(BaseModel):
     pco2_unit: Optional[Literal['uatm']]
     phosphate: Optional[float]
     phosphate_unit: Optional[Literal['µmol/L', 'µM', 'µmol/kg']]
-    phosphate_flag: Optional[int] = Field(default=None)
+    phosphate_WOCE_flag: Optional[int] = Field(default=None)
     pressure: Optional[float]
     pressure_unit: Optional[Literal['dbar']]
     silicate: Optional[float]
     silicate_unit: Optional[Literal['µmol/L', 'µM', 'µmol/kg']]
-    silicate_flag: Optional[int] = Field(default=None)
+    silicate_WOCE_flag: Optional[int] = Field(default=None)
     tot_alkalinity: Optional[float]
     tot_alkalinity_unit: Optional[Literal['µmol/kg']]
-    tot_alkalinity_flag: Optional[int] = Field(default=None)
+    tot_alkalinity_WOCE_flag: Optional[int] = Field(default=None)
     transmittance: Optional[float]
     transmittance_unit: Optional[Literal['']] # need to add cv here when known
     serial_number: Optional[str]
@@ -198,7 +197,7 @@ class SampleMetadata(BaseModel):
                'Unimak box E3', 'Unimak box N1', 'Unimak box N2', 'Unimak box N3', 'Unimak box N4', 'Unimak box N5', 
                'Unimak box N6', 'AW5', 'AW4', 'AW3', 'AW2', 'AW1', 'AE1', 'AE2', 'AE3', 'AE4', 'AE5', 'UT1', 'UT2', 'UT3', 
                'UT5', 'UT4', 'BS-14', 'CEO', 'CK9', 'UTN3', 'UTN2', 'UTN1', 'BRS-5', 'BRS-3', 'BRS-1', 'BS8', 'BS6', 'BS3', 
-               'C2', 'KUM-2A', 'BS-1', 'M8', 'BS1']] # Added BS1 for now even though its missing from reference list
+               'C2', 'KUM-2A', 'BS-1', 'M8', 'BS1']]
     ctd_cast_number: Optional[int]
     ctd_bottle_number: Optional[int]
     replicate_number: Optional[int]

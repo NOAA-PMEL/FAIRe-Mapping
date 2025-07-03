@@ -57,9 +57,30 @@ def create_dy2209_sample_metadata():
             )
 
         elif faire_col == 'decimalLongitude':
-            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(
+            demicalLongitude = sample_mapper.sample_metadata_df[metadata_col].apply(
                 sample_mapper.switch_lat_lon_degree_to_neg
             )
+
+            sample_metadata_results[faire_col] = demicalLongitude
+            sample_mapper.sample_metadata_df['decimalLongitude'] = demicalLongitude
+
+            station_id_metadata_col = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('station_id')
+            station_id = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.get_station_id_from_unstandardized_station_name(metadata_row=row, unstandardized_station_name_col=station_id_metadata_col), 
+                axis=1
+            )
+
+            sample_metadata_results['station_id'] = station_id
+            sample_mapper.sample_metadata_df['station_id'] = station_id
+
+            # Use standardized station to get stations within 3 km
+            station_metadata_cols = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('station_ids_within_3km_of_lat_lon').split(' | ')
+            lat_col = station_metadata_cols[1]
+            lon_col = station_metadata_cols[2]
+            sample_metadata_results['station_ids_within_3km_of_lat_lon'] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.get_stations_within_3km(metadata_row=row, station_name_col='station_id', lat_col=lat_col, lon_col=lon_col), 
+                axis=1)
+
 
         elif faire_col == 'geo_loc_name':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(

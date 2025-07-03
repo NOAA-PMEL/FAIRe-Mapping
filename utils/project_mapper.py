@@ -10,7 +10,6 @@ import openpyxl
 import os
 from astral import LocationInfo
 from astral.sun import sun
-from geopy.distance import geodesic
 import pytz
 
 
@@ -35,9 +34,6 @@ class ProjectMapper(OmeFaireMapper):
     faire_latitude_col = 'decimalLatitude'
     faire_longitude_col = 'decimalLongitude'
     faire_eventDate_col = 'eventDate'
-    faire_station_id_col = 'station_id'
-    faire_verbatim_station_name_col = 'verbatimStationName'
-    faire_alt_station_col = 'station_ids_within_3km_of_lat_lon'
     faire_sunrise_col = 'sunrise_time_utc'
     faire_sunset_col = 'sunset_time_utc'
     faire_input_read_count_col = 'input_read_count'
@@ -52,25 +48,19 @@ class ProjectMapper(OmeFaireMapper):
 
         self.config_yaml = config_yaml
         self.config_file = self.load_config(config_yaml)
-        self.project_name = self.config_file['project_name']
-        self.project_info_google_sheet_id = self.config_file['project_info_goole_sheet_id']
-        self.station_name_reference_google_sheet_id = self.config_file['station_name_reference_google_sheet_id']
-        self.project_info_df = self.load_google_sheet_as_df(google_sheet_id=self.project_info_google_sheet_id, sheet_name='Sheet1', header=0)
+        self.project_name = self.config_file['project_name'] if 'project_name' in self.config_file else None # None for NCBI
+        self.project_info_google_sheet_id = self.config_file['project_info_google_sheet_id'] if 'project_info_google_sheet_id' in self.config_file else None # None for NCBI
+        self.project_info_df = self.load_google_sheet_as_df(google_sheet_id=self.project_info_google_sheet_id, sheet_name='Sheet1', header=0) if 'project_info_google_sheet_id' in self.config_file else None # None for NCBI
         self.mismatch_samp_names_dict = self.config_file['mismatch_sample_names']
         self.pooled_samps_dict = self.config_file['pooled_samps']
-        self.bioinformatics_bebop_path = self.config_file['bioinformatics_bebop_path']
-        self.bebop_config_file_google_sheet_id = self.config_file['bebop_config_file_google_sheet_id']
-        self.bioinformatics_software_name = self.config_file['bioinformatics_software_name']
-        self.bebop_config_run_col_name = self.config_file['bebop_config_run_col_name']
-        self.bebop_config_marker_col_name = self.config_file['bebop_config_marker_col_name']
+        self.bioinformatics_bebop_path = self.config_file['bioinformatics_bebop_path'] if 'bioinformatics_bebop_path' in self.config_file else None # None if NCBI
+        self.bebop_config_file_google_sheet_id = self.config_file['bebop_config_file_google_sheet_id'] if 'bebop_config_file_google_sheet_id' in self.config_file else None # None if NCBI
+        self.bioinformatics_software_name = self.config_file['bioinformatics_software_name'] if 'bioinformatics_software_name' in self.config_file else None # None if NCBI
+        self.bebop_config_run_col_name = self.config_file['bebop_config_run_col_name'] if 'bebop_config_run_col_name' in self.config_file else None # None if NCBI
+        self.bebop_config_marker_col_name = self.config_file['bebop_config_marker_col_name'] if 'bebop_config_marker_col_name' in self.config_file else None # None if NCBI
         self.logging_directory = self.config_file['logging_directory']
 
         self.pcr_library_dict = {}
-
-        # Create reference station dicts
-        station_dicts = self.create_station_ref_dicts()
-        self.station_lat_lon_ref_dict = station_dicts[0]
-        self.standardized_station_dict = station_dicts[1]
 
     def process_whole_project_and_save_to_excel(self):
 
@@ -140,7 +130,7 @@ class ProjectMapper(OmeFaireMapper):
         # Add assay name to final_sample_df
         final_sample_df = self.add_assay_name_to_samp_df(samp_df=final_sample_metadata_df, exp_run_df=final_exp_df)
 
-        # Add calculated columns to sample df (like sunset, sunrise, and alt_station_names)
+        # Add calculated columns to sample df (like sunset, sunrise)
         final_sample_df_with_calc_cols = self.add_post_sample_metadata_calculated_cols(df=final_sample_df)
 
         return final_sample_df_with_calc_cols, final_exp_df
@@ -207,63 +197,14 @@ class ProjectMapper(OmeFaireMapper):
         return exp_df
     
     def add_post_sample_metadata_calculated_cols(self, df: pd.DataFrame) -> pd.DataFrame:
-        # Adds columns to sample metadata that are calculated from other columns. (e.g. sunset, sunrise, atlernative station names)
+        # Adds columns to sample metadata that are calculated from other columns. (e.g. sunset, sunrise)
         
         # Add sunrise and sunset utc times
         sun_info = df.apply(lambda row: self.get_sun_times_from_iso(metadata_row=row), axis=1, result_type = 'expand')
         df[self.faire_sunrise_col] = sun_info[0]
         df[self.faire_sunset_col] = sun_info[1]
 
-        # Add alternative station names
-        df[self.faire_alt_station_col] = df.apply(lambda row: self.get_stations_within_3km(metadata_row=row), axis=1)
-
-        # first create verbatimStationName and copy station id over, then standardize station ids
-        df[self.faire_verbatim_station_name_col] = df[self.faire_station_id_col]
-        df[self.faire_station_id_col] = df.apply(lambda row: self.standardize_station_id(metadata_row=row), axis=1)
-
         return df
-
-    def create_station_ref_dicts(self) -> dict:
-        # Creates a lat_lon_station_ref_dict reference dictionary for station names and their lat_lon coords (e.g. {'BF2': {'lat': '71.75076', 'lon': -154.4567}, 'DBO1.1': {'lat': '62.01', 'lon': -175.06}}
-        # Also creates a standardized station dict
-        
-        station_ref_df = self.load_google_sheet_as_df(google_sheet_id=self.station_name_reference_google_sheet_id, sheet_name='Sheet1', header=0)
-        station_lat_lon_ref_dict = self.create_station_lat_lon_ref_dict(station_ref_df=station_ref_df)
-        station_standardized_name_dict = self.create_standardized_station_name_ref_dict(station_ref_df=station_ref_df)
-
-        return station_lat_lon_ref_dict, station_standardized_name_dict
-
-    def create_station_lat_lon_ref_dict(self, station_ref_df: pd.DataFrame) -> dict:
-        station_lat_lon_ref_dict = {}
-        for _, row in station_ref_df.iterrows():
-            station_name = row['station_name']
-            lat = row['LatitudeDecimalDegree']
-            lon = row['LongitudeDemicalDegree']
-            lat_hem = row['LatitudeHem']
-            lon_hem = row['LongitudeHem']
-
-            # Add direction sign to lat/lon
-            if 'S' == lat_hem:
-                lat = float(-abs(float(lat)))
-            if 'W' == lon_hem:
-                lon = float(-abs(float(lon)))
-            
-            station_lat_lon_ref_dict[station_name] = {
-                'lat': lat,
-                'lon': lon
-            }
-
-        return station_lat_lon_ref_dict
-    
-    def create_standardized_station_name_ref_dict(self, station_ref_df: pd.DataFrame) -> dict:
-        station_standardized_name_dict = {}
-        for _, row in station_ref_df.iterrows():
-            standardized_name = row['station_name']
-            non_standardized_names = row['ome_station'].split(' | ')
-
-            station_standardized_name_dict[standardized_name] = non_standardized_names
-
-        return station_standardized_name_dict
 
     def update_mismatch_sample_names(self, sample_name: str) -> str:
         # Update sample metadata sample name to be the sample name that needs to match in experiment run metadata
@@ -624,73 +565,6 @@ class ProjectMapper(OmeFaireMapper):
 
         workbook.save(self.final_faire_template_path)
         workbook.close()
-
-    def calculate_distance_btwn_lat_lon_points(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-            # Calculates the surface distance between two points in lat/lon using the great_circle package of GeoPy
-            return geodesic((lat1, lon1), (lat2, lon2)).kilometers
-
-    def standardize_station_id(self, metadata_row: pd.Series) -> str:
-        station_id = metadata_row[self.faire_station_id_col]
-        sample_cat = metadata_row[self.faire_sample_category_col_name]
-
-        if sample_cat == 'sample':
-            # Standardizes station ids to be from the reference station sheet
-            for standard_station_name, unstandardized_station_list in self.standardized_station_dict.items():
-                if station_id in unstandardized_station_list or station_id == standard_station_name:
-                    return standard_station_name
-        
-            # only print if not match was found after whole iteration
-            print(f"\033[33m{station_id} listed for sample {metadata_row[self.faire_sample_name_col]} is missing from station reference dictionary as an ome_station. Please check\033[0m]")
-            return station_id
-        else:
-            return station_id
-        
-    def get_stations_within_3km(self, metadata_row: pd.Series) -> str:
-        # Get alternate station names based on lat/lon coords and grabs all stations within 1 km as alternate stations
-        lat = metadata_row[self.faire_latitude_col]
-        lon = metadata_row[self.faire_longitude_col]
-        listed_station = metadata_row[self.faire_station_id_col]
-
-        samp_cat = metadata_row[self.faire_sample_category_col_name]
-        if samp_cat == 'sample':
-        
-            # alt_stations = []
-            distances = []
-            error_distances = []
-
-            for station_name, coords in self.station_lat_lon_ref_dict.items():
-                station_lat = coords['lat']
-                station_lon = coords ['lon']
-
-                # calculate distance
-                distance = self.calculate_distance_btwn_lat_lon_points(lat1=lat, lon1=lon, lat2=station_lat, lon2=station_lon)
-
-                # Account for DBO1.9 which moved but coordinates haven't been updated yet - see email from Shaun
-                # Also make exception for DBO4.1 (took this out since changing from 1 km to 3 km)
-                if distance <= 3 or (station_name == 'DBO1.9' and distance <=10.5):
-                    distances.append({
-                        'station': station_name,
-                        'distance_km': distance,
-                        'coords': coords
-                    })
-
-                else:
-                    error_distances.append({
-                        'station': station_name,
-                        'distance_km': distance,
-                        'coords': coords
-                    })
-                    error_distances.sort(key=lambda x: x['distance_km'])
-
-            # sort by distance and return top n
-            distances.sort(key=lambda x: x['distance_km'])
-            alt_station_names = ' | '.join([item['station'] for item in distances])
-            if alt_station_names:
-                return alt_station_names
-            else:
-                print(ValueError(f"\033[31m{metadata_row[self.faire_sample_name_col]} listed station {listed_station}, but it is not picking up on any stations with 5 km based on its lat/lon {lat, lon}. Closest station is {error_distances[0]}!\033[0m]"))
-        else:
-            return 'not applicable: control sample'
     
     def get_sun_times_from_iso(self, metadata_row: pd.Series):
         # Gets the sunrise and sunset from ISO dattime str, return sunrise, sunset
