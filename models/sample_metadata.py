@@ -99,6 +99,7 @@ class SampleMetadata(BaseModel):
     tot_depth_water_col: Optional[float]
     elev: Optional[float]
     temp: Optional[float] = Field(description = 'in degree Celsius')
+    temp_WOCE_flag: Optional[int] = Field(default=None)
     chlorophyll: Optional[float] = Field(description = 'in mg/m3')
     light_intensity: Optional[float] = Field(description = 'in lux')
     ph: Optional[float]
@@ -114,6 +115,7 @@ class SampleMetadata(BaseModel):
     wind_speed: Optional[float] = Field(descripton = 'in m/s')
     diss_inorg_carb: Optional[float]
     diss_inorg_carb_unit: Optional[str]
+    diss_inorg_carb_WOCE_flag: Optional[int] = Field(default=None)
     diss_inorg_nitro: Optional[float]
     diss_inorg_nitro_unit: Optional[Literal['µM', 'mol/m3', 'mmol/m3', 'µmol/m3 ', 'mol/L', 'mmol/L', 'µmol/L', 'mg/L',  'µg/L', 'µmol/kg', 'mmol/kg ', 'parts per million']]
     diss_org_carb: Optional[float]
@@ -226,13 +228,13 @@ class SampleMetadata(BaseModel):
     air_pressure_at_sea_level: Optional[float] = None
     air_pressure_at_sea_level_unit: Optional[Literal['mb']] = None
     d18O_permil: Optional[float] = Field(default=None, description='18O oxygen iostope ratio, expressed in per mill (%) unit deviations from the international standard which is Standard Mean Ocean Water, as distributed by the International Atomic Energy Agency.')
-    d18O_permil_flag: Optional[int] = Field(default=None)
+    d18O_permil_WOCE_flag: Optional[int] = Field(default=None)
     expedition_id: Optional[str]
     expedition_name: Optional[str]
     rosette_position: Optional[int] = None
     collected_by: Optional[str]
     meaurements_from: Optional[str]
-    niskin_flag: Optional[int] = Field(default=None)
+    niskin_WOCE_flag: Optional[int] = Field(default=None)
     station_ids_within_5km_of_lat_lon: Optional[str] = Field(default=None)
     sunrise_time_utc: Optional[str] = Field(default=None)
     sunset_time_utc: Optional[str] = Field(default=None)
