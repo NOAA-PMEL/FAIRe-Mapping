@@ -717,7 +717,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
     def switch_lat_lon_degree_to_neg(self, lat_or_lon_deg) -> float:
         # If the sign is positive and should be negative, switch the sign of longitude or latitude
-        return -lat_or_lon_deg
+
+        return -(float(lat_or_lon_deg))
 
     def calculate_date_duration(self, metadata_row: pd.Series, start_date_col: str, end_date_col: str) -> datetime:
         # takes two dates and calcualtes the difference to find the duration of time in ISO 8601 format
@@ -760,9 +761,9 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # Check if verbatim column and use to determin negative or positive sign
         # pandas has a bug where it removes the negative using .apply()
         if 'S' in metadata_row['verbatimLatitude']:
-            lat = float(-abs(lat))
+            lat = float(-abs(float(lat)))
         if 'W' in metadata_row['verbatimLongitude']:
-            lon = float(-abs(lon))
+            lon = float(-abs(float(lon)))
 
         # open the gebco dataset
         ds = xr.open_dataset(self.gebco_file)
@@ -846,8 +847,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             # Calculates the surface distance between two points in lat/lon using the great_circle package of GeoPy
             return geodesic((lat1, lon1), (lat2, lon2)).kilometers   
     
-    def get_stations_within_3km(self, metadata_row: pd.Series, station_name_col: str, lat_col: str, lon_col: str) -> str:
-        # Get alternate station names based on lat/lon coords and grabs all stations within 1 km as alternate stations - need to use standardized station names for station_name_col to be able to look 
+    def get_stations_within_5km(self, metadata_row: pd.Series, station_name_col: str, lat_col: str, lon_col: str) -> str:
+        # Get alternate station names based on lat/lon coords and grabs all stations within 5 km as alternate stations - need to use standardized station names for station_name_col to be able to look 
         # up in station_lat_lon_dict
         lat = metadata_row[lat_col]
         lon = metadata_row[lon_col]
@@ -869,7 +870,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
                 # Account for DBO1.9 which moved but coordinates haven't been updated yet - see email from Shaun
                 # Also make exception for DBO4.1 (took this out since changing from 1 km to 3 km)
-                if distance <= 3 or (station_name == 'DBO1.9' and distance <=10.5):
+                if distance <= 5 or (station_name == 'DBO1.9' and distance <=10.5):
                     distances.append({
                         'station': station_name,
                         'distance_km': distance,

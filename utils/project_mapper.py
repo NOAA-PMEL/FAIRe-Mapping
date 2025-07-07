@@ -38,6 +38,7 @@ class ProjectMapper(OmeFaireMapper):
     faire_sunset_col = 'sunset_time_utc'
     faire_input_read_count_col = 'input_read_count'
     faire_output_read_count_col = 'output_read_count'
+    faire_biological_rep_relation_col = 'biological_rep_relation'
     project_sheet_term_name_col_num = 3
     project_sheet_assay_start_col_num = 5
     project_sheet_project_level_col_num = 4
@@ -114,8 +115,8 @@ class ProjectMapper(OmeFaireMapper):
         filtered_samp_df, missing_samples = self._filter_samp_df_by_samp_name(samp_df=pcr_updated_df, associated_seq_df=combined_exp_run_df)
         if missing_samples:
             missing_file_name = 'samps_not_sequenced.csv'
-            self.save_list_to_csv(the_list=missing_samples, file_name=missing_file_name)
             print(f"\033[35mThere are samples that do not appear to have been sequenced - they don't exist in the experimentRunMetadata, please see {self.logging_directory+missing_file_name} for a list.\33[0m]")
+            self.save_list_to_csv(the_list=missing_samples, file_name=missing_file_name)
 
         # Fill empty values for POSITIVE and pool samples with "not applicable: control sample"
         final_sample_metadata_df = self.fill_empty_vals(df=filtered_samp_df)
@@ -124,16 +125,19 @@ class ProjectMapper(OmeFaireMapper):
         final_exp_df, dropped_exp_run_samples = self.filter_exp_run_metadata(final_sample_df=final_sample_metadata_df, exp_run_df=combined_exp_run_df)
         if len(dropped_exp_run_samples) > 0:
             dropped_file_name = 'unrelated_project_samps_dropped.csv'
-            self.save_list_to_csv(the_list=dropped_exp_run_samples, file_name=dropped_file_name)
             print(f"\033[35mThere are samples that were dropped from the experiment run metadata. Please check the {self.logging_directory+dropped_file_name} for a list - make sure they are not part of this project.\33[0m]")
-
+            self.save_list_to_csv(the_list=dropped_exp_run_samples, file_name=dropped_file_name)
+            
         # Add assay name to final_sample_df
         final_sample_df = self.add_assay_name_to_samp_df(samp_df=final_sample_metadata_df, exp_run_df=final_exp_df)
 
         # Add calculated columns to sample df (like sunset, sunrise)
         final_sample_df_with_calc_cols = self.add_post_sample_metadata_calculated_cols(df=final_sample_df)
 
-        return final_sample_df_with_calc_cols, final_exp_df
+        # Drop any samples from rel_cont_id or biological_rep_relation that don't exist anymore in the dataframe - may have been dropped because they weren't sequenced.
+        final_final_df = self.drop_samps_from_faire_rel_column_that_dropped(df = final_sample_df_with_calc_cols)
+
+        return final_final_df, final_exp_df
 
     def process_analysis_metadata(self, project_id: str, final_exp_run_df: pd.DataFrame): 
         # Process analysis metadata using AnalyisMetadata class
@@ -595,6 +599,33 @@ class ProjectMapper(OmeFaireMapper):
             return sunrise_iso, sunset_iso
         else:
             return 'not applicable: control sample', 'not applicable: control sample'
+
+    def drop_samps_from_faire_rel_column_that_dropped(self, df: pd.DataFrame) -> pd.DataFrame:
+        # Drop the sample names from rel_cont_id, or biological_rep_relation that dont' exist as a samp_name in the sample metadata df
+        valid_samples = set(df[self.faire_sample_name_col])
+
+        # Also valid samples are pooled subsamples that won't necessarily exist in the experiment run metadata
+        other_valid_samps = set()
+        for pooled_info in self.pooled_samps_dict:
+            for samp in pooled_info['samps_that_were_pooled']:
+                if samp in set(df[self.faire_sample_name_col]):
+                    other_valid_samps.add(samp)
+
+        def filter_faire_relation_str(faire_rel_col_str: str) -> str:
+            # funciton to filter rel_cont_id values
+            if 'not applicable' not in faire_rel_col_str:
+                valid_ids = [sample for sample in faire_rel_col_str.split(' | ') if sample in valid_samples]
+                if valid_ids:
+                    return ' | '.join(valid_ids) 
+                else:
+                    return 'not applicable'
+            else:
+                return faire_rel_col_str
+            
+        df[self.faire_rel_cont_id_col_name] = df[self.faire_rel_cont_id_col_name].apply(filter_faire_relation_str)
+        df[self.faire_biological_rep_relation_col] = df[self.faire_biological_rep_relation_col].apply(filter_faire_relation_str)
+
+        return df
 
     def load_project_level_metadata_to_excel(self) -> None:
         # Maps the project level metadata to the projectMetadata excel sheet

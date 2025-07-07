@@ -5,9 +5,10 @@ from utils.sample_metadata_mapper import FaireSampleMetadataMapper
 import pandas as pd
 
 def replace_incorrect_lat_lon(df: pd.DataFrame):
-    # Sean mentioned the lat/lon with 64.0038, -163.06616 are incorrect and gave me the correct values of Lat: 64 00.24 Lon: 167 53.97
+    # Sean mentioned the lat/lon with 64.0038, -163.06616 are incorrect and gave me the correct values of Lat:  64 00.24 N Lon: 167 54.02 W
+    # Adding lon without negative sign because this sign is fixed for all longitude later on in the script (switch_lat_lon_degree_to_neg function)
     df.loc[df['btl_latitude..degrees_north.'].astype(str).str.startswith('64.0038'), 'btl_latitude..degrees_north.'] = '64.004'
-    df.loc[df['btl_longitude..degrees_east.'].astype(str).str.startswith('-163.06616'), 'btl_longitude..degrees_east.'] = '-167.8995'
+    df.loc[df['btl_longitude..degrees_east.'].astype(str).str.startswith('163.06616'), 'btl_longitude..degrees_east.'] = '167.900333'
 
     return df
 
@@ -74,11 +75,11 @@ def create_dy2209_sample_metadata():
             sample_mapper.sample_metadata_df['station_id'] = station_id
 
             # Use standardized station to get stations within 3 km
-            station_metadata_cols = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('station_ids_within_3km_of_lat_lon').split(' | ')
+            station_metadata_cols = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('station_ids_within_5km_of_lat_lon').split(' | ')
             lat_col = station_metadata_cols[1]
             lon_col = station_metadata_cols[2]
-            sample_metadata_results['station_ids_within_3km_of_lat_lon'] = sample_mapper.sample_metadata_df.apply(
-                lambda row: sample_mapper.get_stations_within_3km(metadata_row=row, station_name_col='station_id', lat_col=lat_col, lon_col=lon_col), 
+            sample_metadata_results['station_ids_within_5km_of_lat_lon'] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.get_stations_within_5km(metadata_row=row, station_name_col='station_id', lat_col=lat_col, lon_col=lon_col), 
                 axis=1)
 
 

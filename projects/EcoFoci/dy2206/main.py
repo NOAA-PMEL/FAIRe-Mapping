@@ -144,12 +144,12 @@ def create_dy2206_sample_metadata():
             sample_metadata_results[faire_col] = station_id
             sample_mapper.sample_metadata_df['station_id'] = station_id
 
-            # Use standardized station to get stations within 3 km
-            station_metadata_cols = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('station_ids_within_3km_of_lat_lon').split(' | ')
+            # Use standardized station to get stations within 5 km
+            station_metadata_cols = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('station_ids_within_5km_of_lat_lon').split(' | ')
             lat_col = station_metadata_cols[1]
             lon_col = station_metadata_cols[2]
-            sample_metadata_results['station_ids_within_3km_of_lat_lon'] = sample_mapper.sample_metadata_df.apply(
-                lambda row: sample_mapper.get_stations_within_3km(metadata_row=row, station_name_col='station_id', lat_col=lat_col, lon_col=lon_col), 
+            sample_metadata_results['station_ids_within_5km_of_lat_lon'] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.get_stations_within_5km(metadata_row=row, station_name_col='station_id', lat_col=lat_col, lon_col=lon_col), 
                 axis=1)
 
     # Step 4: fill in NA with missing not collected or not applicable because they are samples and adds NC to rel_cont_id
