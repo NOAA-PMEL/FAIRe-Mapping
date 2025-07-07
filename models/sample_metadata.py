@@ -184,22 +184,32 @@ class SampleMetadata(BaseModel):
     transmittance_unit: Optional[Literal['']] # need to add cv here when known
     serial_number: Optional[str]
     line_id: Optional[str]
-    station_id: Optional[Literal['BF2', 'DBO1.1', 'DBO1.2', 'DBO1.3', 'DBO1.4', 'DBO1.5', 'DBO1.6', 'DBO1.7', 'DBO1.8', 'DBO1.9', 
-               'DBO1.10', 'DBO2.0', 'DBO2.1', 'DBO2.2', 'DBO2.3', 'DBO2.4', 'DBO2.5', 'DBO2.6', 'DBO2.7', 
-               'DBO3.1', 'DBO3.2', 'DBO3.3', 'DBO3.4', 'DBO3.5', 'DBO3.6', 'DBO3.7', 'DBO3.8', 'DBO4.1', 
-               'DBO4.2', 'DBO4.3', 'DBO4.4', 'DBO4.5', 'DBO4.6', 'DBO5.1', 'DBO5.2', 'DBO5.3', 'DBO5.4', 'DBO5.5', 
-               'DBO5.6', 'DBO5.7', 'DBO5.8', 'DBO5.9', 'DBO5.10', 'DBO4.1N', 'DBO4.2N', 'DBO4.3N', 'DBO4.4N', 
-               'DBO4.5N', 'DBO4.6N', 'IC02', 'IC03', 'IC04', 'IC05', 'IC06', 'IC07', 'IC08', 'IC09', 'IC10', 
-               'IC01', 'IC11', 'IC12', '70M40', '70M39/M5W', '70M38/M5N', '70m38/M5', 'M5S', 'M5E', '70M36', '70M35', 
-               '70M34', '70M33', '70M32', '70M31', '70M30', '70M29', '70M28', '70M27', '70M26', '70M25', '70M24', 
-               '70M23', 'M4N', '70M22/M4W', '70M21/M4', 'M4E', '70M19/M4S', '70M18', '70M17', '70M16', '70M15', '70M14', 
-               '70M13', '70M12', '70M11', '70M10', '70M09', '70M08', '70M07', '70M06', '70M05', '70M04', '70M03', '70M02/M2', 
-               'M2S', 'M2W', 'M2N', 'M2E', 'Unimak box S1', 'Unimak box S2', 'Unimak box S3', 'Unimak box S4', 
-               'Unimak box W4', 'Unimak box W3', 'Unimak box W2', 'Unimak box W1', 'Unimak box E1', 'Unimak box E2', 
-               'Unimak box E3', 'Unimak box N1', 'Unimak box N2', 'Unimak box N3', 'Unimak box N4', 'Unimak box N5', 
-               'Unimak box N6', 'AW5', 'AW4', 'AW3', 'AW2', 'AW1', 'AE1', 'AE2', 'AE3', 'AE4', 'AE5', 'UT1', 'UT2', 'UT3', 
-               'UT5', 'UT4', 'BS-14', 'CEO', 'CK9', 'UTN3', 'UTN2', 'UTN1', 'BRS-5', 'BRS-3', 'BRS-1', 'BS8', 'BS6', 'BS3', 
-               'C2', 'KUM-2A', 'BS-1', 'M8', 'BS1']]
+    station_id: Optional[Literal['BF2', 'DBO1.1', 'DBO1.2', 'DBO1.3', 'DBO1.4', 'DBO1.5', 'DBO1.6',
+                                'DBO1.7', 'DBO1.8', 'DBO1.9', 'DBO1.10', 'DBO2.0', 'DBO2.1', 'DBO2.2',
+                                'DBO2.3', 'DBO2.4', 'DBO2.5', 'DBO2.6', 'DBO2.7', 'DBO3.1', 'DBO3.2',
+                                'DBO3.3', 'DBO3.4', 'DBO3.5', 'DBO3.6', 'DBO3.7', 'DBO3.8', 'DBO4.1',
+                                'DBO4.2', 'DBO4.3', 'DBO4.4', 'DBO4.5', 'DBO4.6', 'DBO5.1', 'DBO5.2',
+                                'DBO5.3', 'DBO5.4', 'DBO5.5', 'DBO5.6', 'DBO5.7', 'DBO5.8', 'DBO5.9',
+                                'DBO5.10', 'DBO4.1N', 'DBO4.2N', 'DBO4.3N', 'DBO4.4N', 'DBO4.5N',
+                                'DBO4.6N', 'IC02', 'IC03', 'IC04', 'IC05', 'IC06', 'IC07', 'IC08',
+                                'IC09', 'IC10', 'IC01', 'IC11', 'IC12', 'BC02', 'BC04', 'BC06', 'BC08',
+                                'IC0.75', 'M8', 'M8W', 'M8N', 'M8M', 'M8S', '70M56', '70M55', '70M54',
+                                '70M53', '70M52', '70M51', '70M50', '70M49', '70M48', '70M47', '70M46',
+                                '70M45', '70M44', '70M43', '70M42', '70M41', '70M40', '70M39/M5W',
+                                '70M38/M5N', '70m38/M5', 'M5S', 'M5E', '70M37', '70M36', '70M35',
+                                '70M34', '70M33', '70M32', '70M31', '70M30', '70M29', '70M28', '70M27',
+                                '70M26', '70M25', '70M24', '70M23', 'M4N', '70M22/M4W', '70M21/M4',
+                                'M4E', '70M19/M4S', '70M18', '70M17', '70M16', '70M15', '70M14',
+                                '70M13', '70M12', '70M11', '70M10', '70M09', '70M08', '70M07',
+                                '70M06', '70M05', '70M04', '70M03', '70M02/M2', 'M2S', 'M2W', 'M2N',
+                                'M2E', '70M57', 'Unimak box S1', 'Unimak box S2', 'Unimak box S3',
+                                'Unimak box S4', 'Unimak box W4', 'Unimak box W3', 'Unimak box W2',
+                                'Unimak box W1', 'Unimak box E1', 'Unimak box E2', 'Unimak box E3',
+                                'Unimak box N1', 'Unimak box N2', 'Unimak box N3', 'Unimak box N4',
+                                'Unimak box N5', 'Unimak box N6', 'AW5', 'AW4', 'AW3', 'AW2', 'AW1',
+                                'AE1', 'AE2', 'AE3', 'AE4', 'AE5', 'UT1', 'UT2', 'UT3', 'UT5', 'UT4',
+                                'BS-14', 'CEO' ,'CK9', 'UTN3', 'UTN2', 'UTN1', 'BRS5', 'BRS3', 'BRS1',
+                                'BS8', 'BS6', 'BS3', 'BS1', 'C2', 'KUM-2A']]
     ctd_cast_number: Optional[int]
     ctd_bottle_number: Optional[int]
     replicate_number: Optional[int]
@@ -223,7 +233,7 @@ class SampleMetadata(BaseModel):
     collected_by: Optional[str]
     meaurements_from: Optional[str]
     niskin_flag: Optional[int] = Field(default=None)
-    station_ids_within_3km_of_lat_lon: Optional[str] = Field(default=None)
+    station_ids_within_5km_of_lat_lon: Optional[str] = Field(default=None)
     sunrise_time_utc: Optional[str] = Field(default=None)
     sunset_time_utc: Optional[str] = Field(default=None)
     verbatimStationName: Optional[str] = Field(default=None)
@@ -414,15 +424,16 @@ class SampleMetadata(BaseModel):
     
     @model_validator(mode='after')
     def valdate_station_id_with_stations_within_3km(self):
-        # Checks if the station_id exists in the station_ids_within_3km_of_lat_lon, and if it doesn't warns
+        # Checks if the station_id exists in the station_ids_within_5km_of_lat_lon, and if it doesn't warns
         if self.samp_category != 'sample':
             return self
-        if self.station_ids_within_3km_of_lat_lon != None:
-            alt_stations = self.station_ids_within_3km_of_lat_lon.split(' | ')
+        if self.station_ids_within_5km_of_lat_lon != None:
+            alt_stations = self.station_ids_within_5km_of_lat_lon.split(' | ')
             if self.station_id not in alt_stations:
-                warnings.warn(f"{self.samp_name} has station {self.station_id} listed, but it was not picked up in the stations within 3 km: {self.station_ids_within_3km_of_lat_lon}") 
+                warnings.warn(f"{self.samp_name} has station {self.station_id} listed, but it was not picked up in the stations within 5 km: {self.station_ids_within_5km_of_lat_lon}") 
             return self
         else:
+            warnings.warn(f"{self.samp_name} picked up no stations within 5 km, including its own!!")
             return self
 
 ## Notes: without @classmethod you can access self.other_field, but iwth @class_method you cannot. Use @classmethod when you only need to validate a single field.
