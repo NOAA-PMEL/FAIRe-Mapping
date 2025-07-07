@@ -52,7 +52,6 @@ mismatch_sample_names:
   MID.NC.SKQ2021: Mid.NC.SKQ21
   E2030.NC.SKQ23-12S: E2030.NC
 
-
 #pooled samples dict - all pooled samples applicable to this project and the subsamples they make up
 # if sample names are in the mismatch - add the updated sample name as the value here.
 pooled_samps:
