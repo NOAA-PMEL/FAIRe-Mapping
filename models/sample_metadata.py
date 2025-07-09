@@ -104,6 +104,7 @@ class SampleMetadata(BaseModel):
     light_intensity: Optional[float] = Field(description = 'in lux')
     ph: Optional[float]
     ph_meth: Optional[str]
+    ph_WOCE_flag: Optional[int] = Field(default=None)
     salinity: Optional[float] = Field(description = 'partical salinity unit (psu)')
     salinity_WOCE_flag: Optional[int] = Field(default=None)
     suspend_part_matter: Optional[float] = Field(description = 'in mg/L')
