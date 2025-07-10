@@ -1,0 +1,14 @@
+# Use same config file as projectMapper
+logging_directory: /home/poseidon/zalmanek/FAIRe-Mapping/runs/osu876/ncbi_mapping/ncbi_submission_data/logging/
+datasets: # a list of sample_metadata.csvs and their associated experimentRun csvs
+  sample_metadata_csvs:
+    - cruise_name: no201
+      sample_metadata_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/no201/data/no201_faire.csv
+  associated_sequencing_csvs:
+    - sequencing_run_name: osu876
+      sequence_run_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/osu876/data/osu876_faire.csv
+
+faire_template_file: /home/poseidon/zalmanek/FAIRe-Mapping/faire_template.xlsx
+final_faire_template_path: # nothing here because final_faire_template_path is not needed for ncbi
+
+json_creds: /home/poseidon/zalmanek/FAIRe-Mapping/credentials.json
