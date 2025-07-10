@@ -39,6 +39,7 @@ class ProjectMapper(OmeFaireMapper):
     faire_input_read_count_col = 'input_read_count'
     faire_output_read_count_col = 'output_read_count'
     faire_biological_rep_relation_col = 'biological_rep_relation'
+    faire_stations_in_5km_col = "station_ids_within_5km_of_lat_lon"
     project_sheet_term_name_col_num = 3
     project_sheet_assay_start_col_num = 5
     project_sheet_project_level_col_num = 4
@@ -52,8 +53,8 @@ class ProjectMapper(OmeFaireMapper):
         self.project_name = self.config_file['project_name'] if 'project_name' in self.config_file else None # None for NCBI
         self.project_info_google_sheet_id = self.config_file['project_info_google_sheet_id'] if 'project_info_google_sheet_id' in self.config_file else None # None for NCBI
         self.project_info_df = self.load_google_sheet_as_df(google_sheet_id=self.project_info_google_sheet_id, sheet_name='Sheet1', header=0) if 'project_info_google_sheet_id' in self.config_file else None # None for NCBI
-        self.mismatch_samp_names_dict = self.config_file['mismatch_sample_names']
-        self.pooled_samps_dict = self.config_file['pooled_samps']
+        self.mismatch_samp_names_dict = self.config_file['mismatch_sample_names'] if 'mismatch_sample_names' in self.config_file else {}
+        self.pooled_samps_dict = self.config_file['pooled_samps'] if 'pooled_samps' in self.config_file else {}
         self.bioinformatics_bebop_path = self.config_file['bioinformatics_bebop_path'] if 'bioinformatics_bebop_path' in self.config_file else None # None if NCBI
         self.bebop_config_file_google_sheet_id = self.config_file['bebop_config_file_google_sheet_id'] if 'bebop_config_file_google_sheet_id' in self.config_file else None # None if NCBI
         self.bioinformatics_software_name = self.config_file['bioinformatics_software_name'] if 'bioinformatics_software_name' in self.config_file else None # None if NCBI
@@ -136,8 +137,9 @@ class ProjectMapper(OmeFaireMapper):
 
         # Drop any samples from rel_cont_id or biological_rep_relation that don't exist anymore in the dataframe - may have been dropped because they weren't sequenced.
         final_final_df = self.drop_samps_from_faire_rel_column_that_dropped(df = final_sample_df_with_calc_cols)
+        last_df = self.drop_samp_cols_not_meant_for_submission(sample_df=final_final_df)
 
-        return final_final_df, final_exp_df
+        return last_df, final_exp_df
 
     def process_analysis_metadata(self, project_id: str, final_exp_run_df: pd.DataFrame): 
         # Process analysis metadata using AnalyisMetadata class
@@ -274,8 +276,9 @@ class ProjectMapper(OmeFaireMapper):
             new_pooled_rows_df = pd.DataFrame(new_rows)
             new_pooled_rows_df = new_pooled_rows_df.drop_duplicates()
             updated_samp_df_with_pools = pd.concat([sample_df, new_pooled_rows_df], ignore_index=True)
-
-        return updated_samp_df_with_pools
+            return updated_samp_df_with_pools
+        else:
+            return sample_df
     
     def update_rel_cont_id_with_pool_samp(self, sample_df: pd.DataFrame) -> pd.DataFrame:
         # if a subsample of a pooled sample exists in the rel_cont_id column, add the pooled sample to rel_cont_id
@@ -420,26 +423,29 @@ class ProjectMapper(OmeFaireMapper):
 
         # Find which rows in sample_df need to be expanded to be duplicated because of PCR replicates
         transform_dict = {}
-        for base_name in sample_df[self.faire_sample_name_col]:
-            matches = exp_run_df[exp_run_df['base_samp_name'] == base_name][self.faire_sample_name_col].tolist()
-            if matches:
-                transform_dict[base_name] = set(matches)
+        if 'base_samp_name' in exp_run_df.columns:
+            for base_name in sample_df[self.faire_sample_name_col]:
+                matches = exp_run_df[exp_run_df['base_samp_name'] == base_name][self.faire_sample_name_col].tolist()
+                if matches:
+                    transform_dict[base_name] = set(matches)
        
-        # Add to the sample_df data frame
-        transformed_rows = []
-        for i, r in sample_df.iterrows():
-            base_name = r[self.faire_sample_name_col]
-            if base_name in transform_dict:
-                for extended_name in transform_dict[base_name]:
-                    new_row = r.copy()
-                    new_row[self.faire_sample_name_col] = extended_name
-                    transformed_rows.append(new_row)
-            else:
-                transformed_rows.append(r)
+            # Add to the sample_df data frame
+            transformed_rows = []
+            for i, r in sample_df.iterrows():
+                base_name = r[self.faire_sample_name_col]
+                if base_name in transform_dict:
+                    for extended_name in transform_dict[base_name]:
+                        new_row = r.copy()
+                        new_row[self.faire_sample_name_col] = extended_name
+                        transformed_rows.append(new_row)
+                else:
+                    transformed_rows.append(r)
 
-        samp_df_updated_for_pcr = pd.DataFrame(transformed_rows)
-        
-        return samp_df_updated_for_pcr
+            samp_df_updated_for_pcr = pd.DataFrame(transformed_rows)
+            
+            return samp_df_updated_for_pcr
+        else:
+            return sample_df
     
     def add_assay_name_to_samp_df(self, samp_df: pd.DataFrame, exp_run_df: pd.DataFrame) -> pd.DataFrame:
         # Gets a list of assays related to each sample and adds to assay_name in samp_df
@@ -627,6 +633,13 @@ class ProjectMapper(OmeFaireMapper):
 
         return df
 
+    def drop_samp_cols_not_meant_for_submission(self, sample_df: pd.DataFrame) -> pd.DataFrame:
+        # Drop columns not meant for submission like stations_within_5m
+        if self.faire_stations_in_5km_col in sample_df.columns:
+            return sample_df.drop(columns=[self.faire_stations_in_5km_col])
+        else:
+            return sample_df
+
     def load_project_level_metadata_to_excel(self) -> None:
         # Maps the project level metadata to the projectMetadata excel sheet
         
@@ -655,6 +668,7 @@ class ProjectMapper(OmeFaireMapper):
         workbook.save(self.final_faire_template_path)
         workbook.close()
 
+    
     def save_list_to_csv(self, the_list: list, file_name: str) -> None:
         # Puts a list into a csv and saves
         df = pd.DataFrame(the_list)

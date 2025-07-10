@@ -1,6 +1,9 @@
 import pandas as pd
 import shutil
 import frontmatter
+import requests
+import base64
+import tempfile
 from .lists import faire_to_ncbi_units, ncbi_faire_to_ncbi_column_mappings_exact, ncbi_faire_sra_column_mappings_exact
 from openpyxl import load_workbook
 
@@ -42,7 +45,7 @@ class NCBIMapper:
                  final_faire_experiment_run_metadata_df: pd.DataFrame,
                  ncbi_sample_excel_save_path: str,
                  ncbi_sra_excel_save_path: str, 
-                 library_prep_bebop_path: str):
+                 library_prep_dict: dict):
         # Initialize with the final faire_sample_metadata_df and final_faire_experiment_run_metadata_df
         # Can get these by initializing ProjectMapper and running process_sample_run_data method. Be sure to include config file
         # see run4/ncbi_mapping/ncbi_main.py for example
@@ -52,7 +55,7 @@ class NCBIMapper:
         self.ncbi_sample_template_df = self.load_ncbi_template_as_df(file_path=self.ncbi_sample_excel_template_path, sheet_name=self.ncbi_sample_sheet_name, header=self.ncbi_sample_header)
         self.ncbi_sample_excel_save_path = ncbi_sample_excel_save_path
         self.ncbi_sra_excel_save_path = ncbi_sra_excel_save_path
-        self.library_prep_bebop = self.load_beBop_yaml_terms(library_prep_bebop_path)
+        self.library_prep_bebop = self.retrive_github_bebop(owner=library_prep_dict.get('owner'), repo=library_prep_dict.get('repo'), file_path = library_prep_dict.get('file_path'))
 
     def create_ncbi_submission(self):
         # Will output two excel files
@@ -131,6 +134,8 @@ class NCBIMapper:
 
         # 6th add additional column in FAIRe sample df that do not exist in ncbi template
         final_ncbi_df = self.add_additional_faire_cols(faire_samp_df=self.faire_sample_df, updated_ncbi_df=updated_df)
+
+        # 7th drop fields that were just for QC
             
         return final_ncbi_df
 
@@ -150,7 +155,7 @@ class NCBIMapper:
         updated_df['library_layout'] = self.ncbi_library_layout
         updated_df['platform'] = self.library_prep_bebop['platform']
         updated_df['instrument_model'] = self.library_prep_bebop['instrument']
-        updated_df['design_description'] = f"Sequencing performed at {self.library_prep_bebop['sequencing_location']}"
+        updated_df['design_description'] = f"Sequencing performed at {self.library_prep_bebop.get('sequencing_location')}"
         updated_df['filetype'] = self.ncbi_file_type
 
         return updated_df
@@ -160,7 +165,30 @@ class NCBIMapper:
         with open(path_to_bebop, 'r', encoding='utf-8') as f:
             post = frontmatter.load(f)
             return post
+        
+    def retrive_github_bebop(self, owner: str, repo: str, file_path: str):
+        url = f"https://api.github.com/repos/{owner}/{repo}/contents/{file_path}"
 
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            data = response.json()
+
+            if 'content' in data:
+                # Decode base64 to get the raw markdown file
+                base64_content = data['content'].replace('\n', '').replace(' ', '')
+                markdown_content = base64.b64decode(base64_content).decode('utf-8')
+                
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=True, encoding='utf-8') as temp_file:
+                    temp_file.write(markdown_content)
+                    temp_file_path = temp_file.name
+                    post = self.load_beBop_yaml_terms(path_to_bebop=temp_file_path)
+                    return post.metadata
+        
+        except requests.exceptions.RequestException as e:
+            print(f"Error fetching bebop: {e}")
+            return None
+        
     def get_faire_cols_that_map_to_ncbi(self) -> list:
         # Creates a list of all the columns in FAIRe that map to NCBI (from the .lists)
         faire_maps_to_ncbi_cols = []

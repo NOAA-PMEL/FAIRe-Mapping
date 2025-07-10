@@ -1,4 +1,3 @@
-import argparse
 import pandas as pd
 import sys
 sys.path.append("../../..")
@@ -15,15 +14,14 @@ def main() -> None:
     # project_creator.save_final_df_as_csv(final_df=sample_metadata_df, sheet_name='sampleMetadata', header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/runs/run4/ncbi_mapping/sampleMetadata.csv')
     # project_creator.save_final_df_as_csv(final_df=experiment_run_metadata_df, sheet_name='experimentRunMetadata', header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/runs/run4/ncbi_mapping/experimentRunMetadata.csv')
 
-    library_prep_dict = {
-        'owner': 'marinednadude',
-        'repo': 'Jonah-Ventures-Library-Preparation',
-        'file_path': 'Jonah-Ventures-Library-Preparation-BeBOP.md'
-    } 
+    library_prep_dict = {'owner': 'marinednadude',
+                         'repo': 'OSU-Library-Preparation-Sequencing',
+                         'file_path': 'OSU-Library-Preparation-Sequencing-BeBOP.md'}
+    
     ncbi_mapper = NCBIMapper(final_faire_sample_metadata_df=sample_metadata_df, 
                              final_faire_experiment_run_metadata_df=experiment_run_metadata_df,
-                             ncbi_sample_excel_save_path='/home/poseidon/zalmanek/FAIRe-Mapping/runs/run4/ncbi_mapping/ncbi_submission_data/run4_MIMARKS.survey.water.6.0.xlsx',
-                             ncbi_sra_excel_save_path = '/home/poseidon/zalmanek/FAIRe-Mapping/runs/run4/ncbi_mapping/ncbi_submission_data/run4_SRA_metadata.xlsx',
+                             ncbi_sample_excel_save_path='/home/poseidon/zalmanek/FAIRe-Mapping/runs/osu873/ncbi_mapping/ncbi_submission_data/osu873_MIMARKS.survey.water.6.0.xlsx',
+                             ncbi_sra_excel_save_path = '/home/poseidon/zalmanek/FAIRe-Mapping/runs/osu873/ncbi_mapping/ncbi_submission_data/osu873_SRA_metadata.xlsx',
                              library_prep_dict=library_prep_dict)
     ncbi_mapper.create_ncbi_submission()
 

@@ -888,12 +888,23 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             # sort by distance and return top n
             distances.sort(key=lambda x: x['distance_km'])
             alt_station_names = ' | '.join([item['station'] for item in distances])
+            # QC check reported station is in 5km list
+            self.check_station_is_in_stations_in_5_km(alt_station_names=alt_station_names, reported_station=listed_station, samp_name=sample_name, distances=distances)
             if alt_station_names:
                 return alt_station_names
             else:
                 print(ValueError(f"\033[31m{sample_name} listed station {listed_station}, but it is not picking up on any stations with 5 km based on its lat/lon {lat, lon}. Closest station is {error_distances[0]}!\033[0m]"))
         else:
             return 'not applicable: control sample'
+    
+    def check_station_is_in_stations_in_5_km(self, alt_station_names: str, reported_station: str, samp_name:str, distances: dict) -> None:
+        # Check that reported station showed up in the stations within 5 km
+        alt_stations = alt_station_names.split(' | ')
+        if reported_station not in alt_stations:
+            closest_alt_station = alt_stations[0]
+            for distance in distances:
+                if closest_alt_station == distance.get('station'):
+                    print(f"\033[36m{samp_name}'s reported station ({reported_station}) is not found within 5 km, the closest station found to it's lat/lon coords is {closest_alt_station} with a distance of {distance.get('distance_km')}\033[0m")   
     
     def update_unit_colums_with_no_corresponding_val(self, df: pd.DataFrame) -> pd.DataFrame:
         # Update the final sample dataframe unit columns to be "not applicable" if there is no value in its corresponding column

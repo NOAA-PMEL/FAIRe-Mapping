@@ -164,6 +164,7 @@ class SampleMetadata(BaseModel):
     ammonium_WOCE_flag: Optional[int] = Field(default=None)
     carbonate: Optional[float]
     carbonate_unit: Optional[Literal['']]  # need to add cv here when known
+    carbonate_WOCE_flag: Optional[int] = Field(default=None)
     hydrogen_ion: Optional[float] = Field(default=None)
     hydrogen_ion_unit: Optional[Literal['nmol/kg']] = Field(default=None)
     nitrate_plus_nitrite: Optional[float]
@@ -230,13 +231,45 @@ class SampleMetadata(BaseModel):
     air_pressure_at_sea_level_unit: Optional[Literal['mb']] = None
     d18O_permil: Optional[float] = Field(default=None, description='18O oxygen iostope ratio, expressed in per mill (%) unit deviations from the international standard which is Standard Mean Ocean Water, as distributed by the International Atomic Energy Agency.')
     d18O_permil_WOCE_flag: Optional[int] = Field(default=None)
+    methane: Optional[float]
+    methane_unit: Optional[Literal['nmol/L']]
+    methane_WOCE_flag: Optional[str]
+    synechococcus_abundance: Optional[float]
+    synechococcus_abundance_unit: Optional[Literal['cells/mL']]
+    synechococcus_abundance_WOCE_flag: Optional[str]
+    eukaryotic_phytoplankton_abundance: Optional[float]
+    eukaryotic_phytoplankton_abundance_unit: Optional[Literal['cells/mL']]
+    eukaryotic_phytoplankton_abundance_WOCE_flag: Optional[str]
+    large_diatom_abundance: Optional[float]
+    large_diatom_abundance_unit: Optional[Literal['cells/mL']]
+    large_diatom_abundance_WOCE_flag: Optional[str]
+    cryptophyte_abundance: Optional[float]
+    cryptophyte_abundance_unit: Optional[Literal['cells/mL']]
+    cryptophyte_abundance_WOCE_flag: Optional[str]
+    bacteria_abundance: Optional[float]
+    bacteria_abundance_unit: Optional[Literal['cells/mL']]
+    bacteria_abundance_WOCE_flag: Optional[str]
+    hna_bacteria_abundance: Optional[float]
+    hna_bacteria_abundance_unit: Optional[Literal['cells/mL']]
+    hna_bacteria_abundance_WOCE_flag: Optional[str]
+    lna_bacteria_abundance: Optional[float]
+    lna_bacteria_abundance_unit: Optional[Literal['cells/mL']]
+    lna_bacteria_abundance_WOCE_flag: Optional[str]
+    # These are calculated fields - wait to hear about how to handle these before officially incorporating them
+    # boric_acid: Optional[float] = Field(description="BOH3 - can be an output of PyCO2Sys")
+    # boric_acid_unit: Optional[Literal['µmol/kg']]
+    # tetrahydroxyborate: Optional[float] = Field(description="BOH4 - can be an output of PyCO2Sys")
+    # tetrahydroxyborate_unit: Optional[Literal['µmol/kg']]
+    # aqueous_carbon_dioxide = Optional[float] = Field(description="CO2(aq) - can be an output of PyCO2Sys")
+    # aqueous_carbon_dioxide_unit: Optional[Literal['µmol/kg']]
     expedition_id: Optional[str]
     expedition_name: Optional[str]
     rosette_position: Optional[int] = None
     collected_by: Optional[str]
     meaurements_from: Optional[str]
+    nisking_id: Optional[str]
     niskin_WOCE_flag: Optional[int] = Field(default=None)
-    station_ids_within_5km_of_lat_lon: Optional[str] = Field(default=None)
+    station_ids_within_5km_of_lat_lon: Optional[str] = Field(default=None, description="Stations within 5 km of the lat/lon coordinates given for a sample - if references stations are given. For internal QC purposes only.")
     sunrise_time_utc: Optional[str] = Field(default=None)
     sunset_time_utc: Optional[str] = Field(default=None)
     verbatimStationName: Optional[str] = Field(default=None)
@@ -426,7 +459,7 @@ class SampleMetadata(BaseModel):
         return self
     
     @model_validator(mode='after')
-    def valdate_station_id_with_stations_within_3km(self):
+    def valdate_station_id_with_stations_within_5km(self):
         # Checks if the station_id exists in the station_ids_within_5km_of_lat_lon, and if it doesn't warns
         if self.samp_category != 'sample':
             return self

@@ -8,8 +8,8 @@ def swap_e27_e28_sample_metadata(df: pd.DataFrame) -> pd.DataFrame:
     # metadata need to be swapped for sample collection and environmental data (not extraction and downstream)
     columns_to_swap = ['samp_category', 'neg_cont_type', 'pos_cont_type', 'materialSampleID', 'sample_derived_from', 'sample_composed_of', 
                        'biological_rep_relation', 'decimalLongitude', 'decimalLatitude', 'verbatimLongitude', 'verbatimLatitude', 
-                       'verbatimCoordinateSystem', 'verbatimSRS', 'geo_loc_name', 'eventDate', 'eventDurationValue', 'verbatimEventDate', 'verbatimEventTime', 
-                       'env_broad_scale', 'env_local_scale', 'env_medium', 'habitat_natural_artificial_0_1', 'samp_collect_method', 'samp_collect_device', 
+                       'verbatimCoordinateSystem', 'verbatimSRS', 'eventDate', 'eventDurationValue', 'verbatimEventDate', 'verbatimEventTime', 
+                       'env_broad_scale', 'env_local_scale', 'env_medium', 'geo_loc_name', 'habitat_natural_artificial_0_1', 'samp_collect_method', 'samp_collect_device', 
                        'samp_size', 'samp_size_unit', 'samp_weather', 'minimumDepthInMeters', 
                        'maximumDepthInMeters', 'tot_depth_water_col', 'elev', 'temp', 'chlorophyll', 'light_intensity', 'ph', 'ph_meth', 'salinity', 
                        'suspend_part_matter', 'tidal_stage', 'turbidity', 'water_current', 'solar_irradiance', 'wind_direction', 'wind_speed', 'diss_inorg_carb', 
@@ -38,11 +38,25 @@ def swap_e27_e28_sample_metadata(df: pd.DataFrame) -> pd.DataFrame:
     df.loc[df['samp_name'] == 'E28.2B.DY2012', columns_to_swap] = temp_e27_2b.values
 
     return df
-    
+
+def fix_stations(df: pd.DataFrame)  -> pd.DataFrame:
+    # swap stations list for DBO4.5 with DBO4.5N, dBO4.3 with DBO4.3N, and dBO4.1 with DBO4.1N
+    # shannon says these stations were probably visited and the non-N ones were accidentally written down
+    replacements = {
+        'DBO4-5': 'DBO4.5N',
+        'DBO4-3': 'DBO4.3N',
+        'DBO4-1': 'DBO4.1N'
+    }
+
+    df['Station'] = df['Station'].replace(replacements)
+
+    return df
+
 def create_dy2012_sample_metadata():
 
     # initiate mapper
     sample_mapper = FaireSampleMetadataMapper(config_yaml='config.yaml')
+    sample_mapper.sample_metadata_df = fix_stations(df=sample_mapper.sample_metadata_df)
 
     sample_metadata_results = {}
 
