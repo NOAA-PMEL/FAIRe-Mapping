@@ -936,15 +936,17 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     def fill_empty_sample_values(self, df: pd.DataFrame, default_message="missing: not collected"):
         # fill empty values for samples after mapping over all sample data without control samples
 
+        if df.empty: # for empty NC dataframes (like in Aquamonitor)
+            pass
         # check if data frame is sample data frame and if so, then adds not applicable: control sample to control columns
-        if '.NC' not in df[self.faire_sample_name_col].iloc[0] and 'POSITIVE' not in df[self.faire_sample_name_col].iloc[0] and 'blank' not in df[self.faire_sample_name_col].iloc[0].lower():
-            for col, message in self.not_applicable_to_samp_faire_col_dict.items():
-                df[col] = message
-        elif '.NC' in df[self.faire_sample_name_col]:
-            # for NC sample pos_cont_type is just not applicable
-            df['pos_cont_type'] = "not applicable"
+        else:
+            if '.NC' not in df[self.faire_sample_name_col].iloc[0] and 'POSITIVE' not in df[self.faire_sample_name_col].iloc[0] and 'blank' not in df[self.faire_sample_name_col].iloc[0].lower():
+                for col, message in self.not_applicable_to_samp_faire_col_dict.items():
+                    df[col] = message
+            elif '.NC' in df[self.faire_sample_name_col]:
+                # for NC sample pos_cont_type is just not applicable
+                df['pos_cont_type'] = "not applicable"
 
-    
         # Use default message for all other empty values - handles None, Nan
         df = df.fillna(default_message)
 

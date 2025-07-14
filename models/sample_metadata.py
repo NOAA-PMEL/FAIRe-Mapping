@@ -67,7 +67,7 @@ class SampleMetadata(BaseModel):
     samp_size: Optional[float]
     samp_size_unit: Optional[Literal['mL', 'L', 'mg', 'g', 'kg', 'cm2', 'm2', 'cm3', 'm3']]
     samp_store_temp: Optional[Union[float, Literal['ambient temperature']]]
-    samp_store_sol: Optional[Literal['ethanol', 'sodium acetate', 'longmire', 'lysis buffer ', 'none']]
+    samp_store_sol: Optional[Literal['ethanol', 'sodium acetate', 'longmire', 'lysis buffer ', 'none', 'other: mercuric chloride']]
     samp_store_dur: Optional[str]
     samp_store_loc: Optional[str]
     dna_store_loc: Optional[str]
@@ -255,13 +255,8 @@ class SampleMetadata(BaseModel):
     lna_bacteria_abundance: Optional[float]
     lna_bacteria_abundance_unit: Optional[Literal['cells/mL']]
     lna_bacteria_abundance_WOCE_flag: Optional[str]
-    # These are calculated fields - wait to hear about how to handle these before officially incorporating them
-    # boric_acid: Optional[float] = Field(description="BOH3 - can be an output of PyCO2Sys")
-    # boric_acid_unit: Optional[Literal['µmol/kg']]
-    # tetrahydroxyborate: Optional[float] = Field(description="BOH4 - can be an output of PyCO2Sys")
-    # tetrahydroxyborate_unit: Optional[Literal['µmol/kg']]
-    # aqueous_carbon_dioxide = Optional[float] = Field(description="CO2(aq) - can be an output of PyCO2Sys")
-    # aqueous_carbon_dioxide_unit: Optional[Literal['µmol/kg']]
+    sigma_theta: Optional[float]
+    sigma_theta_unit: Optional[Literal['kg/m3']]
     expedition_id: Optional[str]
     expedition_name: Optional[str]
     rosette_position: Optional[int] = None
