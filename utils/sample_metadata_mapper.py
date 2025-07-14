@@ -89,6 +89,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         station_dicts = self.create_station_ref_dicts() if 'station_name_reference_google_sheet_id' in self.config_file else None # Some projects won't have reference stations (RC0083)
         self.station_lat_lon_ref_dict = station_dicts[0] if 'station_name_reference_google_sheet_id' in self.config_file else None # Some projects won't have reference stations (RC0083)
         self.standardized_station_dict = station_dicts[1] if 'station_name_reference_google_sheet_id' in self.config_file else None # Some projects won't have reference stations (RC0083)
+        self.station_line_dict = station_dicts[2] if 'station_name_reference_google_sheet_id' in self.config_file else None # Some projects won't have reference stations (RC0083)
 
     def create_sample_mapping_dict(self) -> dict:
         # creates a mapping dictionary and saves as self.mapping_dict
@@ -175,8 +176,9 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         station_ref_df = self.load_google_sheet_as_df(google_sheet_id=self.station_name_reference_google_sheet_id, sheet_name='Sheet1', header=0)
         station_lat_lon_ref_dict = self.create_station_lat_lon_ref_dict(station_ref_df=station_ref_df)
         station_standardized_name_dict = self.create_standardized_station_name_ref_dict(station_ref_df=station_ref_df)
+        station_line_dict = self.create_station_line_id_ref_dict(station_ref_df=station_ref_df)
 
-        return station_lat_lon_ref_dict, station_standardized_name_dict
+        return station_lat_lon_ref_dict, station_standardized_name_dict, station_line_dict
     
     def create_station_lat_lon_ref_dict(self, station_ref_df: pd.DataFrame) -> dict:
         station_lat_lon_ref_dict = {}
@@ -210,6 +212,11 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         return station_standardized_name_dict
     
+    def create_station_line_id_ref_dict(self, station_ref_df: pd.DataFrame) -> dict:
+        # create reference dict where station name is key and line id is value
+        station_line_dict = dict(zip(station_ref_df['station_name'], station_ref_df['line_id']))
+        return station_line_dict
+     
     def convert_mdy_date_to_iso8061(self, date_string: str) -> str:
         # converts from m/d/y to iso8061
         date_string = str(date_string).strip()
@@ -596,6 +603,11 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         except:
             return None
     
+    def get_line_id(self, station) -> str:
+        # Get the line id by the referance station (must be standardized station name)
+        if station in self.station_line_dict:
+            return self.station_line_dict.get(station)
+
     def convert_wind_degrees_to_direction(self, degree_metadata_row: pd.Series) -> str:
         # converts wind direction  to cardinal directions
 

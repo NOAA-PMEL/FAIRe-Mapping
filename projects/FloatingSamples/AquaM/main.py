@@ -36,98 +36,88 @@ def create_aquamonitor_sample_metadata():
             )
         elif faire_col == 'materialSampleID' or faire_col == 'sample_derived_from':
             sample_metadata_results[faire_col] = 'Aquamonitor_' + sample_mapper.sample_metadata_df[metadata_col].astype(str)
+
+        elif faire_col == 'decimalLongitude' or faire_col == 'decimalLatitude':
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].round(0)
         
-        # elif faire_col == 'geo_loc_name':
-        #     metadata_cols = metadata_col.split(' | ')
-        #     sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
-        #             lambda row: sample_mapper.find_geo_loc_by_lat_lon(metadata_row=row, metadata_lat_col=metadata_cols[0], metadata_lon_col=metadata_cols[1]), 
-        #             axis = 1
-        #         )
+        elif faire_col == 'geo_loc_name':
+            metadata_cols = metadata_col.split(' | ')
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+                    lambda row: sample_mapper.find_geo_loc_by_lat_lon(metadata_row=row, metadata_lat_col=metadata_cols[0], metadata_lon_col=metadata_cols[1]), 
+                    axis = 1
+                )
 
-        # elif faire_col == 'eventDate':
-        #     event_date = sample_mapper.sample_metadata_df[metadata_col].apply(sample_mapper.convert_date_to_iso8601)
-        #     sample_metadata_results[faire_col] = event_date
-        #     sample_mapper.sample_metadata_df['eventDate'] = event_date
+        elif faire_col == 'eventDate':
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(sample_mapper.convert_date_to_iso8601)
 
-        #     # Get prepped_samp_store_dur based on eventDate
-        #     prepped_samp_stor_metadata_cols = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('prepped_samp_store_dur').split(' | ')
-        #     sample_metadata_results['prepped_samp_store_dur'] = sample_mapper.sample_metadata_df.apply(
-        #         lambda row: sample_mapper.calculate_date_duration(metadata_row=row, start_date_col='eventDate', end_date_col=prepped_samp_stor_metadata_cols[1]),
-        #         axis = 1
-        #     )
+        elif faire_col == 'env_local_scale':
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(sample_mapper.calculate_env_local_scale)
 
-        # elif faire_col == 'samp_store_dur':
-        #     sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(
-        #         sample_mapper.get_samp_store_dur)
+        elif faire_col == 'samp_store_dur':
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(
+                sample_mapper.get_samp_store_dur)
             
-        #     # Add samp_store_loc based of samp_store_dur, so needs to come after samp_store_dur is calculated
-        #     sample_metadata_results['samp_store_loc'] = sample_mapper.sample_metadata_df[metadata_col].apply(
-        #         sample_mapper.get_samp_store_loc_by_samp_store_dur
-        #     )
-        #     sample_metadata_results['samp_store_temp'] = sample_mapper.sample_metadata_df[metadata_col].apply(
-        #         sample_mapper.get_samp_sore_temp_by_samp_store_dur
-        #     )
+            # Add samp_store_loc based of samp_store_dur, so needs to come after samp_store_dur is calculated
+            sample_metadata_results['samp_store_loc'] = sample_mapper.sample_metadata_df[metadata_col].apply(
+                sample_mapper.get_samp_store_loc_by_samp_store_dur
+            )
+            
+        elif faire_col == 'prepped_samp_store_dur':
+            # Get prepped_samp_store_dur based on eventDate
+            prepped_samp_stor_metadata_cols = metadata_col.split(' | ')
+            sample_metadata_results['prepped_samp_store_dur'] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.calculate_date_duration(metadata_row=row, start_date_col=prepped_samp_stor_metadata_cols[0], end_date_col=prepped_samp_stor_metadata_cols[1]),
+                axis = 1
+            )
 
-        # elif faire_col == 'minimumDepthInMeters':
-        #     sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
-        #         lambda row: sample_mapper.convert_min_depth_from_minus_one_meter(metadata_row=row, max_depth_col_name=metadata_col),
-        #         axis=1
-        #     )
+        elif faire_col == 'minimumDepthInMeters':
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.convert_min_depth_from_minus_one_meter(metadata_row=row, max_depth_col_name=metadata_col),
+                axis=1
+            )
+            
+        elif faire_col == 'tot_depth_water_col':
+            cols = metadata_col.split(' | ')
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.get_tot_depth_water_col_from_lat_lon(
+                    metadata_row=row, lat_col=cols[0], lon_col=cols[1]),
+                axis=1
+            )
 
-        # elif faire_col == 'tot_depth_water_col':
-        #     cols = metadata_col.split(' | ')
-        #     sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
-        #         lambda row: sample_mapper.get_tot_depth_water_col_from_lat_lon(
-        #             metadata_row=row, lat_col=cols[0], lon_col=cols[1]),
-        #         axis=1
-        #     )
-
-        # elif faire_col == 'env_local_scale':
-        #     sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(sample_mapper.calculate_env_local_scale)
+        elif faire_col == 'line_id':
+            the_station_id = sample_mapper.mapping_dict[sample_mapper.constant_mapping].get('station_id') # station id should be constant of CEO for Aquamonitor
+            sample_mapper.sample_metadata_df['standardized_station_id'] = the_station_id
+            sample_metadata_results[faire_col] = sample_mapper.get_line_id(station=the_station_id)
         
-        # elif faire_col == 'date_ext':
-        #     sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(sample_mapper.convert_date_to_iso8601)
+        # Use standardized station to get stations within 3 km
+        elif faire_col == 'station_ids_within_5km_of_lat_lon':
+            station_metadata_cols = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('station_ids_within_5km_of_lat_lon').split(' | ')
+            lat_col = station_metadata_cols[1]
+            lon_col = station_metadata_cols[2]
+            sample_metadata_results['station_ids_within_5km_of_lat_lon'] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.get_stations_within_5km(metadata_row=row, station_name_col='standardized_station_id', lat_col=lat_col, lon_col=lon_col), 
+                axis=1)
+    
+        elif faire_col == 'collected_by':
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].str.replace('and', '|')
+
+        elif faire_col == 'date_ext':
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(sample_mapper.convert_date_to_iso8601)
         
-        # elif faire_col == 'extract_id':
-        #     sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(
-        #         sample_mapper.create_extract_id
-        #     )
+        elif faire_col == 'extract_id':
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(
+                sample_mapper.create_extract_id
+            )
 
-        # elif faire_col == 'dna_yield':
-        #     metadata_cols = metadata_col.split(' | ')
-        #     sample_vol_col = metadata_cols[1]
-        #     sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
-        #         lambda row: sample_mapper.calculate_dna_yield(metadata_row=row, sample_vol_metadata_col=sample_vol_col),
-        #         axis = 1
-        #     )
+        elif faire_col == 'dna_yield':
+            metadata_cols = metadata_col.split(' | ')
+            sample_vol_col = metadata_cols[1]
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.calculate_dna_yield(metadata_row=row, sample_vol_metadata_col=sample_vol_col),
+                axis = 1
+            )
 
-        # elif faire_col == 'nucl_acid_ext' or faire_col == 'nucl_acid_ext_modify':
-        #     metadata_cols = metadata_col.split(' | ')
-        #     sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
-        #         lambda row: sample_mapper.add_constant_value_based_on_str_in_col(metadata_row=row, 
-        #                                                                          col_name=metadata_cols[0], 
-        #                                                                          str_condition='QiaVac', 
-        #                                                                          pos_condition_const=metadata_cols[2],
-        #                                                                          neg_condition_const=metadata_cols[1]),
-        #                                                                          axis=1)
-            
-        # elif faire_col == 'station_id':
-        #     station_id = sample_mapper.sample_metadata_df.apply(
-        #         lambda row: sample_mapper.get_station_id_from_unstandardized_station_name(metadata_row=row, unstandardized_station_name_col=metadata_col), 
-        #         axis=1
-        #     )
-        #     sample_metadata_results[faire_col] = station_id
-        #     sample_mapper.sample_metadata_df['station_id'] = station_id
-
-        #     # Use standardized station to get stations within 3 km
-        #     station_metadata_cols = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('station_ids_within_5km_of_lat_lon').split(' | ')
-        #     lat_col = station_metadata_cols[1]
-        #     lon_col = station_metadata_cols[2]
-        #     sample_metadata_results['station_ids_within_5km_of_lat_lon'] = sample_mapper.sample_metadata_df.apply(
-        #         lambda row: sample_mapper.get_stations_within_5km(metadata_row=row, station_name_col='station_id', lat_col=lat_col, lon_col=lon_col), 
-        #         axis=1)
-
-            
+  
     # Step 4: fill in NA with missing not collected or not applicable because they are samples and adds NC to rel_cont_id
     sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))
     
