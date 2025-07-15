@@ -213,7 +213,12 @@ class SampleMetadata(BaseModel):
                                 'Unimak box N5', 'Unimak box N6', 'AW5', 'AW4', 'AW3', 'AW2', 'AW1',
                                 'AE1', 'AE2', 'AE3', 'AE4', 'AE5', 'UT1', 'UT2', 'UT3', 'UT5', 'UT4',
                                 'BS-14', 'CEO' ,'CK9', 'UTN3', 'UTN2', 'UTN1', 'BRS5', 'BRS3', 'BRS1',
-                                'BS8', 'BS6', 'BS3', 'BS1', 'C2', 'KUM-2A']]
+                                'BS8', 'BS6', 'BS3', 'BS1', 'C2', 'KUM-2A', 'DE1', 'DE4', 'DE6', 'DE8', # RC0083 stations starting with DE1 to MCs5B
+                                'POW8', 'POW4', 'CS2', 'CS5', 'SEC0', 'SEC10', 'SEC30', 'LC5', 'LC3', 
+                                'JH1', 'LC2', 'JH3', 'LC1', 'UCC', 'UCA', 'ISA', 'ISD', 'XS1', 'XS2', 
+                                'XS4', 'SEM30', 'SEM10', 'SEM2.5', 'SEM-2.5', 'GB24', 'GB12', 'GB07', 
+                                'GB13', 'GB16', 'GB20', 'GB04', 'GB01', 'LFC', 'SPC', 'SPA', 'MCS1', 
+                                'MSC3B', 'MCS5B']]
     ctd_cast_number: Optional[int]
     ctd_bottle_number: Optional[int]
     replicate_number: Optional[int]

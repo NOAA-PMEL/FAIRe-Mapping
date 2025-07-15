@@ -6,11 +6,24 @@ from utils.experiment_run_metadata_mapper import ExperimentRunMetadataMapper
 import pandas as pd
 
 # switched direct mapping of geo_loc_name by Area.within.region because trying to keep consistent as Shaun Bell suggested. Just using IHO reference for this.
+def fix_stations(df: pd.DataFrame)  -> pd.DataFrame:
+    # swap stations that were incorrectly written down (discussions with Shannon)
+    replacements = {
+        'DBO4-6': 'DBO4.6N',
+        'DBO4-3': 'DBO4.3N',
+    }
+
+    df['Station'] = df['Station'].replace(replacements)
+
+    return df
 
 def create_no201_sample_metadata():
     
     # initiate mapper
     sample_mapper = FaireSampleMetadataMapper(config_yaml='config.yaml')
+
+    # Fix stations
+    sample_mapper.sample_metadata_df = fix_stations(df=sample_mapper.sample_metadata_df)
 
     sample_metadata_results = {}
 

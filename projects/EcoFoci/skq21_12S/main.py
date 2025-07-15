@@ -5,13 +5,27 @@ from utils.sample_metadata_mapper import FaireSampleMetadataMapper
 from utils.experiment_run_metadata_mapper import ExperimentRunMetadataMapper
 import pandas as pd
 
-#TODO: Add cv checking for related mappings?
-# TODO: change order of saving excel file and add csv saving at end
+def fix_stations(df: pd.DataFrame)  -> pd.DataFrame:
+    # swap stations that were incorrectly written down (discussions with Shannon)
+    replacements = {
+        'DBO4.1': 'DBO4.1N',
+        'DBO4.2': 'DBO4.2N',
+        'DBO4.3': 'DBO4.3N',
+        'DBO4.4': 'DBO4.4N',
+        'DBO4.5': 'DBO4.5N',
+        'DBO4.6': 'DBO4.6N'
+    }
+
+    df['Station'] = df['Station'].replace(replacements)
+
+    return df
 
 def create_skq21_12S_sample_metadata():
     
     # initiate mapper
     sample_mapper = FaireSampleMetadataMapper(config_yaml='config.yaml')
+    # fix the stations
+    sample_mapper.sample_metadata_df = fix_stations(df=sample_mapper.sample_metadata_df)
 
     sample_metadata_results = {}
 
