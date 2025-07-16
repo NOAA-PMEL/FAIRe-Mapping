@@ -78,9 +78,18 @@ def create_m2_pps_0423_sample_metadata():
 
         elif faire_col == 'tot_depth_water_col':
             cols = metadata_col.split(' | ')
-            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+            tot_depth_water_col = sample_mapper.sample_metadata_df.apply(
                 lambda row: sample_mapper.get_tot_depth_water_col_from_lat_lon(
                     metadata_row=row, lat_col=cols[0], lon_col=cols[1]),
+                axis=1
+            )
+            sample_metadata_results['tot_depth_water_col'] = tot_depth_water_col
+            sample_mapper.sample_metadata_df['tot_depth_water_col'] = tot_depth_water_col
+            
+    
+            # Get altitude to totl_depth_water_col and maximumDepthInMeters
+            sample_metadata_results['altitude'] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.calculate_altitude(metadata_row=row, depth_col='Depth_m_notes', tot_depth_col='tot_depth_water_col'),
                 axis=1
             )
 
@@ -128,6 +137,9 @@ def create_m2_pps_0423_sample_metadata():
             sample_metadata_results['station_ids_within_5km_of_lat_lon'] = sample_mapper.sample_metadata_df.apply(
                 lambda row: sample_mapper.get_stations_within_5km(metadata_row=row, station_name_col='station_id', lat_col=lat_col, lon_col=lon_col), 
                 axis=1)
+            
+            # Get line_id from standardized station name
+            sample_metadata_results['line_id'] = sample_mapper.sample_metadata_df['station_id'].apply(sample_mapper.get_line_id)
 
             
     # Step 4: fill in NA with missing not collected or not applicable because they are samples and adds NC to rel_cont_id
@@ -136,6 +148,10 @@ def create_m2_pps_0423_sample_metadata():
     # Step 5: fill NC data frame if there is - DO THIS ONLY IF negative controls were sequenced! They were not for SKQ21
     # nc_df = sample_mapper.fill_nc_metadata()
     controls_df = sample_mapper.finish_up_controls_df(final_sample_df=sample_df)
+    nucl_acid_ext_map_cols = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('nucl_acid_ext').split(' | ')
+    nucl_acid_ext_modify_map_cols = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('nucl_acid_ext_modify').split(' | ')
+    controls_df['nucl_acid_ext'] = nucl_acid_ext_map_cols[1]
+    controls_df['nucl_acid_ext_modify'] = nucl_acid_ext_modify_map_cols[1]
 
     # Step 6: Combine all mappings at once (add nc_df if negative controls were sequenced)
     faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df,controls_df])
