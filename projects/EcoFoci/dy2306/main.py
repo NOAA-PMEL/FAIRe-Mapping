@@ -66,10 +66,12 @@ def create_dy2306_sample_metadata():
             sample_mapper.sample_metadata_df['decimalLongitude'] = decimal_longitude
 
             # Now can calculate tot_depth_water_col from processed decimalLatitude and decimalLongitude
-            sample_metadata_results['tot_depth_water_col'] = sample_mapper.sample_metadata_df.apply(
+            tot_depth_water_col = sample_mapper.sample_metadata_df.apply(
                 lambda row: sample_mapper.get_tot_depth_water_col_from_lat_lon(metadata_row=row, lat_col='decimalLatitude', lon_col='decimalLongitude'),
                 axis=1
             )
+            sample_metadata_results['tot_depth_water_col'] = tot_depth_water_col
+            sample_mapper.sample_metadata_df['tot_depth_water_col'] = tot_depth_water_col
 
             # Now can caluclate maxdepth from pressure and latitude and min depth from max depth
             depth_metadata_cols = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('maximumDepthInMeters').split(' | ')
@@ -91,6 +93,12 @@ def create_dy2306_sample_metadata():
             
             sample_metadata_results['env_local_scale'] = sample_mapper.sample_metadata_df['FinalDepth'].apply(sample_mapper.calculate_env_local_scale)
 
+            # Get altitude to totl_depth_water_col and maximumDepthInMeters
+            sample_metadata_results['altitude'] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.calculate_altitude(metadata_row=row, depth_col='FinalDepth', tot_depth_col='tot_depth_water_col'),
+                axis=1
+            )
+
             # Get stations info
             station_id_metadata_col = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('station_id')
             station_id = sample_mapper.sample_metadata_df.apply(
@@ -108,6 +116,9 @@ def create_dy2306_sample_metadata():
             sample_metadata_results['station_ids_within_5km_of_lat_lon'] = sample_mapper.sample_metadata_df.apply(
                 lambda row: sample_mapper.get_stations_within_5km(metadata_row=row, station_name_col='station_id', lat_col=lat_col, lon_col=lon_col), 
                 axis=1)
+            
+            # Get line_id from standardized station name
+            sample_metadata_results['line_id'] = sample_mapper.sample_metadata_df['station_id'].apply(sample_mapper.get_line_id)
     
         
         elif faire_col == 'geo_loc_name':
@@ -178,6 +189,10 @@ def create_dy2306_sample_metadata():
     # Step 5: fill NC data frame if there is - DO THIS ONLY IF negative controls were sequenced! They were not for SKQ21
     # nc_df = sample_mapper.fill_nc_metadata()
     controls_df = sample_mapper.finish_up_controls_df(final_sample_df=sample_df)
+    nucl_acid_ext_map_cols = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('nucl_acid_ext').split(' | ')
+    nucl_acid_ext_modify_map_cols = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('nucl_acid_ext_modify').split(' | ')
+    controls_df['nucl_acid_ext'] = nucl_acid_ext_map_cols[1]
+    controls_df['nucl_acid_ext_modify'] = nucl_acid_ext_modify_map_cols[1]
 
     # Step 6: Combine all mappings at once (add nc_df if negative controls were sequenced)
     faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df,controls_df])
