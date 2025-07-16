@@ -135,6 +135,12 @@ def create_dy2012_sample_metadata():
             sample_metadata_results['minimumDepthInMeters'] = sample_mapper.sample_metadata_df.apply(
                 lambda row: sample_mapper.convert_min_depth_from_minus_one_meter(metadata_row=row, max_depth_col_name='finalMaxDepth'),
                 axis = 1
+            ) 
+        
+            # Get altitude to totl_depth_water_col and maximumDepthInMeters
+            sample_metadata_results['altitude'] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.calculate_altitude(metadata_row=row, depth_col='finalMaxDepth', tot_depth_col='ctd_Water_Depth..dbar.'),
+                axis=1
             )
             
             sample_metadata_results['env_local_scale'] = sample_mapper.sample_metadata_df['finalMaxDepth'].apply(sample_mapper.calculate_env_local_scale)
@@ -159,6 +165,9 @@ def create_dy2012_sample_metadata():
             sample_metadata_results['station_ids_within_5km_of_lat_lon'] = sample_mapper.sample_metadata_df.apply(
                 lambda row: sample_mapper.get_stations_within_5km(metadata_row=row, station_name_col='station_id', lat_col=lat_col, lon_col=lon_col), 
                 axis=1)
+            
+            # Get line_id from standardized station name
+            sample_metadata_results['line_id'] = sample_mapper.sample_metadata_df['station_id'].apply(sample_mapper.get_line_id)
 
 
     # Step 4: fill in NA with missing not collected or not applicable because they are samples and adds NC to rel_cont_id
