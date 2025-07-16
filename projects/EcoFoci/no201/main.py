@@ -58,13 +58,13 @@ def create_no201_sample_metadata():
                 axis=1
             )
 
-        # elif faire_col == 'geo_loc_name':
-        #     lat = metadata_col.split(' | ')[0]
-        #     lon = metadata_col.split(' | ')[1]
-        #     sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
-        #         lambda row: sample_mapper.find_geo_loc_by_lat_lon(metadata_row=row, metadata_lat_col=lat, metadata_lon_col=lon), 
-        #             axis = 1
-        #         )
+        elif faire_col == 'geo_loc_name':
+            lat = metadata_col.split(' | ')[0]
+            lon = metadata_col.split(' | ')[1]
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.find_geo_loc_by_lat_lon(metadata_row=row, metadata_lat_col=lat, metadata_lon_col=lon), 
+                    axis = 1
+                )
         
         elif faire_col == 'eventDate':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(
