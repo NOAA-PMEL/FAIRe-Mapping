@@ -78,9 +78,18 @@ def create_aquamonitor_sample_metadata():
             
         elif faire_col == 'tot_depth_water_col':
             cols = metadata_col.split(' | ')
-            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+            tot_depth_water_col = sample_mapper.sample_metadata_df.apply(
                 lambda row: sample_mapper.get_tot_depth_water_col_from_lat_lon(
                     metadata_row=row, lat_col=cols[0], lon_col=cols[1]),
+                axis=1
+            )
+
+            sample_metadata_results['tot_depth_water_col'] = tot_depth_water_col
+            sample_mapper.sample_metadata_df['tot_depth_water_col'] = tot_depth_water_col
+            
+            # Get altitude to totl_depth_water_col and maximumDepthInMeters
+            sample_metadata_results['altitude'] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.calculate_altitude(metadata_row=row, depth_col='Depth_m_notes', tot_depth_col='tot_depth_water_col'),
                 axis=1
             )
 
