@@ -18,15 +18,6 @@ extractions:
     extraction_metadata_sheet_name: 'Sheet1'
     extraction_blank_vol_we_dna_ext: 1000 # The volume or mass of blanks extracted if there are blanks extracted
     extraction_set_grouping_col_name: 'Extraction Set' # The name of the column that groups the samples together if they were extracted together
-  - extraction_name: WCOAnetTowSamples
-    extraction_metadata_google_sheet_id:
-    extraction_cruise_key: 
-    extraction_sample_name_col: 'FINAL Sample NAME'
-    extraction_conc_col_name: 'Qubit Conc.  (ng/μL)' #to calculate average of extraction concentration
-    extraction_date_col_name: 'Extraction Date (Local)'
-    extraction_metadata_sheet_name: 'Extraction Sheet (EtOH Filters)'
-    extraction_blank_vol_we_dna_ext: 1000 # TODO figure this out.
-    extraction_set_grouping_col_name: 'Extraction Set' # The name of the column that groups the samples together if they were extracted together
   - extraction_name: WCOArun5
     extraction_metadata_google_sheet_id: 1K4XrXplTNukaeIY_UQ_XXuYLBuvJwJmaeEbAZvHSiEI
     extraction_cruise_key: .WCOA21
@@ -37,24 +28,7 @@ extractions:
     extraction_blank_vol_we_dna_ext: 1000 # The volume or mass of blanks extracted if there are blanks extracted #TODO: figure this out
     extraction_set_grouping_col_name: 'Extraction Set' # The name of the column that groups the samples together if they were extracted together
 
-# # Extraction sheet related
-# extraction_metadata_google_sheet_id: 
-# extraction_name: AlaskaArctic22-23 # the name of the extraction performed (for the extract_id)
-# extraction_cruise_key: .DY2306 #the name in the SampleName column of the extractions sheet to filter for the specific cruise
-# extraction_sample_name_col: 'FINAL Sample NAME'
-# extraction_conc_col_name: 'Qubit Conc.  (ng/μL)' #to calculate average of extraction concentration
-# extraction_date_col_name: 'Extraction Date (Local)'
-# extraction_metadata_sheet_name: 'Extraction Sheets'
-# extraction_blank_vol_we_dna_ext: 1000 # The volume or mass of blanks extracted if there are blanks extracted
-# extraction_set_grouping_col_name: 'Extraction Set' # The name of the column that groups the samples together if they were extracted together
-
-# samp_store_dur_sheet_info: # Include only if cruise sample info in a samp_store_dur sheet that Shannon created
-#   google_sheet_id: 1c0C2HdmwQis9siwPPv5l1dhVZEfAZAeov3tGnl2Hgdw
-#   samp_name_col: FINAL Sample NAME
-#   samp_stor_dur_col: sample_stor_dur
-#   dur_units: hour
-
-# mapping file related
+# mapping file related # No .NC samples for WCOA so the nc sample info is arbitrary
 google_sheet_mapping_file_id: 1uQ3epMaH31FRGv9KvLT5OE1rRBbOAkHdZ3TtIN97-LI
 nc_samp_mat_process:  'Water samples were filtered through a 0.22 micron sterivex filter using a peristaltic pump with tubing attached to the outlet end of the sterivex.' # mapping for negative controls for nc_samp_mapt_process
 nc_prepped_samp_store_dur: 'missing: not collected' # which columns the NC prepped samp_store_dur map to (will most likely be different than rest of samples because no ctd or bottle dates for NC)

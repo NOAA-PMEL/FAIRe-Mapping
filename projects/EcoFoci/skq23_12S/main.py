@@ -121,10 +121,10 @@ def create_skq23_12s_sample_metadata():
             )
 
             
-                sample_metadata_results['geo_loc_name'] = sample_mapper.sample_metadata_df.apply(
-                    lambda row: sample_mapper.find_geo_loc_by_lat_lon(metadata_row=row, metadata_lat_col='decimalLatitude', metadata_lon_col='decimalLongitude'), 
-                    axis = 1
-                )
+                # sample_metadata_results['geo_loc_name'] = sample_mapper.sample_metadata_df.apply(
+                #     lambda row: sample_mapper.find_geo_loc_by_lat_lon(metadata_row=row, metadata_lat_col='decimalLatitude', metadata_lon_col='decimalLongitude'), 
+                #     axis = 1
+                # )
 
                 # Get station info
                 station_id_metadata_col = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('station_id')

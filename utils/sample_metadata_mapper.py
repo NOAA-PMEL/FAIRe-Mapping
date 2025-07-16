@@ -16,6 +16,12 @@ from .custom_exception import NoInsdcGeoLocError
 from .lists import nc_faire_field_cols
 from geopy.distance import geodesic
 
+# TODO: Remove missing extractions because having multiple extractions will update this functionality
+# TODO: update create extract_id functionality to match new setup
+# TODO: figure out the extraction_blank_vol_we_dna_ext for the blanks.
+
+
+
 # TODO: Need to figure out how to incorporate blanks from extractions into data frame. If they are in the same extraction set as the samples
 # with the shorthand cruise nmae, need to include as extraction blank (see Alaska extractions for examples)
 # TODO: Turn nucl_acid_ext for DY20/12 into a BeBOP and change in extraction spreadsheet. Link to spreadsheet: https://docs.google.com/spreadsheets/d/1iY7Z8pNsKXHqsp6CsfjvKn2evXUPDYM2U3CVRGKUtX8/edit?gid=0#gid=0
@@ -44,6 +50,16 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                                              "pos_cont_type": "not applicable: sample group"}
     gebco_file = "/home/poseidon/zalmanek/FAIRe-Mapping/utils/GEBCO_2024.nc"
 
+    # common extraction columns created during extraction manipulation
+    extract_samp_name_col = "samp_name"
+    extract_conc_col = "extraction_conc"
+    extract_date_col = "extraction_date"
+    extraction_set_col = "extraction_set"
+    extraction_cruise_key_col = "extraction_cruise_key"
+    extraction_name_col = "extraction_name"
+    extraction_blank_vol_we_dna_ext_col = "extraction_blank_vol_dna_ext"
+    extract_id_col = 'extract_id'
+
     def __init__(self, config_yaml: yaml):
         # TODO: used to have exp_metadata_df: pd.Series as init, but removed because of abstracting out sequencing yaml. See all associated commented out portions
         # May need to move this part into a separate class that combines after all sample_metadata is generated for each cruise
@@ -56,23 +72,14 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.sample_metadata_cast_no_col_name = self.config_file['sample_metadata_cast_no_col_name']
         self.sample_metadata_bottle_no_col_name = self.config_file[
             'sample_metadata_bottle_no_col_name']
-        self.extraction_sample_name_col = self.config_file['extraction_sample_name_col']
-        self.extraction_cruise_key = self.config_file['extraction_cruise_key']
-        self.extraction_conc_col_name = self.config_file['extraction_conc_col_name']
-        self.extraction_date_col_name = self.config_file['extraction_date_col_name']
+        self.extractions_info = self.config_file['extractions']
+        self.extractions_df = self.create_concat_extraction_df()
         self.nc_samp_mat_process = self.config_file['nc_samp_mat_process']
-        self.extraction_metadata_sheet_name = self.config_file['extraction_metadata_sheet_name']
-        self.extraction_metadata_google_sheet_id = self.config_file[
-            'extraction_metadata_google_sheet_id']
         self.vessel_name = self.config_file['vessel_name']
         self.faire_template_file = self.config_file['faire_template_file']
         self.google_sheet_mapping_file_id = self.config_file['google_sheet_mapping_file_id']
-        self.extraction_blank_vol_we_dna_ext = self.config_file['extraction_blank_vol_we_dna_ext']
-        self.extraction_set_grouping_col_name = self.config_file['extraction_set_grouping_col_name']
-        self.extraction_name = self.config_file['extraction_name']
         self.samp_dur_info = self.config_file['samp_store_dur_sheet_info'] if 'samp_store_dur_sheet_info' in self.config_file else None
         self.samp_stor_dur_dict = self.create_samp_stor_dict() if 'samp_store_dur_sheet_info' in self.config_file else None
-        self.missing_extractions = self.config_file['missing_extractions'] if 'missing_extractions' in self.config_file else None
         
         self.extraction_blank_rel_cont_dict = {}
         self.sample_metadata_df = self.filter_metadata_dfs()[0]
@@ -149,9 +156,11 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             mapping_dict[mapping_value] = column_map_dict
 
         # If there is an exact mapping for samp_vol_we_dna_ext then remove and put constant value base on config file value
-        if self.extraction_blank_vol_we_dna_ext:
+        if self.faire_samp_vol_we_dna_ext_col_name in mapping_dict[self.exact_mapping]:
+            mapping_col = mapping_dict[self.exact_mapping][self.faire_samp_vol_we_dna_ext_col_name]
             del mapping_dict[self.exact_mapping][self.faire_samp_vol_we_dna_ext_col_name]
-            mapping_dict[self.constant_mapping][self.faire_samp_vol_we_dna_ext_col_name] = self.extraction_blank_vol_we_dna_ext
+            mapping_dict[self.constant_mapping][self.faire_samp_vol_we_dna_ext_col_name] = mapping_col
+
 
         # If pool_dna_num in exact mapping automatically make constant mapping of 1 (may need to change if blanks are ever pooled for some reason)
         if self.faire_pool_num_col_name in mapping_dict[self.exact_mapping]:
@@ -268,29 +277,30 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     def get_extraction_blanks_applicable_to_cruise_samps(self):
         # Get extraction blank df (applicable to RC0083 cruise)
 
-        extractions_df = self.load_google_sheet_as_df(
-            google_sheet_id=self.extraction_metadata_google_sheet_id, sheet_name=self.extraction_metadata_sheet_name, header=0)
-
-        blank_df = pd.DataFrame(columns=extractions_df.columns)
+        blank_df = pd.DataFrame(columns=self.extractions_df.columns)
 
         # TODO: peel out 'Extraction Set' column name into config.yaml file
             # try grouping by extraction set if it exists
-        grouped = extractions_df.groupby(
-            self.extraction_set_grouping_col_name)
+        grouped = self.extractions_df.groupby(
+            self.extraction_set_col)
 
         try:
             for extraction_set, group_df in grouped:
                 # Check if any in the group contains the extraction cruise key
-                has_cruise_samps = group_df[self.extraction_sample_name_col].str.contains(
-                    self.extraction_cruise_key, case=False, na=False).any()
+                has_cruise_samps = group_df.apply(
+                    lambda row: str(row[self.extraction_cruise_key_col]) in str(row[self.extract_samp_name_col]),
+                    axis = 1
+                ).any()
+                
                 if has_cruise_samps:
                     # find blank samples in this group ('Larson NC are extraction blanks for the SKQ23 cruise)
-                    extraction_blank_samps = group_df[group_df[self.extraction_sample_name_col].str.contains(
-                        'blank', case=False, na=False) | group_df[self.extraction_sample_name_col].str.contains('Larson NC', case=False, na=False)]
+                    extraction_blank_samps = group_df[
+                        (group_df[self.extract_samp_name_col].str.contains('blank', case=False, na=False)) | 
+                        (group_df[self.extract_samp_name_col].str.contains('Larson NC', case=False, na=False))]
                     
                     try:
                         # get list of samples associated with blanks and put into dict for rel_cont_id
-                        valid_samples = group_df[self.extraction_sample_name_col].tolist()
+                        valid_samples = group_df[self.extract_samp_name_col].tolist()
                         for sample in valid_samples:
                             if 'blank' in sample.lower() or 'Larson NC' in sample:
                                 other_samples = [samp for samp in valid_samples if samp != sample]
@@ -301,74 +311,80 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
                     blank_df = pd.concat([blank_df, extraction_blank_samps])
 
-            blank_df[self.extraction_conc_col_name] = blank_df[self.extraction_conc_col_name].replace(
+            blank_df[self.extract_conc_col] = blank_df[self.extract_conc_col].replace(
                 "BDL", "BR").replace("Below Range", "BR").replace("br", "BR")
         except:
             raise ValueError(
                 "Warning: Extraction samples are not grouped, double check this")
-            # find blank samples in the whole df ('Larson NC are extraction blanks for the SKQ23 cruise)
-            # extraction_blank_samps = extractions_df[extractions_df[self.extraction_sample_name_col].str.contains(
-            #     'blank', case=False, na=False) | group_df[self.extraction_sample_name_col].str.contains('Larson NC', case=False, na=False)]
-            # blank_df = pd.concat([blank_df, extraction_blank_samps])
-
+        
         return blank_df
-
-    def missing_extraction(self) -> pd.DataFrame:
-        # Creates a data frame of any extra extractions if there were random samples part of a different extraction df
-        # Written for the missing MID.NC.SKQ21 sample that was randomly extracted with WCOA samples
-        # As written assumes that the main extraction and the missing extraction are mapped the same way - but may have different column names - see skq21 config.yaml for more info on how to
-        # get any missing extractions - for samples that were extracted separately - This was created really just for MID.NC.SKQ2021
-        for missing_extraction in self.missing_extractions:
-            missing_extractions_df = self.load_google_sheet_as_df(google_sheet_id=missing_extraction['missing_extraction_google_sheet_id'], sheet_name=missing_extraction['missing_extraction_sheet_name'], header=0)
-            # replace column names to match the main extraction_df
-            missing_extractions_df.rename(columns=missing_extraction['missing_ext_col_to_main_ext_col'], inplace=True)
-            # only keep the main extraction df columns
-            cols_to_keep = list(missing_extraction['missing_ext_col_to_main_ext_col'].values())
-            missing_extractions_df = missing_extractions_df[cols_to_keep]
-            # Fix sample names if they are different
-            if missing_extraction['missing_extraction_samp_names']:
-                for missing_ext_samp_name, metadata_samp_name in missing_extraction['missing_extraction_samp_names'].items():
-                    missing_extractions_df = missing_extractions_df.replace(missing_ext_samp_name, metadata_samp_name)
-        return missing_extractions_df
      
+    def create_concat_extraction_df(self) -> pd.DataFrame:
+        # Concatenate extractions together and create common column names
+
+        extraction_dfs = []
+        # loop through extractions and append extraction dfs to list
+        for extraction in self.extractions_info:
+            # mappings from config file to what we want to call it so it has a common name 
+            extraction_column_mappings = {extraction['extraction_sample_name_col']: self.extract_samp_name_col,
+                                         extraction['extraction_conc_col_name']: self.extract_conc_col,
+                                         extraction['extraction_date_col_name']: self.extract_date_col,
+                                         extraction['extraction_set_grouping_col_name']: self.extraction_set_col
+                                        }
+            
+            extraction_df = self.load_google_sheet_as_df(google_sheet_id=extraction['extraction_metadata_google_sheet_id'], sheet_name=extraction['extraction_metadata_sheet_name'], header=0)
+           
+            # change necessary column names so they will match across extraction dfs and add additional info
+            extraction_df = extraction_df.rename(columns=extraction_column_mappings)
+            extraction_df[self.extraction_cruise_key_col] = extraction.get('extraction_cruise_key')
+            extraction_df[self.extraction_blank_vol_we_dna_ext_col] = extraction.get('extraction_blank_vol_we_dna_ext')
+            extraction_df[self.extraction_name_col] = extraction.get('extraction_name')
+
+            extraction_df[self.extract_id_col] = extraction_df[self.extraction_name_col].astype(str) + "_" + extraction_df[self.extraction_set_col].astype(str)
+            extraction_dfs.append(extraction_df)
+
+        # Concat dataframes
+        final_extraction_df = pd.concat(extraction_dfs)
+
+        return final_extraction_df
+
     def filter_cruise_avg_extraction_conc(self) -> pd.DataFrame:
         # If extractions have multiple measurements for extraction concentrations, calculates the avg.
         # and creates a column called pool_num to show the number of samples pooled
 
-        extractions_df = self.load_google_sheet_as_df(
-            google_sheet_id=self.extraction_metadata_google_sheet_id, sheet_name=self.extraction_metadata_sheet_name, header=0)
-
-        # get any missing extractions - for samples that were extracted separately - This was created really just for MID.NC.SKQ2021
-        if self.missing_extractions:
-           missing_extraction_df = self.missing_extraction()
-           extractions_df = pd.concat([extractions_df, missing_extraction_df])
-
-
-        # Filter extractions df by cruise and calculate avg concentration
-        extract_avg_df = extractions_df[extractions_df[self.extraction_sample_name_col].str.contains(self.extraction_cruise_key)].groupby(
-            self.extraction_sample_name_col).agg({
-                self.extraction_conc_col_name: self.extraction_avg_aggregation,
-                **{col: 'first' for col in extractions_df.columns if col != self.extraction_sample_name_col and col != self.extraction_conc_col_name}
+        # First filter extractions df for samples that contain the cruise key in their sample name
+        cruise_key_mask = self.extractions_df.apply(
+            lambda row: str(row[self.extraction_cruise_key_col]) in str(row[self.extract_samp_name_col])
+            if pd.notna(row[self.extraction_cruise_key_col]) and pd.notna(row[self.extract_samp_name_col])
+            else False,
+            axis = 1
+        )
+        
+        # Then calculate average concentration
+        extract_avg_df = self.extractions_df[cruise_key_mask].groupby(
+            self.extract_samp_name_col).agg({
+                self.extract_conc_col: self.extraction_avg_aggregation,
+                **{col: 'first' for col in self.extractions_df.columns if col != self.extract_samp_name_col and col != self.extract_conc_col}
             }).reset_index()
 
         # Add pool_num column that shows how many samples were averaged for each group
-        sample_counts = extractions_df[extractions_df[self.extraction_sample_name_col].str.contains(self.extraction_cruise_key)].groupby(
-            self.extraction_sample_name_col).size().reset_index(name='pool_num')
+        sample_counts = self.extractions_df[cruise_key_mask].groupby(
+            self.extract_samp_name_col).size().reset_index(name='pool_num')
 
         # merge sample_counts into dataframe
         extract_avg_df = extract_avg_df.merge(
-            sample_counts, on=self.extraction_sample_name_col, how='left')
+            sample_counts, on=self.extract_samp_name_col, how='left')
 
         # Add extraction_method_additional for samples that pooled more than one extract
         extract_avg_df['extraction_method_additional'] = extract_avg_df['pool_num'].apply(
             lambda x: "One sample, but two filters were used because sample clogged. Two extractions were pooled together and average concentration calculated." if x > 1 else "missing: not provided")
 
         # update samp name for DY2012 cruises (from DY20) and remove E numbers from any NC samples
-        extract_avg_df[self.extraction_sample_name_col] = extract_avg_df[self.extraction_sample_name_col].apply(
+        extract_avg_df[self.extract_samp_name_col] = extract_avg_df[self.extract_samp_name_col].apply(
             self.str_replace_for_samps)
 
         # update dates to iso8601 TODO: may need to adjust this for ones that are already in this format
-        extract_avg_df[self.extraction_date_col_name] = extract_avg_df[self.extraction_date_col_name].apply(
+        extract_avg_df[self.extract_date_col] = extract_avg_df[self.extract_date_col].apply(
             self.convert_mdy_date_to_iso8061)
 
         return extract_avg_df
@@ -405,7 +421,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         metadata_df = pd.merge(
             left=extract_df,
             right=samp_df,
-            left_on=self.extraction_sample_name_col,
+            left_on=self.extract_samp_name_col,
             right_on=self.sample_metadata_sample_name_column,
             how='left'
         )
@@ -570,10 +586,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         port_num = cast_val.replace('Event','')
         return f"{prefix}_Port{port_num.strip()}"
 
-    def create_extract_id(self, extraction_batch: str) -> str:
-        # creates the extract_id which is the [extractionName]_extract_set[extractionBatch]
-        return f"{self.extraction_name}_extSet_{extraction_batch.replace(' ','_')}"
-
     def get_well_number_from_well_field(self, metadata_row: pd.Series, well_col: str) -> int:
         # Gets the well number from a row that has a value like G1 -> 1
         try:
@@ -592,7 +604,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
     def calculate_dna_yield(self, metadata_row: pd.Series, sample_vol_metadata_col: str) -> float:
         # calculate the dna yield based on the concentration (ng/uL) and the sample_volume (mL)
-        concentration = str(metadata_row[self.extraction_conc_col_name])
+        concentration = str(metadata_row[self.extract_conc_col])
         sample_vol = str(metadata_row[sample_vol_metadata_col]).replace('~','')
 
         try:
@@ -1055,11 +1067,12 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         if not self.extraction_blanks_df.empty:
 
-            extract_blank_results[self.faire_sample_name_col] = self.extraction_blanks_df[self.extraction_sample_name_col]
+            extract_blank_results[self.faire_sample_name_col] = self.extraction_blanks_df[self.extract_samp_name_col]
             extract_blank_results[self.faire_sample_category_name_col] = "negative control"
             extract_blank_results[self.faire_neg_cont_type_name_col] = "extraction negative"
+            extract_blank_results['habitat_natural_artificial_0_1'] = 1
 
-            # Add mappings from mappings dict which is just maping from extractionMetadata sheet
+            # Add mappings from mappings dict which is just mapping from extractionMetadata sheet
             # add exact mappings
             for faire_col, metadata_col in extraction_blanks_mapping_dict[self.exact_mapping].items():
                 extract_blank_results[faire_col] = self.extraction_blanks_df[metadata_col].apply(
@@ -1075,6 +1088,11 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                 if faire_col == 'date_ext':
                     extract_blank_results[faire_col] = self.extraction_blanks_df[metadata_col].apply(
                         self.convert_date_to_iso8601)
+                if faire_col == 'dna_yield':
+                    extract_blank_results[faire_col] = self.extraction_blanks_df.apply(
+                        lambda row: self.calculate_dna_yield(metadata_row=row, sample_vol_metadata_col=self.extraction_blank_vol_we_dna_ext_col),
+                        axis = 1
+                    )
 
             extract_blanks_df = pd.concat(
                 [self.sample_faire_template_df, pd.DataFrame(extract_blank_results)])
