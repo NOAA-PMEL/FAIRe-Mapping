@@ -236,38 +236,38 @@ class SampleMetadata(BaseModel):
     air_pressure_at_sea_level_unit: Optional[Literal['mb']] = None
     d18O_permil: Optional[float] = Field(default=None, description='18O oxygen iostope ratio, expressed in per mill (%) unit deviations from the international standard which is Standard Mean Ocean Water, as distributed by the International Atomic Energy Agency.')
     d18O_permil_WOCE_flag: Optional[int] = Field(default=None)
-    methane: Optional[float]
-    methane_unit: Optional[Literal['nmol/L']]
-    methane_WOCE_flag: Optional[str]
-    synechococcus_abundance: Optional[float]
-    synechococcus_abundance_unit: Optional[Literal['cells/mL']]
-    synechococcus_abundance_WOCE_flag: Optional[str]
-    eukaryotic_phytoplankton_abundance: Optional[float]
-    eukaryotic_phytoplankton_abundance_unit: Optional[Literal['cells/mL']]
-    eukaryotic_phytoplankton_abundance_WOCE_flag: Optional[str]
-    large_diatom_abundance: Optional[float]
-    large_diatom_abundance_unit: Optional[Literal['cells/mL']]
-    large_diatom_abundance_WOCE_flag: Optional[str]
-    cryptophyte_abundance: Optional[float]
-    cryptophyte_abundance_unit: Optional[Literal['cells/mL']]
-    cryptophyte_abundance_WOCE_flag: Optional[str]
-    bacteria_abundance: Optional[float]
-    bacteria_abundance_unit: Optional[Literal['cells/mL']]
-    bacteria_abundance_WOCE_flag: Optional[str]
-    hna_bacteria_abundance: Optional[float]
-    hna_bacteria_abundance_unit: Optional[Literal['cells/mL']]
-    hna_bacteria_abundance_WOCE_flag: Optional[str]
-    lna_bacteria_abundance: Optional[float]
-    lna_bacteria_abundance_unit: Optional[Literal['cells/mL']]
-    lna_bacteria_abundance_WOCE_flag: Optional[str]
-    sigma_theta: Optional[float]
-    sigma_theta_unit: Optional[Literal['kg/m3']]
-    expedition_id: Optional[str]
-    expedition_name: Optional[str]
-    rosette_position: Optional[int] = None
+    methane: Optional[float] = Field(default=None)
+    methane_unit: Optional[Literal['nmol/L']] = Field(default=None)
+    methane_WOCE_flag: Optional[str] = Field(default=None)
+    synechococcus_abundance: Optional[float] = Field(default=None)
+    synechococcus_abundance_unit: Optional[Literal['cells/mL']] = Field(default=None)
+    synechococcus_abundance_WOCE_flag: Optional[str] = Field(default=None)
+    eukaryotic_phytoplankton_abundance: Optional[float] = Field(default=None)
+    eukaryotic_phytoplankton_abundance_unit: Optional[Literal['cells/mL']] = Field(default=None)
+    eukaryotic_phytoplankton_abundance_WOCE_flag: Optional[str] = Field(default=None)
+    large_diatom_abundance: Optional[float] = Field(default=None)
+    large_diatom_abundance_unit: Optional[Literal['cells/mL']] = Field(default=None)
+    large_diatom_abundance_WOCE_flag: Optional[str] = Field(default=None)
+    cryptophyte_abundance: Optional[float] = Field(default=None)
+    cryptophyte_abundance_unit: Optional[Literal['cells/mL']] = Field(default=None)
+    cryptophyte_abundance_WOCE_flag: Optional[str] = Field(default=None)
+    bacteria_abundance: Optional[float] = Field(default=None)
+    bacteria_abundance_unit: Optional[Literal['cells/mL']] = Field(default=None)
+    bacteria_abundance_WOCE_flag: Optional[str] = Field(default=None)
+    hna_bacteria_abundance: Optional[float] = Field(default=None)
+    hna_bacteria_abundance_unit: Optional[Literal['cells/mL']] = Field(default=None)
+    hna_bacteria_abundance_WOCE_flag: Optional[str] = Field(default=None)
+    lna_bacteria_abundance: Optional[float] = Field(default=None)
+    lna_bacteria_abundance_unit: Optional[Literal['cells/mL']] = Field(default=None)
+    lna_bacteria_abundance_WOCE_flag: Optional[str] = Field(default=None)
+    sigma_theta: Optional[float] = Field(default=None)
+    sigma_theta_unit: Optional[Literal['kg/m3']] = Field(default=None)
+    expedition_id: Optional[str] = Field(default=None)
+    expedition_name: Optional[str] = Field(default=None)
+    rosette_position: Optional[int] = None 
     collected_by: Optional[str]
     meaurements_from: Optional[str]
-    nisking_id: Optional[str]
+    nisking_id: Optional[str] = Field(default=None)
     niskin_WOCE_flag: Optional[int] = Field(default=None)
     station_ids_within_5km_of_lat_lon: Optional[str] = Field(default=None, description="Stations within 5 km of the lat/lon coordinates given for a sample - if references stations are given. For internal QC purposes only.")
     sunrise_time_utc: Optional[str] = Field(default=None)
@@ -371,10 +371,10 @@ class SampleMetadata(BaseModel):
 
             if len(expedition_dates) > 1:
                 date_range_days = (max(expedition_dates) - min(expedition_dates)).days
-                max_days = 400 if 'pps' in self.materialSampleID.lower() else 60
+                max_days = 400 if 'pps' in self.materialSampleID.lower() or 'aquamonitor' in self.materialSampleID.lower() else 60
 
                 if date_range_days > max_days:
-                    raise ValueError(f"Expedition '{self.expedition_id}: dat range of {date_range_days} days "
+                    raise ValueError(f"Expedition '{self.expedition_id}: date range of {date_range_days} days "
                                     f"exceeds maximum {max_days}")
         
         except ValueError as e:

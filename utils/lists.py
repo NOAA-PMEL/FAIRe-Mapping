@@ -31,7 +31,6 @@ nc_faire_field_cols = ['samp_name',
                     'prepped_samp_store_dur',
                     'prepped_samp_store_temp',
                     'prep_method_additional',
-                    'assay_name',
                     'date_ext',
                     'samp_vol_we_dna_ext',
                     'samp_vol_we_dna_ext_unit',
@@ -49,8 +48,15 @@ nc_faire_field_cols = ['samp_name',
                     'pool_dna_num',
                     'nucl_acid_ext_method_additional', 
                     'expedition_id', 
+                    'expedition_name',
                     'collected_by', 
-                    'samp_collect_notes'
+                    'samp_collect_notes',
+                    'extract_id',
+                    'extract_plate',
+                    'extract_well_number',
+                    'extract_well_position',
+                    'dna_yield',
+                    'dna_yield_unit'
                     ]
 
 

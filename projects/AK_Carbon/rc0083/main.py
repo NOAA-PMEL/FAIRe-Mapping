@@ -67,9 +67,14 @@ def create_rc0083_sample_metadata():
                 axis=1
             )
 
+            # Get altitude to totl_depth_water_col and maximumDepthInMeters
+            sample_metadata_results['altitude'] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.calculate_altitude(metadata_row=row, depth_col=faire_col, tot_depth_col='btl2_Depth_bottom'),
+                axis=1
+            )
+
             # Calculate env_local_scale
             sample_metadata_results['env_local_scale'] = sample_mapper.sample_metadata_df[faire_col].apply(sample_mapper.calculate_env_local_scale)
-
 
         elif faire_col == 'prepped_samp_store_dur':
             date_col_names = metadata_col.split(' | ')
@@ -110,6 +115,10 @@ def create_rc0083_sample_metadata():
     # Step 5: fill NC data frame if there is - DO THIS ONLY IF negative controls were sequenced! They were not for SKQ21
     # nc_df = sample_mapper.fill_nc_metadata()
     controls_df = sample_mapper.finish_up_controls_df(final_sample_df=sample_df)
+    nucl_acid_ext_map_cols = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('nucl_acid_ext').split(' | ')
+    nucl_acid_ext_modify_map_cols = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('nucl_acid_ext_modify').split(' | ')
+    controls_df['nucl_acid_ext'] = nucl_acid_ext_map_cols[1]
+    controls_df['nucl_acid_ext_modify'] = nucl_acid_ext_modify_map_cols[1]
 
     # Step 6: Combine all mappings at once (add nc_df if negative controls were sequenced)
     faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df,controls_df])

@@ -16,14 +16,7 @@ from .custom_exception import NoInsdcGeoLocError
 from .lists import nc_faire_field_cols
 from geopy.distance import geodesic
 
-# TODO: Remove missing extractions because having multiple extractions will update this functionality
-# TODO: update create extract_id functionality to match new setup
-# TODO: figure out the extraction_blank_vol_we_dna_ext for the blanks.
 
-
-
-# TODO: Need to figure out how to incorporate blanks from extractions into data frame. If they are in the same extraction set as the samples
-# with the shorthand cruise nmae, need to include as extraction blank (see Alaska extractions for examples)
 # TODO: Turn nucl_acid_ext for DY20/12 into a BeBOP and change in extraction spreadsheet. Link to spreadsheet: https://docs.google.com/spreadsheets/d/1iY7Z8pNsKXHqsp6CsfjvKn2evXUPDYM2U3CVRGKUtX8/edit?gid=0#gid=0
 # TODO: continue update pos_df - add not applicable: sample to user defined fields, also add pos_cont_type
 
@@ -46,6 +39,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     faire_salinity_col_name = "salinity"
     faire_density_col_name = "density"
     faire_nucl_acid_ext_method_additional_col_name = "nucl_acid_ext_method_additional"
+    faire_tot_depth_water_col_method_col_name = 'tot_depth_water_col_method'
     not_applicable_to_samp_faire_col_dict = {"neg_cont_type": "not applicable: sample group",
                                              "pos_cont_type": "not applicable: sample group"}
     gebco_file = "/home/poseidon/zalmanek/FAIRe-Mapping/utils/GEBCO_2024.nc"
@@ -72,8 +66,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.sample_metadata_cast_no_col_name = self.config_file['sample_metadata_cast_no_col_name']
         self.sample_metadata_bottle_no_col_name = self.config_file[
             'sample_metadata_bottle_no_col_name']
-        self.extractions_info = self.config_file['extractions']
-        self.extractions_df = self.create_concat_extraction_df()
         self.nc_samp_mat_process = self.config_file['nc_samp_mat_process']
         self.vessel_name = self.config_file['vessel_name']
         self.faire_template_file = self.config_file['faire_template_file']
@@ -81,6 +73,9 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.samp_dur_info = self.config_file['samp_store_dur_sheet_info'] if 'samp_store_dur_sheet_info' in self.config_file else None
         self.samp_stor_dur_dict = self.create_samp_stor_dict() if 'samp_store_dur_sheet_info' in self.config_file else None
         
+        self.mapping_dict = self.create_sample_mapping_dict()
+        self.extractions_info = self.config_file['extractions']
+        self.extractions_df = self.create_concat_extraction_df()
         self.extraction_blank_rel_cont_dict = {}
         self.sample_metadata_df = self.filter_metadata_dfs()[0]
         self.nc_df = self.filter_metadata_dfs()[1]
@@ -89,7 +84,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             file_path=self.config_file['faire_template_file'], sheet_name=self.sample_mapping_sheet_name, header=self.faire_sheet_header).dropna()
         self.replicates_dict = self.create_biological_replicates_dict()
         self.insdc_locations = self.extract_insdc_geographic_locations()
-        self.mapping_dict = self.create_sample_mapping_dict()
+
 
         # stations/reference stations stuff
         self.station_name_reference_google_sheet_id = self.config_file['station_name_reference_google_sheet_id'] if 'station_name_reference_google_sheet_id' in self.config_file else None # Some projects won't have reference stations (RC0083)
@@ -106,6 +101,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             google_sheet_id=self.google_sheet_mapping_file_id, sheet_name=self.sample_mapping_sheet_name, header=0)
         extractions_mapping_df = self.load_google_sheet_as_df(
             google_sheet_id=self.google_sheet_mapping_file_id, sheet_name=self.extraction_mapping_sheet_name, header=1)
+ 
         mapping_df = pd.concat([sample_mapping_df, extractions_mapping_df])
 
         # Group by the mapping type
@@ -159,7 +155,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         if self.faire_samp_vol_we_dna_ext_col_name in mapping_dict[self.exact_mapping]:
             mapping_col = mapping_dict[self.exact_mapping][self.faire_samp_vol_we_dna_ext_col_name]
             del mapping_dict[self.exact_mapping][self.faire_samp_vol_we_dna_ext_col_name]
-            mapping_dict[self.constant_mapping][self.faire_samp_vol_we_dna_ext_col_name] = mapping_col
+            mapping_dict[self.related_mapping][self.faire_samp_vol_we_dna_ext_col_name] = mapping_col
 
 
         # If pool_dna_num in exact mapping automatically make constant mapping of 1 (may need to change if blanks are ever pooled for some reason)
@@ -329,11 +325,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             extraction_column_mappings = {extraction['extraction_sample_name_col']: self.extract_samp_name_col,
                                          extraction['extraction_conc_col_name']: self.extract_conc_col,
                                          extraction['extraction_date_col_name']: self.extract_date_col,
-                                         extraction['extraction_set_grouping_col_name']: self.extraction_set_col
-                                        }
+                                         extraction['extraction_set_grouping_col_name']: self.extraction_set_col,}
             
             extraction_df = self.load_google_sheet_as_df(google_sheet_id=extraction['extraction_metadata_google_sheet_id'], sheet_name=extraction['extraction_metadata_sheet_name'], header=0)
-           
+
             # change necessary column names so they will match across extraction dfs and add additional info
             extraction_df = extraction_df.rename(columns=extraction_column_mappings)
             extraction_df[self.extraction_cruise_key_col] = extraction.get('extraction_cruise_key')
@@ -346,6 +341,12 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # Concat dataframes
         final_extraction_df = pd.concat(extraction_dfs)
 
+        # if any columns changed names that are in the mapping dict, change them there too
+        for maps in self.mapping_dict.values():
+            for faire_col, metadata_col in maps.items():
+                if metadata_col in extraction_column_mappings.keys():
+                    maps[faire_col] = extraction_column_mappings.get(metadata_col)
+        
         return final_extraction_df
 
     def filter_cruise_avg_extraction_conc(self) -> pd.DataFrame:
@@ -613,12 +614,24 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             dna_yield = (concentration * 100)/sample_vol
             return dna_yield
         except:
+            if '.nc' in metadata_row[self.faire_sample_name_col].lower():
+                return 'not applicable: control sample'
             return None
     
+    def calculate_altitude(self, metadata_row: pd.Series, depth_col: str, tot_depth_col: str) -> float:
+        # Calculates the altitude by subtracting the depth from the tot_depth_col
+        depth = metadata_row[depth_col]
+        tot_depth_water_col = metadata_row[tot_depth_col]
+
+        return tot_depth_water_col - depth
+
     def get_line_id(self, station) -> str:
         # Get the line id by the referance station (must be standardized station name)
         if station in self.station_line_dict:
-            return self.station_line_dict.get(station)
+            if self.station_line_dict.get(station):
+                return self.station_line_dict.get(station)
+            else:
+                return "not applicable"
 
     def convert_wind_degrees_to_direction(self, degree_metadata_row: pd.Series) -> str:
         # converts wind direction  to cardinal directions
@@ -1030,12 +1043,24 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                 nc_results[faire_col] = self.nc_df[metadata_col].apply(
                     self.add_neg_cont_type)
 
+            elif faire_col == 'dna_yield':
+                vol_col = self.mapping_dict[self.exact_mapping].get('samp_vol_we_dna_ext')
+                nc_results[faire_col] = self.nc_df.apply(
+                        lambda row: self.calculate_dna_yield(metadata_row=row, sample_vol_metadata_col=vol_col),
+                        axis = 1
+                    )
+
         # First concat with sample_faire_template to get rest of columns,
         # # and add user_defined columnsthen
         # Fill na and empty values with not applicable: control sample
         try:
+            nc_results_df = pd.DataFrame(nc_results)
+            # compare columns in df to nc_faire_fields list and if value is missing, fill with missing: not provided
+            nc_results_updated = nc_results_df.reindex(columns=nc_faire_field_cols, fill_value="missing: not collected")
+            nc_results_updated = nc_results_updated.fillna("missing: not collected")
             nc_df = pd.concat(
-                [self.sample_faire_template_df, pd.DataFrame(nc_results)])
+                [self.sample_faire_template_df, nc_results_updated])
+            
             return nc_df
         except: # If empty just return empty dataframe
             return self.sample_faire_template_df
@@ -1093,6 +1118,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                         lambda row: self.calculate_dna_yield(metadata_row=row, sample_vol_metadata_col=self.extraction_blank_vol_we_dna_ext_col),
                         axis = 1
                     )
+                if faire_col == 'samp_vol_we_dna_ext':
+                    extract_blank_results[faire_col] = self.extraction_blanks_df[self.extraction_blank_vol_we_dna_ext_col]
 
             extract_blanks_df = pd.concat(
                 [self.sample_faire_template_df, pd.DataFrame(extract_blank_results)])
