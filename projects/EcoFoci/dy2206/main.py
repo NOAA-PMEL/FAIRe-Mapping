@@ -4,13 +4,21 @@ sys.path.append("../../..")
 from utils.sample_metadata_mapper import FaireSampleMetadataMapper
 import pandas as pd
 
-#TODO: Add cv checking for related mappings?
-# TODO: change order of saving excel file and add csv saving at end
+def fix_station_errors(df: pd.DataFrame) -> pd.DataFrame:
+    # swap stations that were incorrectly written down (discussions with Shannon)
+    replacements = {
+        '70M6': '70M02/M2',
+    }
+
+    df['Station'] = df['Station'].replace(replacements)
+
+    return df
 
 def create_dy2206_sample_metadata():
     
     # initiate mapper
     sample_mapper = FaireSampleMetadataMapper(config_yaml='config.yaml')
+    sample_mapper.sample_metadata_df = fix_station_errors(df=sample_mapper.sample_metadata_df)
 
     sample_metadata_results = {}
 
