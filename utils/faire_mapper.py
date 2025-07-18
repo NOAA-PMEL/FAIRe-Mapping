@@ -234,55 +234,6 @@ class OmeFaireMapper:
         else:
             return "missing: not provided"
 
-    # def reorder_columns(self, df: pd.DataFrame) -> pd.DataFrame:
-    #     # orders the final columns so unit and method columns are next to their corresponding fields
-    #     original_cols = df.columns.tolist()
-    #     reordered_cols = []
-    #     processed_cols = set()
-
-    #     for col in original_cols:
-    #         if col in processed_cols:
-    #             continue
-    #         if col.endswith('_unit') or col.endswith('_units') or col.endswith('_method') or col.endswith('_standard_deviation') or col.endswith('_WOCE_flag'):
-    #             continue
-
-    #         # This is a main column, add it first
-    #         reordered_cols.append(col)
-    #         processed_cols.add(col)
-
-    #         # Look for corresponding unit col (both _unit and _units)
-    #         unit_col = None
-    #         if f"{col}_unit" in original_cols:
-    #             unit_col = f"{col}_unit"
-    #         elif f"{col}_units" in original_cols:
-    #             unit_col = f"{col}_units"
-
-    #         if unit_col:
-    #             reordered_cols.append(unit_col)
-    #             processed_cols.add(unit_col)
-            
-    #         method_col = f"{col}_method"
-    #         if method_col in original_cols:
-    #             reordered_cols.append(method_col)
-    #             processed_cols.add(method_col)
-
-    #         standard_dev_col = f"{col}_standard_deviation"
-    #         if standard_dev_col in original_cols:
-    #             reordered_cols.append(standard_dev_col)
-    #             processed_cols.add(standard_dev_col)
-
-    #         woce_flag_col = f"{col}_WOCE_flag"
-    #         if woce_flag_col in original_cols:
-    #             reordered_cols.append(woce_flag_col)
-    #             processed_cols.add(woce_flag_col)
-
-    #     for col in original_cols:
-    #         if col not in processed_cols:
-    #             reordered_cols.append(col)
-
-    #     return df[reordered_cols]
-
-    
     def save_final_df_as_csv(self, final_df: pd.DataFrame, sheet_name: str, header: int, csv_path: str) -> None:
         
         faire_template_df = self.load_faire_template_as_df(file_path=self.faire_template_file, sheet_name=sheet_name, header=header)
@@ -291,76 +242,59 @@ class OmeFaireMapper:
 
         faire_final_df.to_csv(csv_path, quoting=csv.QUOTE_NONNUMERIC, index=False)
 
-    def add_final_df_to_FAIRe_excel_new_approach(self, excel_file_to_read_from: str, sheet_name: str, faire_template_df: pd.DataFrame):
-        """
-        New approach: Don't rebuild headers, just rearrange existing data and insert new columns where needed
-        """
-        # Step 1: Reorder the DataFrame first using your existing function
-        faire_template_df = self.reorder_columns(faire_template_df)
-        
-        # Step 2: Load the workbook to preserve formatting
+    def add_final_df_to_FAIRe_excel(self, excel_file_to_read_from: str, sheet_name: str, faire_template_df: pd.DataFrame):
+
+        # Step 1 load the workbook to preserve formatting
         workbook = openpyxl.load_workbook(excel_file_to_read_from)
         sheet = workbook[sheet_name]
         
-        # Step 3: Get original column structure
+        # step 2: identify new columns added to the DataFrame
         original_columns = []
-        original_data = {}  # Store all original header data
-        
-        max_original_col = 0
-        for idx, cell in enumerate(sheet[3], 1):  # Row 3 contains column names
+        for cell in sheet[3]: # Row 3 (0-indexed as 2) contains column names
             if cell.value:
                 original_columns.append(cell.value)
-                max_original_col = idx
-                
-                # Store ALL the header data for this column (rows 1, 2, 3)
-                original_data[cell.value] = {
-                    'row1': sheet.cell(row=1, column=idx).value,
-                    'row2': sheet.cell(row=2, column=idx).value,
-                    'row3': sheet.cell(row=3, column=idx).value,
-                }
         
-        # Step 4: Clear all data (keep only row 1 which has requirement codes)
-        for row in range(2, sheet.max_row + 1):
+        new_columns = [col for col in faire_template_df.columns if col not in original_columns]
+            
+        # new step 3: add new columns to the sheet headers
+        last_col = sheet.max_column 
+        for i, new_col in enumerate(new_columns, 1):
+            col_idx = last_col + i
+            col_letter = get_column_letter(col_idx)
+            # add column name to row 3
+            sheet[f'{col_letter}3'] = new_col
+            # Add User defined to row 2
+            sheet[f'{col_letter}2'] = 'User defined'
+
+        for row in range(4, sheet.max_row + 1):
             for col in range(1, sheet.max_column + 1):
                 sheet.cell(row=row, column=col).value = None
         
-        # Step 5: Rebuild the sheet structure column by column
-        for new_col_idx, col_name in enumerate(faire_template_df.columns, 1):
-            
-            if col_name in original_columns:
-                # This is an existing column - copy its original header data
-                sheet.cell(row=1, column=new_col_idx).value = original_data[col_name]['row1']
-                sheet.cell(row=2, column=new_col_idx).value = original_data[col_name]['row2'] 
-                sheet.cell(row=3, column=new_col_idx).value = original_data[col_name]['row3']
-                
-            else:
-                # This is a new column - we need to determine what section it belongs to
-                # Based on your reorder_columns logic, new columns are placed next to their base columns
-                
-                # Find the base column name (remove suffixes)
-                base_col_name = col_name
-                for suffix in ['_standard_deviation', '_WOCE_flag', '_method', '_units', '_unit']:
-                    if col_name.endswith(suffix):
-                        base_col_name = col_name[:-len(suffix)]
+        # Write the data frame data to the sheet (starting at row 4)
+        for row_idx, row_data in enumerate(faire_template_df.values, 4): 
+            for col_name, col_idx in zip(faire_template_df.columns, range(len(faire_template_df.columns))):
+                # Find the column index in the excel sheet by column name
+                excel_col_idx = None
+                for idx, cell in enumerate(sheet[3], 1):
+                    if cell.value == col_name:
+                        excel_col_idx = idx
                         break
-                
-                if base_col_name in original_columns and base_col_name != col_name:
-                    # This new column corresponds to an existing base column
-                    # Copy the row1 and row2 from the base column, but use new column name for row3
-                    sheet.cell(row=1, column=new_col_idx).value = original_data[base_col_name]['row1']
-                    sheet.cell(row=2, column=new_col_idx).value = original_data[base_col_name]['row2']
-                    sheet.cell(row=3, column=new_col_idx).value = col_name
-                else:
-                    # This is a completely new column with no base - use "User defined"
-                    sheet.cell(row=1, column=new_col_idx).value = "O"  # or appropriate requirement level
-                    sheet.cell(row=2, column=new_col_idx).value = "User defined"
-                    sheet.cell(row=3, column=new_col_idx).value = col_name
-        
-        # Step 6: Write the DataFrame data (starting from row 4)
-        for row_idx, row_data in enumerate(faire_template_df.values, 4):
-            for col_idx, value in enumerate(row_data, 1):
-                sheet.cell(row=row_idx, column=col_idx).value = value
-        
-        # Step 7: Save the workbook
+
+                if excel_col_idx is not None:
+                    value = row_data[col_idx]
+                    sheet.cell(row=row_idx, column=excel_col_idx).value = value
+            # for col_idx, value in enumerate(row_data, 1):
+            #     sheet.cell(row=row_idx, column=col_idx).value = value
+
+        # step 4 save the workbook preserved with headers
         workbook.save(self.final_faire_template_path)
-        print(f"Sheet {sheet_name} saved to {self.final_faire_template_path}!")
+        print(f"sheet {sheet_name} saved to {self.final_faire_template_path}!")
+       
+
+
+        
+
+       
+    
+
+    
