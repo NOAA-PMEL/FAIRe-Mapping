@@ -291,100 +291,76 @@ class OmeFaireMapper:
 
         faire_final_df.to_csv(csv_path, quoting=csv.QUOTE_NONNUMERIC, index=False)
 
-    def add_final_df_to_FAIRe_excel(self, excel_file_to_read_from: str, sheet_name: str, faire_template_df: pd.DataFrame):
-        # Step 1: Load the workbook to preserve formatting
+    def add_final_df_to_FAIRe_excel_new_approach(self, excel_file_to_read_from: str, sheet_name: str, faire_template_df: pd.DataFrame):
+        """
+        New approach: Don't rebuild headers, just rearrange existing data and insert new columns where needed
+        """
+        # Step 1: Reorder the DataFrame first using your existing function
+        faire_template_df = self.reorder_columns(faire_template_df)
+        
+        # Step 2: Load the workbook to preserve formatting
         workbook = openpyxl.load_workbook(excel_file_to_read_from)
         sheet = workbook[sheet_name]
         
-        # Step 2: Get original columns from the Excel sheet
+        # Step 3: Get original column structure
         original_columns = []
-        for cell in sheet[3]:  # Row 3 contains column names
+        original_data = {}  # Store all original header data
+        
+        max_original_col = 0
+        for idx, cell in enumerate(sheet[3], 1):  # Row 3 contains column names
             if cell.value:
                 original_columns.append(cell.value)
+                max_original_col = idx
+                
+                # Store ALL the header data for this column (rows 1, 2, 3)
+                original_data[cell.value] = {
+                    'row1': sheet.cell(row=1, column=idx).value,
+                    'row2': sheet.cell(row=2, column=idx).value,
+                    'row3': sheet.cell(row=3, column=idx).value,
+                }
         
-        # Step 3: Identify new columns and group them with their base columns
-        new_columns = [col for col in faire_template_df.columns if col not in original_columns]
-        
-        # Step 4: Create the final column order by inserting new columns next to their base columns
-        final_column_order = []
-        processed_new_cols = set()
-        
-        for orig_col in original_columns:
-            final_column_order.append(orig_col)
-            
-            # Check for corresponding new columns and add them immediately after the base column
-            suffixes = ['_unit', '_units', '_method', '_standard_deviation', '_WOCE_flag']
-            
-            for suffix in suffixes:
-                corresponding_col = f"{orig_col}{suffix}"
-                if corresponding_col in new_columns:
-                    final_column_order.append(corresponding_col)
-                    processed_new_cols.add(corresponding_col)
-        
-        # Step 5: Add any remaining new columns that don't have corresponding base columns
-        for new_col in new_columns:
-            if new_col not in processed_new_cols:
-                final_column_order.append(new_col)
-        
-        # Step 6: Reorder the DataFrame to match our desired column order
-        # Only include columns that exist in the DataFrame
-        available_columns = [col for col in final_column_order if col in faire_template_df.columns]
-        faire_template_df = faire_template_df[available_columns]
-        
-        # Step 7: Clear existing data (rows 4 and beyond)
-        for row in range(4, sheet.max_row + 1):
+        # Step 4: Clear all data (keep only row 1 which has requirement codes)
+        for row in range(2, sheet.max_row + 1):
             for col in range(1, sheet.max_column + 1):
                 sheet.cell(row=row, column=col).value = None
         
-        # Step 8: Adjust Excel sheet structure to match our column order
-        # First, we need to reorganize the Excel columns to match our desired order
-        
-        # Create a mapping of old positions to new positions
-        old_to_new_mapping = {}
-        new_col_counter = 1
-        
-        for col_name in available_columns:
-            if col_name in original_columns:
-                # Find the original position of this column
-                old_pos = original_columns.index(col_name) + 1
-                old_to_new_mapping[old_pos] = new_col_counter
-            else:
-                # This is a new column, it will be added at the new position
-                old_to_new_mapping[f"new_{col_name}"] = new_col_counter
-            new_col_counter += 1
-        
-        # Step 9: Restructure the Excel sheet headers
-        # We'll rebuild the headers from scratch to match our desired order
-        
-        # Clear existing headers first
-        for col in range(1, sheet.max_column + 1):
-            sheet.cell(row=2, column=col).value = None
-            sheet.cell(row=3, column=col).value = None
-        
-        # Set new headers
-        for idx, col_name in enumerate(available_columns, 1):
-            col_letter = get_column_letter(idx)
-            sheet[f'{col_letter}3'] = col_name
+        # Step 5: Rebuild the sheet structure column by column
+        for new_col_idx, col_name in enumerate(faire_template_df.columns, 1):
             
             if col_name in original_columns:
-                # Copy the original header from row 2 if it exists
-                orig_idx = original_columns.index(col_name) + 1
-                orig_col_letter = get_column_letter(orig_idx)
-                # Try to get the original row 2 value, default to empty if not found
-                try:
-                    orig_row2_value = sheet[f'{orig_col_letter}2'].value
-                    sheet[f'{col_letter}2'] = orig_row2_value
-                except:
-                    sheet[f'{col_letter}2'] = ''
+                # This is an existing column - copy its original header data
+                sheet.cell(row=1, column=new_col_idx).value = original_data[col_name]['row1']
+                sheet.cell(row=2, column=new_col_idx).value = original_data[col_name]['row2'] 
+                sheet.cell(row=3, column=new_col_idx).value = original_data[col_name]['row3']
+                
             else:
-                # New column gets "User defined"
-                sheet[f'{col_letter}2'] = 'User defined'
+                # This is a new column - we need to determine what section it belongs to
+                # Based on your reorder_columns logic, new columns are placed next to their base columns
+                
+                # Find the base column name (remove suffixes)
+                base_col_name = col_name
+                for suffix in ['_standard_deviation', '_WOCE_flag', '_method', '_units', '_unit']:
+                    if col_name.endswith(suffix):
+                        base_col_name = col_name[:-len(suffix)]
+                        break
+                
+                if base_col_name in original_columns and base_col_name != col_name:
+                    # This new column corresponds to an existing base column
+                    # Copy the row1 and row2 from the base column, but use new column name for row3
+                    sheet.cell(row=1, column=new_col_idx).value = original_data[base_col_name]['row1']
+                    sheet.cell(row=2, column=new_col_idx).value = original_data[base_col_name]['row2']
+                    sheet.cell(row=3, column=new_col_idx).value = col_name
+                else:
+                    # This is a completely new column with no base - use "User defined"
+                    sheet.cell(row=1, column=new_col_idx).value = "O"  # or appropriate requirement level
+                    sheet.cell(row=2, column=new_col_idx).value = "User defined"
+                    sheet.cell(row=3, column=new_col_idx).value = col_name
         
-        # Step 10: Write the DataFrame data to the sheet (starting at row 4)
+        # Step 6: Write the DataFrame data (starting from row 4)
         for row_idx, row_data in enumerate(faire_template_df.values, 4):
             for col_idx, value in enumerate(row_data, 1):
                 sheet.cell(row=row_idx, column=col_idx).value = value
         
-        # Step 11: Save the workbook
+        # Step 7: Save the workbook
         workbook.save(self.final_faire_template_path)
         print(f"Sheet {sheet_name} saved to {self.final_faire_template_path}!")
