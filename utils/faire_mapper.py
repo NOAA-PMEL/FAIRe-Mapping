@@ -234,59 +234,56 @@ class OmeFaireMapper:
         else:
             return "missing: not provided"
 
-    def reorder_columns(self, df: pd.DataFrame) -> pd.DataFrame:
-        # orders the final columns so unit and method columns are next to their corresponding fields
-        original_cols = df.columns.tolist()
-        reordered_cols = []
-        processed_cols = set()
+    # def reorder_columns(self, df: pd.DataFrame) -> pd.DataFrame:
+    #     # orders the final columns so unit and method columns are next to their corresponding fields
+    #     original_cols = df.columns.tolist()
+    #     reordered_cols = []
+    #     processed_cols = set()
 
-        for col in original_cols:
-            if col in processed_cols:
-                continue
-            if col.endswith('_unit') or col.endswith('_units') or col.endswith('_method') or col.endswith('_standard_deviation') or col.endswith('_WOCE_flag'):
-                continue
+    #     for col in original_cols:
+    #         if col in processed_cols:
+    #             continue
+    #         if col.endswith('_unit') or col.endswith('_units') or col.endswith('_method') or col.endswith('_standard_deviation') or col.endswith('_WOCE_flag'):
+    #             continue
 
-            # This is a main column, add it first
-            reordered_cols.append(col)
-            processed_cols.add(col)
+    #         # This is a main column, add it first
+    #         reordered_cols.append(col)
+    #         processed_cols.add(col)
 
-            # Look for corresponding unit col (both _unit and _units)
-            unit_col = None
-            if f"{col}_unit" in original_cols:
-                unit_col = f"{col}_unit"
-            elif f"{col}_units" in original_cols:
-                unit_col = f"{col}_units"
+    #         # Look for corresponding unit col (both _unit and _units)
+    #         unit_col = None
+    #         if f"{col}_unit" in original_cols:
+    #             unit_col = f"{col}_unit"
+    #         elif f"{col}_units" in original_cols:
+    #             unit_col = f"{col}_units"
 
-            if unit_col:
-                reordered_cols.append(unit_col)
-                processed_cols.add(unit_col)
+    #         if unit_col:
+    #             reordered_cols.append(unit_col)
+    #             processed_cols.add(unit_col)
             
-            method_col = f"{col}_method"
-            if method_col in original_cols:
-                reordered_cols.append(method_col)
-                processed_cols.add(method_col)
+    #         method_col = f"{col}_method"
+    #         if method_col in original_cols:
+    #             reordered_cols.append(method_col)
+    #             processed_cols.add(method_col)
 
-            standard_dev_col = f"{col}_standard_deviation"
-            if standard_dev_col in original_cols:
-                reordered_cols.append(standard_dev_col)
-                processed_cols.add(standard_dev_col)
+    #         standard_dev_col = f"{col}_standard_deviation"
+    #         if standard_dev_col in original_cols:
+    #             reordered_cols.append(standard_dev_col)
+    #             processed_cols.add(standard_dev_col)
 
-            woce_flag_col = f"{col}_WOCE_flag"
-            if woce_flag_col in original_cols:
-                reordered_cols.append(woce_flag_col)
-                processed_cols.add(woce_flag_col)
+    #         woce_flag_col = f"{col}_WOCE_flag"
+    #         if woce_flag_col in original_cols:
+    #             reordered_cols.append(woce_flag_col)
+    #             processed_cols.add(woce_flag_col)
 
-        for col in original_cols:
-            if col not in processed_cols:
-                reordered_cols.append(col)
+    #     for col in original_cols:
+    #         if col not in processed_cols:
+    #             reordered_cols.append(col)
 
-        return df[reordered_cols]
+    #     return df[reordered_cols]
 
     
     def save_final_df_as_csv(self, final_df: pd.DataFrame, sheet_name: str, header: int, csv_path: str) -> None:
-
-        # reorder columns so units and methods are next to their corresponding columns
-        final_df = self.reorder_columns(final_df)
         
         faire_template_df = self.load_faire_template_as_df(file_path=self.faire_template_file, sheet_name=sheet_name, header=header)
 
