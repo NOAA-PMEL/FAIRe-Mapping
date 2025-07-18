@@ -46,11 +46,12 @@ class ProjectMapper(OmeFaireMapper):
     project_sheet_assay_start_col_num = 5
     project_sheet_project_level_col_num = 4
     
-    def __init__(self, config_yaml: str):
+    def __init__(self, config_yaml: str, gh_token: str):
 
         super().__init__(config_yaml)
 
         self.config_yaml = config_yaml
+        self.gh_token = gh_token
         self.config_file = self.load_config(config_yaml)
         self.project_name = self.config_file['project_name'] if 'project_name' in self.config_file else None # None for NCBI
         self.project_info_google_sheet_id = self.config_file['project_info_google_sheet_id'] if 'project_info_google_sheet_id' in self.config_file else None # None for NCBI
@@ -508,8 +509,13 @@ class ProjectMapper(OmeFaireMapper):
     def retrive_github_bebop(self, owner: str, repo: str, file_path: str):
         url = f"https://api.github.com/repos/{owner}/{repo}/contents/{file_path}"
 
+        headers = {
+            'Authorization': self.gh_token,
+            'Accept': 'application/vnd.github.v3+json'
+        }
+
         try:
-            response = requests.get(url)
+            response = requests.get(url, headers=headers)
             response.raise_for_status()
             data = response.json()
 
