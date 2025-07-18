@@ -5,10 +5,31 @@ from utils.sample_metadata_mapper import FaireSampleMetadataMapper
 from utils.experiment_run_metadata_mapper import ExperimentRunMetadataMapper
 import pandas as pd
 
+
+def fix_stations(df: pd.DataFrame)  -> pd.DataFrame:
+    # swap stations that were incorrectly written down (discussions with Shannon)
+    replacements = {
+        'AW1': 'UT5',
+        'AW2': 'UT4',
+        'AW3': 'UT3',
+        'AW4': 'UT2',
+        'AW5': 'UT1',
+        'AE5': 'AW5',
+        'UT5': 'AE5',
+        'UT3': 'AE3',
+        'UT2': 'AE2',
+        'UT1': 'AE1',
+        'AE3': 'AW3'
+    }
+
+    df['Station'] = df['Station'].replace(replacements)
+
+    return df
 def create_dy2306_sample_metadata():
     
     # initiate mapper
     sample_mapper = FaireSampleMetadataMapper(config_yaml='config.yaml')
+    sample_mapper.sample_metadata_df = fix_stations(df=sample_mapper.sample_metadata_df)
     
     sample_metadata_results = {}
 
