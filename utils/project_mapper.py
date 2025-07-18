@@ -36,10 +36,12 @@ class ProjectMapper(OmeFaireMapper):
     faire_eventDate_col = 'eventDate'
     faire_sunrise_col = 'sunrise_time_utc'
     faire_sunset_col = 'sunset_time_utc'
+    faire_sunset_sunrise_method_col = 'sunset_sunrise_method'
     faire_input_read_count_col = 'input_read_count'
     faire_output_read_count_col = 'output_read_count'
     faire_biological_rep_relation_col = 'biological_rep_relation'
     faire_stations_in_5km_col = "station_ids_within_5km_of_lat_lon"
+    faire_measurements_from_col = "measurements_from"
     project_sheet_term_name_col_num = 3
     project_sheet_assay_start_col_num = 5
     project_sheet_project_level_col_num = 4
@@ -209,6 +211,7 @@ class ProjectMapper(OmeFaireMapper):
         sun_info = df.apply(lambda row: self.get_sun_times_from_iso(metadata_row=row), axis=1, result_type = 'expand')
         df[self.faire_sunrise_col] = sun_info[0]
         df[self.faire_sunset_col] = sun_info[1]
+        df[self.faire_sunset_sunrise_method_col] = sun_info[2]
 
         return df
 
@@ -602,9 +605,12 @@ class ProjectMapper(OmeFaireMapper):
             sunrise_iso = s['sunrise'].isoformat().replace('+00:00', 'Z')
             sunset_iso = s['sunset'].isoformat().replace('+00:00', 'Z')
 
-            return sunrise_iso, sunset_iso
+            sunset_sunrise_method = "sunset and sunrise times calculated using eventDate and python's astral sun library."
+        
+
+            return sunrise_iso, sunset_iso, sunset_sunrise_method
         else:
-            return 'not applicable: control sample', 'not applicable: control sample'
+            return 'not applicable: control sample', 'not applicable: control sample', 'not applicable: control sample'
 
     def drop_samps_from_faire_rel_column_that_dropped(self, df: pd.DataFrame) -> pd.DataFrame:
         # Drop the sample names from rel_cont_id, or biological_rep_relation that dont' exist as a samp_name in the sample metadata df

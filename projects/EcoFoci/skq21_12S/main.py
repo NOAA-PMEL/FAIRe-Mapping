@@ -92,6 +92,12 @@ def create_skq21_12S_sample_metadata():
                     axis=1
                 )
 
+                # Add DepthInMeters_method since some were calcualted using pressure
+                depth_method_info = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('DepthInMeters_method')
+                sample_metadata_results['DepthInMeters_method'] = sample_mapper.sample_metadata_df['depth_from_pressure'].apply(
+                    lambda row: depth_method_info if pd.notna(row) else None
+                )
+
                 sample_mapper.sample_metadata_df['final_max_depth'] = final_max_depth
                 sample_metadata_results['maximumDepthInMeters'] = final_max_depth
                 

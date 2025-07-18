@@ -40,6 +40,7 @@ class NCBIMapper:
                             "missing: restricted access"
                             ]
     faire_samp_name_col = "samp_name"
+    faire_stations_in_5km_col = "station_ids_within_5km_of_lat_lon"
 
     def __init__(self, final_faire_sample_metadata_df: pd.DataFrame, 
                  final_faire_experiment_run_metadata_df: pd.DataFrame,
@@ -135,9 +136,10 @@ class NCBIMapper:
         # 6th add additional column in FAIRe sample df that do not exist in ncbi template
         final_ncbi_df = self.add_additional_faire_cols(faire_samp_df=self.faire_sample_df, updated_ncbi_df=updated_df)
 
-        # 7th drop fields that were just for QC
+        # 7th drop fields that should not be included in NCBI submission (like within_5km and rel_cont_id)
+        last_final_ncbi_df = self.drop_samp_cols_not_meant_for_submission(final_ncbi_df)
             
-        return final_ncbi_df
+        return last_final_ncbi_df
 
     def get_sra_df(self) -> pd.DataFrame:
 
@@ -357,3 +359,9 @@ class NCBIMapper:
 
         print(f'NCBI sample saved to {ncbi_excel_save_path}')
 
+    def drop_samp_cols_not_meant_for_submission(self, sample_df: pd.DataFrame) -> pd.DataFrame:
+        # Drop columns not meant for submission like stations_within_5m
+        if self.faire_stations_in_5km_col in sample_df.columns:
+            return sample_df.drop(columns=[self.faire_stations_in_5km_col])
+        else:
+            return sample_df

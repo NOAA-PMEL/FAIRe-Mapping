@@ -54,6 +54,7 @@ class SampleMetadata(BaseModel):
     verbatimCoordinateSystem: Optional[Literal['decimal degrees', 'degrees minutes seconds', 'UTM']]
     verbatimSRS: Optional[Literal['WGS84', 'NAD84', 'NAD27', 'GDA94', 'GDA2020 ', 'ETRS89', 'JGD2000']]
     geo_loc_name: Optional[str] # Needs custom validation - see mapping functions for this
+    geo_loc_name_method: Optional[str] = None
     eventDate: Optional[str] 
     eventDurationValue: Optional[str]
     verbatimEventDate: Optional[str]
@@ -96,7 +97,9 @@ class SampleMetadata(BaseModel):
     samp_weather: Optional[str]
     minimumDepthInMeters: Optional[float]
     maximumDepthInMeters: Optional[float]
+    DepthInMeters_method: Optional[float]
     tot_depth_water_col: Optional[float]
+    tot_depth_water_col_method: Optional[str]
     elev: Optional[float]
     temp: Optional[float] = Field(description = 'in degree Celsius')
     temp_WOCE_flag: Optional[int] = Field(default=None)
@@ -266,13 +269,17 @@ class SampleMetadata(BaseModel):
     expedition_name: Optional[str] = Field(default=None)
     rosette_position: Optional[int] = None 
     collected_by: Optional[str]
-    meaurements_from: Optional[str]
+    measurements_from: str
     nisking_id: Optional[str] = Field(default=None)
     niskin_WOCE_flag: Optional[int] = Field(default=None)
     station_ids_within_5km_of_lat_lon: Optional[str] = Field(default=None, description="Stations within 5 km of the lat/lon coordinates given for a sample - if references stations are given. For internal QC purposes only.")
     sunrise_time_utc: Optional[str] = Field(default=None)
     sunset_time_utc: Optional[str] = Field(default=None)
+    sunset_sunrise_method: Optional[str]
     verbatimStationName: Optional[str] = Field(default=None)
+    altitude: Optional[float] = Field(default=None, description="Can be calculated using by subtracting the MaximumDepthInMeters from the tot_depth_water_col.")
+    altitude_unit: Optional[Literal['m']]
+    altitude_method: Optional[str]
 
     
     # class variables loaded once and shared across all datasets

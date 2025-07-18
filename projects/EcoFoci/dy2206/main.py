@@ -92,6 +92,12 @@ def create_dy2206_sample_metadata():
                 axis=1
             )
 
+            # Add DepthInMeters_method since some were calcualted using pressure
+            depth_method_info = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('DepthInMeters_method')
+            sample_metadata_results['DepthInMeters_method'] = sample_mapper.sample_metadata_df['finalMaxDepth'].apply(
+                lambda row: depth_method_info if pd.notna(row) else None
+            )
+
             sample_metadata_results['env_local_scale'] = sample_mapper.sample_metadata_df['final_max_depth'].apply(sample_mapper.calculate_env_local_scale)
 
         elif faire_col == 'prepped_samp_store_dur':
@@ -106,6 +112,12 @@ def create_dy2206_sample_metadata():
             tot_depth_water_col = sample_mapper.sample_metadata_df.apply(
                 lambda row: sample_mapper.get_tot_depth_water_col_from_lat_lon(metadata_row=row, lat_col=cols[1], lon_col=cols[2], exact_map_col=cols[0]),
                 axis=1
+            )
+
+            # specify where tot_Depth_water_col came from (some measured, some calculated)
+            tot_depth_water_method_info = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('tot_depth_water_col_method')
+            sample_metadata_results['tot_depth_water_col_method'] = sample_mapper.sample_metadata_df['ctd_Water_Depth..dbar.'].apply(
+                lambda row: tot_depth_water_method_info if pd.notna(row) else None
             )
 
             sample_metadata_results['tot_depth_water_col'] = tot_depth_water_col
