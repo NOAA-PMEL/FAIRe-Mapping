@@ -388,4 +388,3 @@ class OmeFaireMapper:
         # Step 11: Save the workbook
         workbook.save(self.final_faire_template_path)
         print(f"Sheet {sheet_name} saved to {self.final_faire_template_path}!")
-    
