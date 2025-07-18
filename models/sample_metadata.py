@@ -97,9 +97,9 @@ class SampleMetadata(BaseModel):
     samp_weather: Optional[str]
     minimumDepthInMeters: Optional[float]
     maximumDepthInMeters: Optional[float]
-    DepthInMeters_method: Optional[float]
+    DepthInMeters_method: Optional[float] = None
     tot_depth_water_col: Optional[float]
-    tot_depth_water_col_method: Optional[str]
+    tot_depth_water_col_method: Optional[str] = None
     elev: Optional[float]
     temp: Optional[float] = Field(description = 'in degree Celsius')
     temp_WOCE_flag: Optional[int] = Field(default=None)
@@ -269,17 +269,17 @@ class SampleMetadata(BaseModel):
     expedition_name: Optional[str] = Field(default=None)
     rosette_position: Optional[int] = None 
     collected_by: Optional[str]
-    measurements_from: str
+    measurements_from: str = None
     nisking_id: Optional[str] = Field(default=None)
     niskin_WOCE_flag: Optional[int] = Field(default=None)
     station_ids_within_5km_of_lat_lon: Optional[str] = Field(default=None, description="Stations within 5 km of the lat/lon coordinates given for a sample - if references stations are given. For internal QC purposes only.")
     sunrise_time_utc: Optional[str] = Field(default=None)
     sunset_time_utc: Optional[str] = Field(default=None)
-    sunset_sunrise_method: Optional[str]
+    sunset_sunrise_method: Optional[str] = None
     verbatimStationName: Optional[str] = Field(default=None)
     altitude: Optional[float] = Field(default=None, description="Can be calculated using by subtracting the MaximumDepthInMeters from the tot_depth_water_col.")
-    altitude_unit: Optional[Literal['m']]
-    altitude_method: Optional[str]
+    altitude_unit: Optional[Literal['m']] = None
+    altitude_method: Optional[str] = None
 
     
     # class variables loaded once and shared across all datasets
