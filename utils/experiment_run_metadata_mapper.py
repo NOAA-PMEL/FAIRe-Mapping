@@ -61,7 +61,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         for faire_col, static_value in self.mapping_dict[self.constant_mapping].items():
             exp_metadata_results[faire_col] = self.apply_static_mappings(faire_col=faire_col, static_value=static_value)
 
-        Step 3: Add related mappings
+        # Step 3: Add related mappings
         for faire_col, metadata_col in self.mapping_dict[self.related_mapping].items():
             # Add assay_name
             if faire_col == 'assay_name':
