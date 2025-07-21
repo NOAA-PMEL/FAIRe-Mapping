@@ -8,6 +8,7 @@ import base64
 import tempfile
 import openpyxl
 import os
+import hashlib
 from astral import LocationInfo
 from astral.sun import sun
 import pytz
@@ -42,6 +43,7 @@ class ProjectMapper(OmeFaireMapper):
     faire_biological_rep_relation_col = 'biological_rep_relation'
     faire_stations_in_5km_col = "station_ids_within_5km_of_lat_lon"
     faire_measurements_from_col = "measurements_from"
+    faire_seq_run_id_col = "seq_run_id"
     project_sheet_term_name_col_num = 3
     project_sheet_assay_start_col_num = 5
     project_sheet_project_level_col_num = 4
@@ -56,6 +58,7 @@ class ProjectMapper(OmeFaireMapper):
         self.project_name = self.config_file['project_name'] if 'project_name' in self.config_file else None # None for NCBI
         self.project_info_google_sheet_id = self.config_file['project_info_google_sheet_id'] if 'project_info_google_sheet_id' in self.config_file else None # None for NCBI
         self.project_info_df = self.load_google_sheet_as_df(google_sheet_id=self.project_info_google_sheet_id, sheet_name='Sheet1', header=0) if 'project_info_google_sheet_id' in self.config_file else None # None for NCBI
+        self.project_id = dict(zip(self.project_info_df['faire_field'], self.project_info_df['value']))['project_id']
         self.mismatch_samp_names_dict = self.config_file['mismatch_sample_names'] if 'mismatch_sample_names' in self.config_file else {}
         self.pooled_samps_dict = self.config_file['pooled_samps'] if 'pooled_samps' in self.config_file else {}
         self.bioinformatics_bebop_path = self.config_file['bioinformatics_bebop_path'] if 'bioinformatics_bebop_path' in self.config_file else None # None if NCBI
@@ -75,13 +78,13 @@ class ProjectMapper(OmeFaireMapper):
 
         # Save sample metadata first to excel file and csv, and then use that excel file and save experimentRunMetadata df
         self.add_final_df_to_FAIRe_excel(excel_file_to_read_from=self.faire_template_file, sheet_name=self.faire_sample_metadata_sheet_name, faire_template_df=sample_metadata_df)
-        self.save_final_df_as_csv(final_df=sample_metadata_df, sheet_name=self.faire_sample_metadata_sheet_name, header=2, csv_path=f"{data_dir}/{self.project_name}_faire_sampleMetadata.csv")
+        self.save_final_df_as_csv(final_df=sample_metadata_df, sheet_name=self.faire_sample_metadata_sheet_name, header=2, csv_path=f"{data_dir}/sampleMetadata_{self.project_id}")
 
         self.add_final_df_to_FAIRe_excel(excel_file_to_read_from=self.final_faire_template_path, sheet_name=self.faire_experiment_run_metadata_sheet_name, faire_template_df=experiment_run_metadata_df)
-        self.save_final_df_as_csv(final_df=experiment_run_metadata_df, sheet_name=self.faire_experiment_run_metadata_sheet_name, header=2, csv_path=f"{data_dir}/{self.project_name}_faire_experimentRunMetadata.csv")
+        self.save_final_df_as_csv(final_df=experiment_run_metadata_df, sheet_name=self.faire_experiment_run_metadata_sheet_name, header=2, csv_path=f"{data_dir}/experimentRunMetadata_{self.project_id}")
 
         # Add projectMetadata, first project_level metadata then assay level metadata
-        self.load_project_level_metadata_to_excel()
+        self.load_project_level_metadata_to_excel_and_save_as_csv()
         self.load_assay_level_metadata_to_excel(final_exp_run_df=experiment_run_metadata_df)
        
         print(f"Excel file saved to {self.final_faire_template_path}")
@@ -193,7 +196,7 @@ class ProjectMapper(OmeFaireMapper):
         exp_run_df_with_merged_counts = self.update_output_input_counts_for_merged_runs(exp_df = combined_exp_run_df)
 
         return exp_run_df_with_merged_counts
-
+    
     def update_output_input_counts_for_merged_runs(self, exp_df: pd.DataFrame) -> pd.DataFrame:
         # For OSU/Run3 where there will be the same sample_name and assay_name (part of assay name since different for runs)
         exp_df['assay_group'] = exp_df[self.faire_assay_name_col].str.split('_', n=1).str[0]
@@ -652,7 +655,7 @@ class ProjectMapper(OmeFaireMapper):
         else:
             return sample_df
 
-    def load_project_level_metadata_to_excel(self) -> None:
+    def load_project_level_metadata_to_excel_and_save_as_csv(self) -> None:
         # Maps the project level metadata to the projectMetadata excel sheet
         
         project_dict = dict(zip(self.project_info_df['faire_field'], self.project_info_df['value']))
@@ -662,6 +665,12 @@ class ProjectMapper(OmeFaireMapper):
         today_str = today.strftime('%Y-%m-%d')
         project_dict['mod_date'] = today_str
 
+        # save as csv
+        data_dir = os.path.dirname(self.final_faire_template_path)
+        self.project_info_df['mod_date'] = today_str
+        self.save_final_df_as_csv(final_df=self.project_info_df, sheet_name='Sheet1', header=0, csv_path=f"{data_dir}/projectMetadata_{self.project_id}")
+
+        # save as excel
         workbook = openpyxl.load_workbook(self.final_faire_template_path)
         worksheet = workbook[self.faire_project_metadata_sheet_name]
 

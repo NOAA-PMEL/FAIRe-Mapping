@@ -2,8 +2,8 @@ run_metadata_sample_name_column: Sample
 run_metadata_marker_col_name: Marker
 run_metadata_sample_sheet_name: run_OSU867
 run_raw_data_path: # The raw data path of each marker folder (a lot are in a renamed folder)
-  'Machida18S': /home/poseidon/mcallister/eDNA_bioinformatics/OSU/OSU867_DY20_Vents_lane1/reads_dir_18S/rerun/
-  'Parada16S': /home/poseidon/mcallister/eDNA_bioinformatics/OSU/OSU867_DY20_Vents_lane1/reads_dir_16S/
+  'Machida18S': /data/raw_data/2022-2023_OSU_MiSeq/20220104_OSU867_DY20_Vents_Lane1_rawreads/renamed/reads_dir_18S
+  'Parada16S': /data/raw_data/2022-2023_OSU_MiSeq/20220104_OSU867_DY20_Vents_Lane1_rawreads/renamed/reads_dir_16S
 run_sample_metadata_file_id: 117syeIuu1_4DDapE-b72MKFzjA26zzgG09VynNjU1Pw
 google_sheet_mapping_file_id: 13qmPw5LFkTIy8bwLeQcMuWBDP87o9XrZVkN9eKDhqPs
 run_name: osu867 # for adding to the Positive control sample names
