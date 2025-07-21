@@ -5,13 +5,27 @@ from utils.sample_metadata_mapper import FaireSampleMetadataMapper
 from utils.experiment_run_metadata_mapper import ExperimentRunMetadataMapper
 import pandas as pd
 
-#TODO: Add cv checking for related mappings?
-# TODO: change order of saving excel file and add csv saving at end
+def fix_stations(df: pd.DataFrame)  -> pd.DataFrame:
+    # swap stations that were incorrectly written down (discussions with Shannon)
+    replacements = {
+        'DBO4.1': 'DBO4.1N',
+        'DBO4.2': 'DBO4.2N',
+        'DBO4.3': 'DBO4.3N',
+        'DBO4.4': 'DBO4.4N',
+        'DBO4.5': 'DBO4.5N',
+        'DBO4.6': 'DBO4.6N'
+    }
+
+    df['Station'] = df['Station'].replace(replacements)
+
+    return df
 
 def create_skq21_12S_sample_metadata():
     
     # initiate mapper
     sample_mapper = FaireSampleMetadataMapper(config_yaml='config.yaml')
+    # fix the stations
+    sample_mapper.sample_metadata_df = fix_stations(df=sample_mapper.sample_metadata_df)
 
     sample_metadata_results = {}
 
@@ -78,6 +92,12 @@ def create_skq21_12S_sample_metadata():
                     axis=1
                 )
 
+                # Add DepthInMeters_method since some were calcualted using pressure
+                depth_method_info = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('DepthInMeters_method')
+                sample_metadata_results['DepthInMeters_method'] = sample_mapper.sample_metadata_df['depth_from_pressure'].apply(
+                    lambda row: depth_method_info if pd.notna(row) else None
+                )
+
                 sample_mapper.sample_metadata_df['final_max_depth'] = final_max_depth
                 sample_metadata_results['maximumDepthInMeters'] = final_max_depth
                 
@@ -90,16 +110,46 @@ def create_skq21_12S_sample_metadata():
 
                 # calculate tot_depth_water_col
                 tot_depth_water_metadata_col = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('tot_depth_water_col')
-                sample_metadata_results['tot_depth_water_col'] = sample_mapper.sample_metadata_df.apply(
+                tot_depth_water_col = sample_mapper.sample_metadata_df.apply(
                 lambda row: sample_mapper.get_tot_depth_water_col_from_lat_lon(metadata_row=row, lat_col='decimalLatitude', lon_col='decimalLongitude', exact_map_col=tot_depth_water_metadata_col),
                 axis=1
-            )
+                )  
+                sample_metadata_results['tot_depth_water_col'] = tot_depth_water_col
+                sample_mapper.sample_metadata_df['tot_depth_water_col'] = tot_depth_water_col
                 
-        elif faire_col == 'geo_loc_name':
-            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
-                lambda row: sample_mapper.format_geo_loc(metadata_row=row, geo_loc_metadata_col=metadata_col),
-                axis=1
-            )
+        
+                # Get altitude to totl_depth_water_col and maximumDepthInMeters
+                sample_metadata_results['altitude'] = sample_mapper.sample_metadata_df.apply(
+                    lambda row: sample_mapper.calculate_altitude(metadata_row=row, depth_col='final_max_depth', tot_depth_col='tot_depth_water_col'),
+                    axis=1
+                )
+                
+                # geo loc calculated from lat lon
+                sample_metadata_results['geo_loc_name'] = sample_mapper.sample_metadata_df.apply(
+                    lambda row: sample_mapper.find_geo_loc_by_lat_lon(metadata_row=row, metadata_lat_col='decimalLatitude', metadata_lon_col='decimalLongitude'), 
+                        axis = 1
+                    )
+                
+                # Get station info
+                station_id_metadata_col = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('station_id')
+                station_id = sample_mapper.sample_metadata_df.apply(
+                    lambda row: sample_mapper.get_station_id_from_unstandardized_station_name(metadata_row=row, unstandardized_station_name_col=station_id_metadata_col), 
+                    axis=1
+                )
+
+                sample_metadata_results['station_id'] = station_id
+                sample_mapper.sample_metadata_df['station_id'] = station_id
+
+                # Use standardized station to get stations within 3 km
+                station_metadata_cols = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('station_ids_within_5km_of_lat_lon').split(' | ')
+                lat_col = station_metadata_cols[1]
+                lon_col = station_metadata_cols[2]
+                sample_metadata_results['station_ids_within_5km_of_lat_lon'] = sample_mapper.sample_metadata_df.apply(
+                    lambda row: sample_mapper.get_stations_within_5km(metadata_row=row, station_name_col='station_id', lat_col=lat_col, lon_col=lon_col), 
+                    axis=1)
+                
+                # Get line_id from standardized station name
+                sample_metadata_results['line_id'] = sample_mapper.sample_metadata_df['station_id'].apply(sample_mapper.get_line_id)
 
         # eventDate needs to be proecessed before prepped_samp_store_dur
         elif faire_col == 'eventDate' or faire_col == 'prepped_samp_store_dur':

@@ -9,12 +9,17 @@ google_sheet_mapping_file_id: 1dpyAN_aieMUEPWcwdVMV_ZLZwZZ94-GrZ23M9vM-xdk
 run_name: osu894 # for adding to the Positive control sample names
 revamp_blast: True # if using the revamp blast-based taxonomy assignment then set this to True, otherwise False
 ignore_markers: # Add Metabarcoding Marker name EXACTLY from run_sample_metadata_file if not submitting info for that marker
+merged: True
 asv_counts_tsvs_for_run: #dloop left out because Sean said dLoop did not work for Run2, keys match metabarcoding marker in metadata spreadsheet
-  'Machida18S': #/home/poseidon/mcallister/eDNA_bioinformatics/Run3/Machida18S_REVAMP_out_COMBINEALL/dada2/ASVs_counts.tsv
-  'Parada16S': #/home/poseidon/mcallister/eDNA_bioinformatics/Run3_rerun/Parada16S_REVAMP_merged/dada2/ASVs_counts.tsv
+  'Machida18S': 
+    secondary_path: /home/poseidon/mcallister/eDNA_bioinformatics/OSU/OSU894_Redo1_NorsemanWOAC1_lane1/Machida18S_REVAMP_out/dada2/ASVs_counts.tsv
+    merged: /home/poseidon/mcallister/eDNA_bioinformatics/Run3/Machida18S_REVAMP_MERGE_NEW/dada2/ASVs_counts.tsv
+  'Parada16S': 
+    secondary_path: /home/poseidon/mcallister/eDNA_bioinformatics/OSU/OSU894_Redo1_NorsemanWOAC1_lane1/Parada16S_REVAMP_out/dada2/ASVs_counts.tsv
+    merged: /home/poseidon/mcallister/eDNA_bioinformatics/Run3_rerun/Parada16S_REVAMP_merged/dada2/ASVs_counts.tsv
 otu_num_tax_assigned_files_for_run: # The files used to calculate the otu_num_tax_assigned - Sean said it depends on the version of taxonomy we are using
-  'Machida18S': #/home/poseidon/mcallister/eDNA_bioinformatics/Run3/Machida18S_REVAMP_out_COMBINEALL/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
-  'Parada16S': #/home/poseidon/mcallister/eDNA_bioinformatics/Run3_rerun/Parada16S_REVAMP_merged/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
+  'Machida18S': /home/poseidon/mcallister/eDNA_bioinformatics/Run3/Machida18S_REVAMP_MERGE_NEW/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
+  'Parada16S': /home/poseidon/mcallister/eDNA_bioinformatics/Run3_rerun/Parada16S_REVAMP_merged/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
 
 # path to json creds file for google sheets
 json_creds: /home/poseidon/zalmanek/FAIRe-Mapping/credentials.json

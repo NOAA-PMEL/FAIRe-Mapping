@@ -8,6 +8,7 @@ import pandas as pd
 # import difflib
 import warnings
 import yaml
+import re
 from .custom_exception import ControlledVocabDoesNotExistError
 import gspread #library that makes it easy for us to interact with the sheet
 from google.oauth2.service_account import Credentials
@@ -71,9 +72,9 @@ class OmeFaireMapper:
         return pd.read_excel(file_path, sheet_name=sheet_name, header=header)
     
     def load_csv_as_df(self, file_path: Path, header=0) -> pd. DataFrame:
-         # Load csv files as a data frame
-         
-         return pd.read_csv(file_path, header=header)
+        # Load csv files as a data frame
+
+        return pd.read_csv(file_path, header=header, dtype=str)
     
     def load_google_sheet_as_df(self, google_sheet_id: str, sheet_name: str, header: int) -> pd.DataFrame:
 
@@ -139,10 +140,11 @@ class OmeFaireMapper:
         
         controlled_vocab = self.extract_controlled_vocab(faire_attribute=faire_attribute)
         # make static_value a list (to account for more than one value as the static_value)
+
         value = value.split(' | ') if '|' in value else [value]
 
         for word in value:
-            if word not in controlled_vocab and word not in self.faire_missing_values:
+            if word not in controlled_vocab and word not in self.faire_missing_values and 'other:' not in word:
                 warnings.warn(f'The following {faire_attribute} does not exist in the FAIRe standard controlled vocabulary: {word}, the allowed values are {controlled_vocab}')
             else:
                 new_value = ' | '.join(value)
@@ -231,6 +233,76 @@ class OmeFaireMapper:
             
         else:
             return "missing: not provided"
+        
+    def reorder_columns(self, df: pd.DataFrame) -> pd.DataFrame:
+        # orders the final columns so unit and method columns are next to their corresponding fields
+        original_cols = df.columns.tolist()
+        reordered_cols = []
+        processed_cols = set()
+
+        special_cases = {
+            'maximumDepthInMeters': ['DepthInMeters_method'],
+            'sunset_time_utc': ['sunset_sunrise_method'],
+            'niskin_id': ['niskin_WOCE_flag']
+        }
+        
+        for col in original_cols:
+            if col in processed_cols:
+                continue
+
+            if col.endswith('_unit') or col.endswith('_units') or col.endswith('_method') or col.endswith('_standard_deviation') or col.endswith('_WOCE_flag'):
+                continue
+
+            is_special_related_col = False
+            for main_col, related_cols in special_cases.items():
+                if col in related_cols:
+                    is_special_related_col = True
+                    break
+
+            if is_special_related_col:
+                continue
+
+            # This is a main column, add it first
+            reordered_cols.append(col)
+            processed_cols.add(col)
+
+            if col in special_cases:
+                for special_col in special_cases[col]:
+                    if special_col in original_cols:
+                        reordered_cols.append(special_col)
+                        processed_cols.add(special_col)
+
+            # Look for corresponding unit col (both _unit and _units)
+            unit_col = None
+            if f"{col}_unit" in original_cols:
+                unit_col = f"{col}_unit"
+            elif f"{col}_units" in original_cols:
+                unit_col = f"{col}_units"
+
+            if unit_col:
+                reordered_cols.append(unit_col)
+                processed_cols.add(unit_col)
+
+            method_col = f"{col}_method"
+            if method_col in original_cols:
+                reordered_cols.append(method_col)
+                processed_cols.add(method_col)
+
+            standard_dev_col = f"{col}_standard_deviation"
+            if standard_dev_col in original_cols:
+                reordered_cols.append(standard_dev_col)
+                processed_cols.add(standard_dev_col)
+
+            woce_flag_col = f"{col}_WOCE_flag"
+            if woce_flag_col in original_cols:
+                reordered_cols.append(woce_flag_col)
+                processed_cols.add(woce_flag_col)
+
+        for col in original_cols:
+            if col not in processed_cols:
+                reordered_cols.append(col)
+
+        return df[reordered_cols]
 
     def save_final_df_as_csv(self, final_df: pd.DataFrame, sheet_name: str, header: int, csv_path: str) -> None:
         
@@ -238,53 +310,57 @@ class OmeFaireMapper:
 
         faire_final_df = pd.concat([faire_template_df, final_df], ignore_index=True)
 
-        faire_final_df.to_csv(csv_path, quoting=csv.QUOTE_NONNUMERIC)
+        faire_final_df_reorderd = self.reorder_columns(df=faire_final_df)
+
+        faire_final_df_reorderd.to_csv(csv_path, quoting=csv.QUOTE_NONNUMERIC, index=False)
 
     def add_final_df_to_FAIRe_excel(self, excel_file_to_read_from: str, sheet_name: str, faire_template_df: pd.DataFrame):
-
         # Step 1 load the workbook to preserve formatting
         workbook = openpyxl.load_workbook(excel_file_to_read_from)
         sheet = workbook[sheet_name]
-        
-        # step 2: identify new columns added to the DataFrame
-        original_columns = []
-        for cell in sheet[3]: # Row 3 (0-indexed as 2) contains column names
-            if cell.value:
-                original_columns.append(cell.value)
-        
-        new_columns = [col for col in faire_template_df.columns if col not in original_columns]
-            
-        # new step 3: add new columns to the sheet headers
-        last_col = sheet.max_column 
-        for i, new_col in enumerate(new_columns, 1):
-            col_idx = last_col + i
-            col_letter = get_column_letter(col_idx)
-            # add column name to row 3
-            sheet[f'{col_letter}3'] = new_col
-            # Add User defined to row 2
-            sheet[f'{col_letter}2'] = 'User defined'
 
-        for row in range(4, sheet.max_row + 1):
+        # Step 2: Store original row 2 headers and original row 3 columns
+        # This is done before any modifications to identify what was originally in the template.
+        original_row2_headers = {}
+        original_columns_in_sheet = []
+        for col_idx in range(1, sheet.max_column + 1):
+            col_name = sheet.cell(row=3, column=col_idx).value
+            if col_name:
+                original_columns_in_sheet.append(col_name)
+                # Store the row 2 value for this column name
+                original_row2_headers[col_name] = sheet.cell(row=2, column=col_idx).value
+
+        # Step 3: Reorder the input DataFrame's columns using your reorder_columns method
+        reordered_faire_template_df = self.reorder_columns(faire_template_df)
+        
+        # Step 4: Clear existing headers (rows 2 and 3) and all data from row 4 onwards
+        # This ensures a clean slate before writing new, reordered headers and data.
+        for row in range(1, sheet.max_row + 1): # Clear starting from row 1 to be safe
             for col in range(1, sheet.max_column + 1):
                 sheet.cell(row=row, column=col).value = None
-        
-        # Write the data frame data to the sheet (starting at row 4)
-        for row_idx, row_data in enumerate(faire_template_df.values, 4): 
-            for col_name, col_idx in zip(faire_template_df.columns, range(len(faire_template_df.columns))):
-                # Find the column index in the excel sheet by column name
-                excel_col_idx = None
-                for idx, cell in enumerate(sheet[3], 1):
-                    if cell.value == col_name:
-                        excel_col_idx = idx
-                        break
 
-                if excel_col_idx is not None:
-                    value = row_data[col_idx]
-                    sheet.cell(row=row_idx, column=excel_col_idx).value = value
-            # for col_idx, value in enumerate(row_data, 1):
-            #     sheet.cell(row=row_idx, column=col_idx).value = value
+        # Step 5: Write the new headers (row 2 and row 3) based on the reordered DataFrame
+        for col_idx, col_name in enumerate(reordered_faire_template_df.columns, 1):
+            col_letter = get_column_letter(col_idx)
+            
+            # Write column name to row 3 (the main header row)
+            sheet[f'{col_letter}3'] = col_name
 
-        # step 4 save the workbook preserved with headers
+            # Determine and write row 2 header
+            if col_name in original_columns_in_sheet:
+                # If the column existed in the original template, use its original row 2 header
+                sheet[f'{col_letter}2'] = original_row2_headers.get(col_name)
+            else:
+                # If it's a new column, set row 2 to "User defined"
+                sheet[f'{col_letter}2'] = 'User defined'
+
+        # Step 6: Write the data frame data to the sheet (starting at row 4)
+        # Iterate through the reordered DataFrame and write its values to the Excel sheet.
+        for row_idx, row_data in enumerate(reordered_faire_template_df.values, 4):
+            for col_idx, value in enumerate(row_data, 1):
+                sheet.cell(row=row_idx, column=col_idx).value = value
+
+        # Step 7: Save the workbook
         workbook.save(self.final_faire_template_path)
         print(f"sheet {sheet_name} saved to {self.final_faire_template_path}!")
        
@@ -296,4 +372,3 @@ class OmeFaireMapper:
     
 
     
-

@@ -4,6 +4,8 @@ on:
     paths: 
       - 'runs/**/data/*.csv'
       - 'projects/**/**/data/*.csv'
+      - 'projects/**/data/*experimentRunMetadata.csv'
+      - 'projects/**/data/*sampleMetadata.csv'
 
 permissions:
   contents: read
@@ -18,10 +20,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
-        lfs: true
-
-    - name: Download LFS files
-      run: git lfs pull
+        lfs: false
         
     - name: Set up Conda with caching
       uses: conda-incubator/setup-miniconda@v3
@@ -46,7 +45,7 @@ jobs:
       run: | 
         conda list | grep pandas || {
           echo "Installing dependencies..."
-          conda install -c conda-forge -c anaconda -c bioconda pandas pyyaml openpyxl isodate requests beautifulsoup4 shapely geopandas h5netcdf netcdf4 xarray pydantic, geopy 
+          conda install -c conda-forge -c anaconda -c bioconda pandas pyyaml openpyxl isodate requests beautifulsoup4 shapely geopandas h5netcdf netcdf4 xarray pydantic, geopy, astral
           pip install google-api-python-client google-auth-oauthlib gspread oauth2client python-frontmatter gsw bioawk
         }
         
@@ -57,7 +56,13 @@ jobs:
         files: | 
           runs/**/data/*.csv
           projects/**/**/data/*.csv
-          
+          projects/**/data/*experimentRunMetadata.csv
+          projects/**/data/*sampleMetadata.csv
+
+    - name: Conditionally download LFS files
+      if: steps.changed-files.outputs.any_change == 'true'   
+      run: git lfs pull
+    
     - name: Validate CSV files
       if: steps.changed-files.outputs.any_changed == 'true'
       id: validation
@@ -72,8 +77,8 @@ jobs:
         # Function to determine model class
         get_model_class() {
           case "$1" in
-            *runs/*/data/*.csv) echo "ExperimentRunMetadata" ;;
-            *projects/*/data/*.csv) echo "SampleMetadata" ;;
+            *runs/*/data/*.csv|projects/**/data/*experimentRunMetadata.csv) echo "ExperimentRunMetadata" ;;
+            *projects/*/data/*.csv|projects/**/data/*sampleMetadata.csv) echo "SampleMetadata" ;;
             *) echo "SampleMetadata" ;;
           esac
         }

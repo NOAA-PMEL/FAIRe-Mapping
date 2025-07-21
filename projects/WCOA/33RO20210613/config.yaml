@@ -1,0 +1,44 @@
+## 33RO20210613 Sample Metadata config.yaml ##
+# Metadata file related 
+sample_metadata_file: /home/poseidon/zalmanek/WCOA21/wcoa21_data_management/FinalOME_Merge_WCOA21_sample_data.csv
+sample_metadata_sample_name_column: Sample_Name # The name of the column in the metadata spreadsheet that lists the sample names
+sample_metadata_file_neg_control_col_name: 'Negative_control' # Name of the column in the metadata spreadsheet for the boolean Negative Control
+sample_metadata_cast_no_col_name: 'btl_Cast_number'
+sample_metadata_bottle_no_col_name: 'bottle'
+vessel_name: RV Ronald H. Brown
+
+# extractions re-imagined
+extractions:
+  - extraction_name: WCOA21
+    extraction_metadata_google_sheet_id: 1aXN_HmGRDgDLvkz1Dbkje6R7rUUg9mNNc630YN8HvFE
+    extraction_cruise_key: .WCOA21
+    extraction_sample_name_col: 'FINAL Sample NAME'
+    extraction_conc_col_name: 'Qubit Conc.  (ng/μL)' #to calculate average of extraction concentration
+    extraction_date_col_name: 'Extraction Date (Local)'
+    extraction_metadata_sheet_name: 'Sheet1'
+    extraction_blank_vol_we_dna_ext: 1000 # The volume or mass of blanks extracted if there are blanks extracted
+    extraction_set_grouping_col_name: 'Extraction Set' # The name of the column that groups the samples together if they were extracted together
+  - extraction_name: WCOArun5
+    extraction_metadata_google_sheet_id: 1K4XrXplTNukaeIY_UQ_XXuYLBuvJwJmaeEbAZvHSiEI
+    extraction_cruise_key: .WCOA21
+    extraction_sample_name_col: 'FINAL Sample NAME (24 samples)'
+    extraction_conc_col_name: 'Qubit Conc.  (ng/μL)' #to calculate average of extraction concentration
+    extraction_date_col_name: 'Extraction Date (Local)'
+    extraction_metadata_sheet_name: 'Extraction Sheet'
+    extraction_blank_vol_we_dna_ext: 1000 # The volume or mass of blanks extracted if there are blanks extracted #TODO: figure this out
+    extraction_set_grouping_col_name: 'Extraction Set' # The name of the column that groups the samples together if they were extracted together
+
+# mapping file related # No .NC samples for WCOA so the nc sample info is arbitrary
+google_sheet_mapping_file_id: 1uQ3epMaH31FRGv9KvLT5OE1rRBbOAkHdZ3TtIN97-LI
+nc_samp_mat_process:  'Water samples were filtered through a 0.22 micron sterivex filter using a peristaltic pump with tubing attached to the outlet end of the sterivex.' # mapping for negative controls for nc_samp_mapt_process
+nc_prepped_samp_store_dur: 'missing: not collected' # which columns the NC prepped samp_store_dur map to (will most likely be different than rest of samples because no ctd or bottle dates for NC)
+
+# Station reference file
+station_name_reference_google_sheet_id: 15hJkEr8QBLFL1xu5ZNFHh5oamPkLhodElJ1vJ5v55OE
+
+# FAIRe template related
+faire_template_file: /home/poseidon/zalmanek/FAIRe-Mapping/faire_template.xlsx
+final_faire_template_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/WCOA/33RO20210613/data/33RO20210613_faire.xlsx
+
+# path to json creds file for google sheets
+json_creds: /home/poseidon/zalmanek/FAIRe-Mapping/credentials.json

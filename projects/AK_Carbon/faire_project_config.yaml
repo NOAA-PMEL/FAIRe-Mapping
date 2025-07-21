@@ -1,0 +1,76 @@
+#TODO: Need to update bebop path to be google sheet at some point after AnalysisMetadata functionality implemented
+
+project_name: AK_Carbon
+project_info_google_sheet_id: 1NGBRvvKYHNm6RYnLhvPJhrsA3zHrqEfFAQdCEsaOy5s # google sheet id for where project and data management metadata are.
+
+datasets: # a list of sample_metadata.csvs and their associated experimentRun csvs
+  sample_metadata_csvs:
+    - cruise_name: RC0083
+      sample_metadata_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/AK_Carbon/rc0083/data/rc0083_faire.csv
+  associated_sequencing_csvs:
+    - sequencing_run_name: run4
+      sequence_run_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/run4/data/run4_faire.csv
+
+# # Add samples that have mismatching names between the Sample Metadata and the Experiment Run Metadata
+# # Add sample metadata name as key, and experiment run metadata name as value
+# mismatch_sample_names: 
+#   Larson NC1: NC1
+#   Larson NC2: NC2
+#   Larson NC3: NC3
+#   Larson NC4: NC4 # this one is really the only once that matters being changed, because the rest get pooled, but I still wanted them to match
+#   Larson NC5: NC5
+#   MID.NC.SKQ2021: Mid.NC.SKQ21
+#   E2030.NC.SKQ23-12S: E2030.NC
+
+#pooled samples dict - all pooled samples applicable to this project and the subsamples they make up
+# if sample names are in the mismatch - add the updated sample name as the value here.
+# this was copied from the EcoFOci config - may not all be applicable but it should not matter.
+pooled_samps:
+  - pooled_samp_name: RC0083_NC_pool
+    samps_that_were_pooled:
+    - E1573.NC.RC0083
+    - E1451.NC.RC0083
+    - E1500.NC.RC0083
+    sample_category: negative control
+    cont_type: field negative
+  - pooled_samp_name: BlankAlaskaSet_NC_pool
+    samps_that_were_pooled:
+    - Blank.Alaska.Set7
+    - BlankAlaska.Set9
+    - Blank.Alaska.Set11
+    sample_category: negative control
+    cont_type: extraction negative
+  - pooled_samp_name: Dyson_NC_pool
+    samps_that_were_pooled:
+    - E1717.NC.DY2306
+    - E1157.NC.DY2206
+    sample_category: negative control
+    cont_type: field negative
+  - pooled_samp_name: SKQ23_NC_pool
+    samps_that_were_pooled:
+    - E2028.NC.SKQ23-12S
+    - E2030.NC.SKQ23-12S
+    sample_category: negative control
+    cont_type: field negative
+  - pooled_samp_name: SKQ_NC_pool
+    samps_that_were_pooled:
+    - NC2
+    - NC3
+    - NC5
+    sample_category: negative control
+    cont_type: extraction negative
+
+# AnalysisMetadata
+bioinformatics_bebop_path: /home/poseidon/zalmanek/BeBOPs/BioinformticsBeBops/NOAA-PMEL-OME-Bioinformatics-Metabarcoding-Protocol-BeBOP/NOAA-PMEL-OME-Bioinformatics-Metabarcoding-Protocol-BEBOP.md
+bebop_config_file_google_sheet_id: 1BCZXpU0mIpWJsi-zM0l8D9DuPBvNOWBWH0zt-9r_If0 # Google sheet ID of config file that has fields that differ in BeBOP per anlaysis
+bioinformatics_software_name: REVAMP # For adding to the analysis run name
+bebop_config_run_col_name: Run
+bebop_config_marker_col_name: Marker
+
+faire_template_file: /home/poseidon/zalmanek/FAIRe-Mapping/faire_template.xlsx
+final_faire_template_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/AK_Carbon/data/AK_Carbon_faire.xlsx
+logging_directory: /home/poseidon/zalmanek/FAIRe-Mapping/projects/AK_Carbon/data/logging/
+
+json_creds: /home/poseidon/zalmanek/FAIRe-Mapping/credentials.json
+ 
+ 

@@ -8,20 +8,24 @@ sample_metadata_bottle_no_col_name: 'btl_nb'
 vessel_name: Dyson
 
 # Extraction sheet related
-extraction_metadata_google_sheet_id: 1qLZzrYk7s9b68g1oW32fer68bfLKSGzTsJDlJRYmOzg
-extraction_name:  OSU # the name of the extraction performed (for the extract_id)
-extraction_cruise_key: .DY20 #the name in the SampleName column of the extractions sheet to filter for the specific cruise
-extraction_sample_name_col: Sample
-extraction_conc_col_name: ng/uL #to calculate average of extraction concentration
-extraction_date_col_name: Date
-extraction_metadata_sheet_name: Info_ByPlate
-extraction_blank_vol_we_dna_ext: 1000 # The volume or mass of blanks extracted if there are blanks extracted
-extraction_set_grouping_col_name: 'Plate' # The name of the column that groups the samples together if they were extracted together
+extractions:
+  - extraction_metadata_google_sheet_id: 1qLZzrYk7s9b68g1oW32fer68bfLKSGzTsJDlJRYmOzg
+    extraction_name:  OSU # the name of the extraction performed (for the extract_id)
+    extraction_cruise_key: .DY20 #the name in the SampleName column of the extractions sheet to filter for the specific cruise
+    extraction_sample_name_col: Sample
+    extraction_conc_col_name: ng/uL #to calculate average of extraction concentration
+    extraction_date_col_name: Date
+    extraction_metadata_sheet_name: Info_ByPlate
+    extraction_blank_vol_we_dna_ext: 1000 # The volume or mass of blanks extracted if there are blanks extracted
+    extraction_set_grouping_col_name: 'Plate' # The name of the column that groups the samples together if they were extracted together
 
 # mapping file related
 google_sheet_mapping_file_id: 1PKYStbZN3ygUvjXi9SmaXGwmwt-eJCZyDCZ8xzlQq0E
 nc_samp_mat_process:  'Water samples were filtered through a 0.22 µm swinnex filter using a vacuum pump.' # mapping for negative controls for nc_samp_mapt_process
-nc_prepped_samp_store_dur: 'verbatimEventDate | Date' # which columns the NC prepped samp_store_dur map to (will most likely be different than rest of samples because no ctd or bottle dates for NC)
+nc_prepped_samp_store_dur: 'verbatimEventDate | extraction_date' # which columns the NC prepped samp_store_dur map to (will most likely be different than rest of samples because no ctd or bottle dates for NC)
+
+# Station reference file
+station_name_reference_google_sheet_id: 1bJiX5pXpUuk74tbuoiYRc7iNXAVYU2dD8nTnZAFpZg8
 
 # FAIRe template related
 faire_template_file: /home/poseidon/zalmanek/FAIRe-Mapping/faire_template.xlsx

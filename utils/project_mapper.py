@@ -1,13 +1,17 @@
 from .faire_mapper import OmeFaireMapper
 from .analysis_metadata_mapper import AnalysisMetadataMapper
 from .lists import marker_shorthand_to_pos_cont_gblcok_name, project_pcr_library_prep_mapping_dict
-from datetime import date
+from datetime import date, datetime
 import pandas as pd
-import re
 import requests
 import base64
 import tempfile
 import openpyxl
+import os
+from astral import LocationInfo
+from astral.sun import sun
+import pytz
+
 
 # TODO: add project_id to process_whole_project_and_save_to_excel when calling process_analysis_metadata when extracted from projectMetadata input
 # TODO: add assay_name to sampleMetadata
@@ -27,25 +31,39 @@ class ProjectMapper(OmeFaireMapper):
     faire_sample_category_col_name = "samp_category"
     faire_sample_composed_of_col_name = "sample_composed_of"
     faire_assay_name_col = 'assay_name'
+    faire_latitude_col = 'decimalLatitude'
+    faire_longitude_col = 'decimalLongitude'
+    faire_eventDate_col = 'eventDate'
+    faire_sunrise_col = 'sunrise_time_utc'
+    faire_sunset_col = 'sunset_time_utc'
+    faire_sunset_sunrise_method_col = 'sunset_sunrise_method'
+    faire_input_read_count_col = 'input_read_count'
+    faire_output_read_count_col = 'output_read_count'
+    faire_biological_rep_relation_col = 'biological_rep_relation'
+    faire_stations_in_5km_col = "station_ids_within_5km_of_lat_lon"
+    faire_measurements_from_col = "measurements_from"
     project_sheet_term_name_col_num = 3
     project_sheet_assay_start_col_num = 5
     project_sheet_project_level_col_num = 4
     
-    def __init__(self, config_yaml: str):
+    def __init__(self, config_yaml: str, gh_token: str):
 
         super().__init__(config_yaml)
 
         self.config_yaml = config_yaml
+        self.gh_token = gh_token
         self.config_file = self.load_config(config_yaml)
-        self.project_info_goole_sheet_id = self.config_file['project_info_goole_sheet_id']
-        self.project_info_df = self.load_google_sheet_as_df(google_sheet_id=self.project_info_goole_sheet_id, sheet_name='Sheet1', header=0)
-        self.mismatch_samp_names_dict = self.config_file['mismatch_sample_names']
-        self.pooled_samps_dict = self.config_file['pooled_samps']
-        self.bioinformatics_bebop_path = self.config_file['bioinformatics_bebop_path']
-        self.bebop_config_file_google_sheet_id = self.config_file['bebop_config_file_google_sheet_id']
-        self.bioinformatics_software_name = self.config_file['bioinformatics_software_name']
-        self.bebop_config_run_col_name = self.config_file['bebop_config_run_col_name']
-        self.bebop_config_marker_col_name = self.config_file['bebop_config_marker_col_name']
+        self.project_name = self.config_file['project_name'] if 'project_name' in self.config_file else None # None for NCBI
+        self.project_info_google_sheet_id = self.config_file['project_info_google_sheet_id'] if 'project_info_google_sheet_id' in self.config_file else None # None for NCBI
+        self.project_info_df = self.load_google_sheet_as_df(google_sheet_id=self.project_info_google_sheet_id, sheet_name='Sheet1', header=0) if 'project_info_google_sheet_id' in self.config_file else None # None for NCBI
+        self.mismatch_samp_names_dict = self.config_file['mismatch_sample_names'] if 'mismatch_sample_names' in self.config_file else {}
+        self.pooled_samps_dict = self.config_file['pooled_samps'] if 'pooled_samps' in self.config_file else {}
+        self.bioinformatics_bebop_path = self.config_file['bioinformatics_bebop_path'] if 'bioinformatics_bebop_path' in self.config_file else None # None if NCBI
+        self.bebop_config_file_google_sheet_id = self.config_file['bebop_config_file_google_sheet_id'] if 'bebop_config_file_google_sheet_id' in self.config_file else None # None if NCBI
+        self.bioinformatics_software_name = self.config_file['bioinformatics_software_name'] if 'bioinformatics_software_name' in self.config_file else None # None if NCBI
+        self.bebop_config_run_col_name = self.config_file['bebop_config_run_col_name'] if 'bebop_config_run_col_name' in self.config_file else None # None if NCBI
+        self.bebop_config_marker_col_name = self.config_file['bebop_config_marker_col_name'] if 'bebop_config_marker_col_name' in self.config_file else None # None if NCBI
+        self.logging_directory = self.config_file['logging_directory']
 
         self.pcr_library_dict = {}
 
@@ -53,9 +71,14 @@ class ProjectMapper(OmeFaireMapper):
 
         sample_metadata_df, experiment_run_metadata_df = self.process_sample_run_data()
 
-        # Save sample metadata first to excel file, and then use that excel file and save experimentRunMetadata df
+        data_dir = os.path.dirname(self.final_faire_template_path)
+
+        # Save sample metadata first to excel file and csv, and then use that excel file and save experimentRunMetadata df
         self.add_final_df_to_FAIRe_excel(excel_file_to_read_from=self.faire_template_file, sheet_name=self.faire_sample_metadata_sheet_name, faire_template_df=sample_metadata_df)
+        self.save_final_df_as_csv(final_df=sample_metadata_df, sheet_name=self.faire_sample_metadata_sheet_name, header=2, csv_path=f"{data_dir}/{self.project_name}_faire_sampleMetadata.csv")
+
         self.add_final_df_to_FAIRe_excel(excel_file_to_read_from=self.final_faire_template_path, sheet_name=self.faire_experiment_run_metadata_sheet_name, faire_template_df=experiment_run_metadata_df)
+        self.save_final_df_as_csv(final_df=experiment_run_metadata_df, sheet_name=self.faire_experiment_run_metadata_sheet_name, header=2, csv_path=f"{data_dir}/{self.project_name}_faire_experimentRunMetadata.csv")
 
         # Add projectMetadata, first project_level metadata then assay level metadata
         self.load_project_level_metadata_to_excel()
@@ -69,7 +92,6 @@ class ProjectMapper(OmeFaireMapper):
     def process_sample_run_data(self):
         # Process all csv sets defined in the config file.
         # 1. Combine all sample metadata spreadsheets into one and combine all experiment run metadata spreadsheets into one
-
 
         combined_sample_metadata_df = self.create_sample_metadata_df()
         combined_exp_run_df = self.create_exp_run_metadata_df()
@@ -96,20 +118,31 @@ class ProjectMapper(OmeFaireMapper):
         # Filter primary dataframe based on samp_name values in sequencing run dataframe
         filtered_samp_df, missing_samples = self._filter_samp_df_by_samp_name(samp_df=pcr_updated_df, associated_seq_df=combined_exp_run_df)
         if missing_samples:
-            print(f"samples that will be eliminated from sample metadata/missing from experiment run metadata: {missing_samples}")
+            missing_file_name = 'samps_not_sequenced.csv'
+            print(f"\033[35mThere are samples that do not appear to have been sequenced - they don't exist in the experimentRunMetadata, please see {self.logging_directory+missing_file_name} for a list.\33[0m]")
+            self.save_list_to_csv(the_list=missing_samples, file_name=missing_file_name)
 
         # Fill empty values for POSITIVE and pool samples with "not applicable: control sample"
-        final_sample_metadata_df = self.fill_empty_vals_for_pooled_and_pos_samps(df=filtered_samp_df)
+        final_sample_metadata_df = self.fill_empty_vals(df=filtered_samp_df)
 
         # Filter experiment run metadata to drop rows with sample names missing from SampleMetadata
         final_exp_df, dropped_exp_run_samples = self.filter_exp_run_metadata(final_sample_df=final_sample_metadata_df, exp_run_df=combined_exp_run_df)
-        print(f"samples dropped from experiment run metadata are {dropped_exp_run_samples}, double check these samples are not in the corresponding project")
-
+        if len(dropped_exp_run_samples) > 0:
+            dropped_file_name = 'unrelated_project_samps_dropped.csv'
+            print(f"\033[35mThere are samples that were dropped from the experiment run metadata. Please check the {self.logging_directory+dropped_file_name} for a list - make sure they are not part of this project.\33[0m]")
+            self.save_list_to_csv(the_list=dropped_exp_run_samples, file_name=dropped_file_name)
+            
         # Add assay name to final_sample_df
         final_sample_df = self.add_assay_name_to_samp_df(samp_df=final_sample_metadata_df, exp_run_df=final_exp_df)
-        self.save_final_df_as_csv(final_df=final_sample_df, sheet_name='sampleMetadata', header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/sample_metadata.csv') 
 
-        return final_sample_metadata_df, final_exp_df
+        # Add calculated columns to sample df (like sunset, sunrise)
+        final_sample_df_with_calc_cols = self.add_post_sample_metadata_calculated_cols(df=final_sample_df)
+
+        # Drop any samples from rel_cont_id or biological_rep_relation that don't exist anymore in the dataframe - may have been dropped because they weren't sequenced.
+        final_final_df = self.drop_samps_from_faire_rel_column_that_dropped(df = final_sample_df_with_calc_cols)
+        last_df = self.drop_samp_cols_not_meant_for_submission(sample_df=final_final_df)
+
+        return last_df, final_exp_df
 
     def process_analysis_metadata(self, project_id: str, final_exp_run_df: pd.DataFrame): 
         # Process analysis metadata using AnalyisMetadata class
@@ -157,7 +190,31 @@ class ProjectMapper(OmeFaireMapper):
         combined_exp_run_df = pd.DataFrame()
         combined_exp_run_df = pd.concat(associated_exp_run_dfs, ignore_index=True)
 
-        return combined_exp_run_df
+        exp_run_df_with_merged_counts = self.update_output_input_counts_for_merged_runs(exp_df = combined_exp_run_df)
+
+        return exp_run_df_with_merged_counts
+
+    def update_output_input_counts_for_merged_runs(self, exp_df: pd.DataFrame) -> pd.DataFrame:
+        # For OSU/Run3 where there will be the same sample_name and assay_name (part of assay name since different for runs)
+        exp_df['assay_group'] = exp_df[self.faire_assay_name_col].str.split('_', n=1).str[0]
+        exp_df[self.faire_input_read_count_col] = exp_df.groupby([self.faire_sample_name_col, 'assay_group'])[self.faire_input_read_count_col].transform('sum')
+        exp_df[self.faire_output_read_count_col] = exp_df.groupby([self.faire_sample_name_col, 'assay_group'])[self.faire_output_read_count_col].transform('sum')
+
+        # Drop assay_group
+        exp_df = exp_df.drop(columns=['assay_group'])
+
+        return exp_df
+    
+    def add_post_sample_metadata_calculated_cols(self, df: pd.DataFrame) -> pd.DataFrame:
+        # Adds columns to sample metadata that are calculated from other columns. (e.g. sunset, sunrise)
+        
+        # Add sunrise and sunset utc times
+        sun_info = df.apply(lambda row: self.get_sun_times_from_iso(metadata_row=row), axis=1, result_type = 'expand')
+        df[self.faire_sunrise_col] = sun_info[0]
+        df[self.faire_sunset_col] = sun_info[1]
+        df[self.faire_sunset_sunrise_method_col] = sun_info[2]
+
+        return df
 
     def update_mismatch_sample_names(self, sample_name: str) -> str:
         # Update sample metadata sample name to be the sample name that needs to match in experiment run metadata
@@ -223,8 +280,9 @@ class ProjectMapper(OmeFaireMapper):
             new_pooled_rows_df = pd.DataFrame(new_rows)
             new_pooled_rows_df = new_pooled_rows_df.drop_duplicates()
             updated_samp_df_with_pools = pd.concat([sample_df, new_pooled_rows_df], ignore_index=True)
-
-        return updated_samp_df_with_pools
+            return updated_samp_df_with_pools
+        else:
+            return sample_df
     
     def update_rel_cont_id_with_pool_samp(self, sample_df: pd.DataFrame) -> pd.DataFrame:
         # if a subsample of a pooled sample exists in the rel_cont_id column, add the pooled sample to rel_cont_id
@@ -318,13 +376,18 @@ class ProjectMapper(OmeFaireMapper):
 
     def get_pos_cont_type(self, pos_cont_sample_name: str) -> str:
 
-        # Get the marker from the positive control sample name (e.g. run2.ITS1.POSITIVE - this will give you ITS1)
-        shorthand_marker = pos_cont_sample_name.split('.')[1]
+        if 'ferret' in pos_cont_sample_name.lower():
+            pos_cont_type = 'PCR positive of Ferret genomic DNA'
+        elif 'camel' in pos_cont_sample_name.lower():
+            pos_cont_type = 'PCR positive of Camel genomic DNA'
+        else:
+            # Get the marker from the positive control sample name (e.g. run2.ITS1.POSITIVE - this will give you ITS1)
+            shorthand_marker = pos_cont_sample_name.split('.')[1]
 
-        g_block = marker_shorthand_to_pos_cont_gblcok_name.get(
-            shorthand_marker)
+            g_block = marker_shorthand_to_pos_cont_gblcok_name.get(
+                shorthand_marker)
 
-        pos_cont_type = f"PCR positive of synthetic DNA. Gblock name: {g_block}"
+            pos_cont_type = f"PCR positive of synthetic DNA. Gblock name: {g_block}"
 
         return pos_cont_type
    
@@ -364,26 +427,29 @@ class ProjectMapper(OmeFaireMapper):
 
         # Find which rows in sample_df need to be expanded to be duplicated because of PCR replicates
         transform_dict = {}
-        for base_name in sample_df[self.faire_sample_name_col]:
-            matches = exp_run_df[exp_run_df['base_samp_name'] == base_name][self.faire_sample_name_col].tolist()
-            if matches:
-                transform_dict[base_name] = set(matches)
+        if 'base_samp_name' in exp_run_df.columns:
+            for base_name in sample_df[self.faire_sample_name_col]:
+                matches = exp_run_df[exp_run_df['base_samp_name'] == base_name][self.faire_sample_name_col].tolist()
+                if matches:
+                    transform_dict[base_name] = set(matches)
        
-        # Add to the sample_df data frame
-        transformed_rows = []
-        for i, r in sample_df.iterrows():
-            base_name = r[self.faire_sample_name_col]
-            if base_name in transform_dict:
-                for extended_name in transform_dict[base_name]:
-                    new_row = r.copy()
-                    new_row[self.faire_sample_name_col] = extended_name
-                    transformed_rows.append(new_row)
-            else:
-                transformed_rows.append(r)
+            # Add to the sample_df data frame
+            transformed_rows = []
+            for i, r in sample_df.iterrows():
+                base_name = r[self.faire_sample_name_col]
+                if base_name in transform_dict:
+                    for extended_name in transform_dict[base_name]:
+                        new_row = r.copy()
+                        new_row[self.faire_sample_name_col] = extended_name
+                        transformed_rows.append(new_row)
+                else:
+                    transformed_rows.append(r)
 
-        samp_df_updated_for_pcr = pd.DataFrame(transformed_rows)
-        
-        return samp_df_updated_for_pcr
+            samp_df_updated_for_pcr = pd.DataFrame(transformed_rows)
+            
+            return samp_df_updated_for_pcr
+        else:
+            return sample_df
     
     def add_assay_name_to_samp_df(self, samp_df: pd.DataFrame, exp_run_df: pd.DataFrame) -> pd.DataFrame:
         # Gets a list of assays related to each sample and adds to assay_name in samp_df
@@ -401,16 +467,22 @@ class ProjectMapper(OmeFaireMapper):
 
         return samp_df
 
-
-    def fill_empty_vals_for_pooled_and_pos_samps(self, df: pd.DataFrame):
+    def fill_empty_vals(self, df: pd.DataFrame):
         modified_df = df.copy()
 
-        mask = df[self.faire_sample_name_col].str.contains('POSITIVE|pool', case=False, na=False)
+        control_mask = df[self.faire_sample_category_col_name].str.contains('negative|positive', case=False, na=False)
+        sample_mask = df[self.faire_sample_category_col_name].str.contains('sample', case=False, na=False)
 
-        # fill only empty/NaN/None values with 'not applicable'
         for col in df.columns:
-            empty_cells = mask & df[col].isna() | (df[col] == '') | (df[col].astype(str) == 'nan')
-            modified_df.loc[empty_cells, col] = 'not applicable: control sample'
+            empty_conditions = df[col].isna() | (df[col] == '') | (df[col].astype(str) == 'nan')
+
+            # Fill empty control samples
+            control_empty = control_mask & empty_conditions
+            modified_df.loc[control_empty, col] = 'not applicable: control sample'
+
+            # fill empty sample values
+            sample_empty = sample_mask & empty_conditions
+            modified_df.loc[sample_empty, col] = 'missing: not collected'
 
         return modified_df
     
@@ -437,8 +509,13 @@ class ProjectMapper(OmeFaireMapper):
     def retrive_github_bebop(self, owner: str, repo: str, file_path: str):
         url = f"https://api.github.com/repos/{owner}/{repo}/contents/{file_path}"
 
+        headers = {
+            'Authorization': self.gh_token,
+            'Accept': 'application/vnd.github.v3+json'
+        }
+
         try:
-            response = requests.get(url)
+            response = requests.get(url, headers=headers)
             response.raise_for_status()
             data = response.json()
 
@@ -507,6 +584,73 @@ class ProjectMapper(OmeFaireMapper):
 
         workbook.save(self.final_faire_template_path)
         workbook.close()
+    
+    def get_sun_times_from_iso(self, metadata_row: pd.Series):
+        # Gets the sunrise and sunset from ISO dattime str, return sunrise, sunset
+        lat = metadata_row[self.faire_latitude_col]
+        lon = metadata_row[self.faire_longitude_col]
+        event_date = metadata_row[self.faire_eventDate_col]
+
+        sample_cat = metadata_row[self.faire_sample_category_col_name]
+
+        if sample_cat == 'sample':
+            # Handle both "Z" and "+00:00" UTC formats
+            if event_date.endswith('Z'):
+                event_date = event_date[:-1] + '+00:00'
+
+            dt_utc = datetime.fromisoformat(event_date)
+            date_obj = dt_utc.date()
+
+            # create location
+            location = LocationInfo(latitude=lat, longitude=lon)
+
+            # Calculate sun times in UTC
+            s = sun(location.observer, date=date_obj, tzinfo=pytz.UTC)
+
+            # Convert to ISO format with 'Z' suffix
+            sunrise_iso = s['sunrise'].isoformat().replace('+00:00', 'Z')
+            sunset_iso = s['sunset'].isoformat().replace('+00:00', 'Z')
+
+            sunset_sunrise_method = "sunset and sunrise times calculated using eventDate and python's astral sun library."
+        
+
+            return sunrise_iso, sunset_iso, sunset_sunrise_method
+        else:
+            return 'not applicable: control sample', 'not applicable: control sample', 'not applicable: control sample'
+
+    def drop_samps_from_faire_rel_column_that_dropped(self, df: pd.DataFrame) -> pd.DataFrame:
+        # Drop the sample names from rel_cont_id, or biological_rep_relation that dont' exist as a samp_name in the sample metadata df
+        valid_samples = set(df[self.faire_sample_name_col])
+
+        # Also valid samples are pooled subsamples that won't necessarily exist in the experiment run metadata
+        other_valid_samps = set()
+        for pooled_info in self.pooled_samps_dict:
+            for samp in pooled_info['samps_that_were_pooled']:
+                if samp in set(df[self.faire_sample_name_col]):
+                    other_valid_samps.add(samp)
+
+        def filter_faire_relation_str(faire_rel_col_str: str) -> str:
+            # funciton to filter rel_cont_id values
+            if 'not applicable' not in faire_rel_col_str:
+                valid_ids = [sample for sample in faire_rel_col_str.split(' | ') if sample in valid_samples]
+                if valid_ids:
+                    return ' | '.join(valid_ids) 
+                else:
+                    return 'not applicable'
+            else:
+                return faire_rel_col_str
+            
+        df[self.faire_rel_cont_id_col_name] = df[self.faire_rel_cont_id_col_name].apply(filter_faire_relation_str)
+        df[self.faire_biological_rep_relation_col] = df[self.faire_biological_rep_relation_col].apply(filter_faire_relation_str)
+
+        return df
+
+    def drop_samp_cols_not_meant_for_submission(self, sample_df: pd.DataFrame) -> pd.DataFrame:
+        # Drop columns not meant for submission like stations_within_5m
+        if self.faire_stations_in_5km_col in sample_df.columns:
+            return sample_df.drop(columns=[self.faire_stations_in_5km_col])
+        else:
+            return sample_df
 
     def load_project_level_metadata_to_excel(self) -> None:
         # Maps the project level metadata to the projectMetadata excel sheet
@@ -535,3 +679,9 @@ class ProjectMapper(OmeFaireMapper):
 
         workbook.save(self.final_faire_template_path)
         workbook.close()
+
+    
+    def save_list_to_csv(self, the_list: list, file_name: str) -> None:
+        # Puts a list into a csv and saves
+        df = pd.DataFrame(the_list)
+        df.to_csv(self.logging_directory+file_name, index=False, header=False)
