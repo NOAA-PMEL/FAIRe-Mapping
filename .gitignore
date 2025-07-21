@@ -3,3 +3,4 @@ utils/GEBCO_2024.nc
 utils/__pycache__/
 models/__pycache__/
 validators/__pycache__/
+otuRaw*
