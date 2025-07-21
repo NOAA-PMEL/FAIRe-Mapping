@@ -72,9 +72,18 @@ class OmeFaireMapper:
         return pd.read_excel(file_path, sheet_name=sheet_name, header=header)
     
     def load_csv_as_df(self, file_path: Path, header=0) -> pd. DataFrame:
-         # Load csv files as a data frame
+        # Load csv files as a data frame
+
+        def convert_floats_to_int_post_read_csv(df: pd.DataFrame) -> pd.DataFrame:
+            # converst any floats in the dataframe to ints so 0 and 1 values are not changed to 0.0 or 1.0
+            for col in df.select_dtypes(include=['float']).columns:
+                if df[col].dropna().apply(lambda x: x.is_integer()).all():
+                    df[col].astype('Int64')
+            return df
          
-         return pd.read_csv(file_path, header=header)
+        df = pd.read_csv(file_path, header=header)
+        df = convert_floats_to_int_post_read_csv(df=df)
+        return df
     
     def load_google_sheet_as_df(self, google_sheet_id: str, sheet_name: str, header: int) -> pd.DataFrame:
 
@@ -313,54 +322,6 @@ class OmeFaireMapper:
         faire_final_df_reorderd = self.reorder_columns(df=faire_final_df)
 
         faire_final_df_reorderd.to_csv(csv_path, quoting=csv.QUOTE_NONNUMERIC, index=False)
-
-    # def add_final_df_to_FAIRe_excel(self, excel_file_to_read_from: str, sheet_name: str, faire_template_df: pd.DataFrame):
-
-    #     # Step 1 load the workbook to preserve formatting
-    #     workbook = openpyxl.load_workbook(excel_file_to_read_from)
-    #     sheet = workbook[sheet_name]
-        
-    #     # step 2: identify new columns added to the DataFrame
-    #     original_columns = []
-    #     for cell in sheet[3]: # Row 3 (0-indexed as 2) contains column names
-    #         if cell.value:
-    #             original_columns.append(cell.value)
-        
-    #     new_columns = [col for col in faire_template_df.columns if col not in original_columns]
-            
-    #     # new step 3: add new columns to the sheet headers
-    #     last_col = sheet.max_column 
-    #     for i, new_col in enumerate(new_columns, 1):
-    #         col_idx = last_col + i
-    #         col_letter = get_column_letter(col_idx)
-    #         # add column name to row 3
-    #         sheet[f'{col_letter}3'] = new_col
-    #         # Add User defined to row 2
-    #         sheet[f'{col_letter}2'] = 'User defined'
-
-    #     for row in range(4, sheet.max_row + 1):
-    #         for col in range(1, sheet.max_column + 1):
-    #             sheet.cell(row=row, column=col).value = None
-        
-    #     # Write the data frame data to the sheet (starting at row 4)
-    #     for row_idx, row_data in enumerate(faire_template_df.values, 4): 
-    #         for col_name, col_idx in zip(faire_template_df.columns, range(len(faire_template_df.columns))):
-    #             # Find the column index in the excel sheet by column name
-    #             excel_col_idx = None
-    #             for idx, cell in enumerate(sheet[3], 1):
-    #                 if cell.value == col_name:
-    #                     excel_col_idx = idx
-    #                     break
-
-    #             if excel_col_idx is not None:
-    #                 value = row_data[col_idx]
-    #                 sheet.cell(row=row_idx, column=excel_col_idx).value = value
-    #         # for col_idx, value in enumerate(row_data, 1):
-    #         #     sheet.cell(row=row_idx, column=col_idx).value = value
-
-    #     # step 4 save the workbook preserved with headers
-    #     workbook.save(self.final_faire_template_path)
-    #     print(f"sheet {sheet_name} saved to {self.final_faire_template_path}!")
 
     def add_final_df_to_FAIRe_excel(self, excel_file_to_read_from: str, sheet_name: str, faire_template_df: pd.DataFrame):
         # Step 1 load the workbook to preserve formatting

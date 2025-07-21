@@ -97,7 +97,7 @@ class SampleMetadata(BaseModel):
     samp_weather: Optional[str]
     minimumDepthInMeters: Optional[float]
     maximumDepthInMeters: Optional[float]
-    DepthInMeters_method: Optional[float] = None
+    DepthInMeters_method: Optional[str] = None
     tot_depth_water_col: Optional[float]
     tot_depth_water_col_method: Optional[str] = None
     elev: Optional[float]
@@ -269,7 +269,7 @@ class SampleMetadata(BaseModel):
     expedition_name: Optional[str] = Field(default=None)
     rosette_position: Optional[int] = None 
     collected_by: Optional[str]
-    measurements_from: str = None
+    measurements_from: Optional[str] = None
     nisking_id: Optional[str] = Field(default=None)
     niskin_WOCE_flag: Optional[int] = Field(default=None)
     station_ids_within_5km_of_lat_lon: Optional[str] = Field(default=None, description="Stations within 5 km of the lat/lon coordinates given for a sample - if references stations are given. For internal QC purposes only.")
