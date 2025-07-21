@@ -622,7 +622,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             # save the csv file
             assay_name = self.convert_assay_to_standard(marker=marker)
             non_curated_csv_path = (Path(self.final_faire_template_path)).parent / f"otuRaw_{assay_name}_{seq_run_id}.csv"
-            asv_table_hash_updated.to_csv(non_curated_csv_path)
+            asv_table_hash_updated.to_csv(non_curated_csv_path index='seq_id')
             print(f"Saved {assay_name} otuRaw.csv")
 
     def create_asv_hash_dict(self, asvs_fasta_path: str):
