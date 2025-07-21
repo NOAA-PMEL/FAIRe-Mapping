@@ -74,16 +74,7 @@ class OmeFaireMapper:
     def load_csv_as_df(self, file_path: Path, header=0) -> pd. DataFrame:
         # Load csv files as a data frame
 
-        def convert_floats_to_int_post_read_csv(df: pd.DataFrame) -> pd.DataFrame:
-            # converst any floats in the dataframe to ints so 0 and 1 values are not changed to 0.0 or 1.0
-            for col in df.select_dtypes(include=['float']).columns:
-                if df[col].dropna().apply(lambda x: x.is_integer()).all():
-                    df[col].astype('Int64')
-            return df
-         
-        df = pd.read_csv(file_path, header=header)
-        df = convert_floats_to_int_post_read_csv(df=df)
-        return df
+        return pd.read_csv(file_path, header=header, dtype=str)
     
     def load_google_sheet_as_df(self, google_sheet_id: str, sheet_name: str, header: int) -> pd.DataFrame:
 
