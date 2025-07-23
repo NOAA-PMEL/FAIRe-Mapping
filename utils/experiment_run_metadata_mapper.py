@@ -47,7 +47,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         self._create_count_asv_dict(revamp_blast=self.config_file['revamp_blast'])
 
         self.exp_run_faire_template_df = self.load_faire_template_as_df(file_path=self.config_file['faire_template_file'], sheet_name=self.faire_template_exp_run_sheet_name, header=self.faire_sheet_header).dropna()
-        
+    
     def generate_run_metadata(self) -> pd.DataFrame :
         # Works for run2, need to check other jv runs - maybe can potentially use for OSU runs, if mapping file is generically the same?
         exp_metadata_results = {}
@@ -188,7 +188,6 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
     def _outline_raw_data_dict(self, sample_name: str, file_num: int, all_files: list, marker: str, marker_dir: str) -> dict:
         # outlines raw filename dictionary used by create_marker_sample_raw_data_files for filename and filename2 in FAIRe
         # Account for sample name changes in positive samples
-        
         if 'POSITIVE' not in sample_name:
             # checks for mismatch in sample names using mismatch_sample_names_metadata_to_raw_data_files_dict
             for k, v in mismatch_sample_names_metadata_to_raw_data_files_dict.items():
@@ -217,7 +216,6 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             for filename in matching_files:
                 filepath = os.path.join(marker_dir, filename)
                 md5_checksum = self._get_md5_checksum(filepath)
-                # change sample name back for key of dict for DY2012 samps
                 target_dict[marker][sample_name.strip()] = {
                     "filename": filename,
                     "checksum": md5_checksum,
@@ -376,7 +374,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                 sample_name = f'{self.run_name}.{marker}.POSITIVE.{sample_name}'
                 return sample_name
             else: # For regular samples
-                return sample_name.replace('MP_', '').replace('_', '.').replace('.12S', '-12S').replace('.DY20', '.DY2012') # replace .12S to -12S for SKQ23-12S samples.
+                return sample_name.replace('MP_', '').replace('_', '.').replace('.SKQ2021', '.SKQ21-15S').replace('.12S', '-12S').replace('.DY20', '.DY2012') # replace .12S to -12S for SKQ23-12S samples.
         else: # for regular positive samples (JV runs)
             sample_name = sample_name.replace('MP_', '')
             return f'{self.run_name}.{marker}.{sample_name}' 
@@ -387,13 +385,19 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             sample_name = sample_name.replace('POSITIVE', '')
             if 'ferret' in sample_name.lower():
                 sample_name = sample_name.replace('Ferret', 'Ferett')
-        sample_name = 'MP_' + sample_name.replace('.', '_').replace('DY2012', 'DY20')
+        if '.SKQ21-15S' in sample_name:
+            sample_name = sample_name.replace('.SKQ21-15S', '.SKQ2021')
+        else:
+            sample_name = 'MP_' + sample_name.replace('.', '_').replace('DY2012', 'DY20')
+   
         return sample_name
     
     def _fix_sample_names_for_asv_lookup(self, sample_name: str) -> str:
         # Fixes sample names if they are mismatched in metadata spreadsheet and asv tables so they can be looked up for counts
         if '.DY2012' in sample_name:
             return sample_name.replace('.DY2012', '.DY20')
+        if '.SKQ2021' in sample_name:
+            return sample_name.replace('.SKQ2021', '.SKQ21-15S')
         else:
             return sample_name
 

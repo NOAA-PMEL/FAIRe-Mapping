@@ -120,6 +120,8 @@ class OmeFaireMapper:
             samp_name = samp_name.replace('E.', '')
         if '*' in samp_name:
             samp_name = samp_name.replace('*','')
+        if '.SKQ2021' in samp_name:
+            samp_name = samp_name.replace('.SKQ2021', '.SKQ21-15S')
       
         return samp_name
     
