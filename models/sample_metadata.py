@@ -344,14 +344,6 @@ class SampleMetadata(BaseModel):
             raise ValueError(f"Longitude {v} is outside valid latitude range (-180 to 180)")
         return v
     
-    @field_validator('maximumDepthInMeters')
-    @classmethod
-    def validate_max_depth_more_than_3_m(cls, v, info):
-         if info.data.get('samp_category') != 'sample':
-            return v
-         if v < 3:
-             raise ValueError(f"MaximumDepthInMeters has value {v} which is less than 3.")
-    
     @field_validator('eventDate')
     @classmethod
     def validate_event_date_constraints(cls, v):
@@ -371,6 +363,15 @@ class SampleMetadata(BaseModel):
                 raise e # Re-raise our custom year validation error
             else:
                 raise ValueError(f"eventDate: '{v}' is not in valid ISO format")
+
+    @field_validator('maximumDepthInMeters')
+    @classmethod
+    def validate_max_depth_less_than_3_m(cls, v, info):
+        if info.data.get('samp_category') != 'sample':
+            return v
+        if float(v) < 3:
+             raise ValueError(f"MaximumDepthInMeters has value {v} which is less than 3.")
+        return v
 
     @model_validator(mode='after')
     def validate_expedition_date_ranges(self):
@@ -486,6 +487,7 @@ class SampleMetadata(BaseModel):
             warnings.warn(f"{self.samp_name} picked up no stations within 5 km, including its own!!")
             return self
 
+    
 ## Notes: without @classmethod you can access self.other_field, but iwth @class_method you cannot. Use @classmethod when you only need to validate a single field.
 ## mode='after' runs after all the fields are processed and vliadted
 ## Notes: @model_Validator with @class_method mode='before' runs before the model is constructed. your working with data before feild validation. Must use 
