@@ -487,7 +487,14 @@ class SampleMetadata(BaseModel):
             warnings.warn(f"{self.samp_name} picked up no stations within 5 km, including its own!!")
             return self
 
-    
+    @model_validator(mode='after')
+    def validate_rosette_position_matches_btl_id(self):
+        if self.samp_category != 'sample':
+            return self
+        if self.rosette_position != self.ctd_bottle_number:
+            raise ValueError('rosette_position must match the ctd_bottle_number ')
+        return self
+
 ## Notes: without @classmethod you can access self.other_field, but iwth @class_method you cannot. Use @classmethod when you only need to validate a single field.
 ## mode='after' runs after all the fields are processed and vliadted
 ## Notes: @model_Validator with @class_method mode='before' runs before the model is constructed. your working with data before feild validation. Must use 
