@@ -171,7 +171,7 @@ def create_dy2012_sample_metadata():
 
 
     # Step 4: fill in NA with missing not collected or not applicable because they are samples and adds NC to rel_cont_id
-    sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))
+    sample_df = sample_mapper.fill_empty_sample_values_and_finalize_sample_df(df = pd.DataFrame(sample_metadata_results))
 
     swap_samps_sample_df = swap_e27_e28_sample_metadata(df=sample_df)
     

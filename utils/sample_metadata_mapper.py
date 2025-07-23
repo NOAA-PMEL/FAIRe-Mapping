@@ -945,7 +945,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                 if closest_alt_station == distance.get('station'):
                     print(f"\033[36m{samp_name}'s reported station ({reported_station}) is not found within 5 km, the closest station found to it's lat/lon coords is {closest_alt_station} with a distance of {distance.get('distance_km')}\033[0m")   
     
-    def update_unit_colums_with_no_corresponding_val(self, df: pd.DataFrame) -> pd.DataFrame: 
+    def update_companion_colums_with_no_corresponding_val(self, df: pd.DataFrame) -> pd.DataFrame: 
         # Update the final sample dataframe unit, woce flag, and method columns to be "not applicable" if there is no value in its corresponding column
         unit_cols = [col for col in df.columns if col.endswith('unit')]
         unit_str = '_unit'
@@ -956,13 +956,13 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         method_cols = [col for col in df.columns if col.endswith('method') and col is not 'samp_collect_method']
         method_str = '_method'
 
-        updated_df_for_unit = self.update_woce_and_unit_cols(df=df, companion_col_list=unit_cols, str_to_remove_for_main_col=unit_str)
-        updated_df_for_woce = self.update_unit_colums_with_no_corresponding_val(df=updated_df_for_unit, companion_col_list=woce_cols, str_to_remove_for_main_col=woce_str)
-        updated_df_for_method = self.update_unit_colums_with_no_corresponding_val(df=updated_df_for_woce, companion_col_list=method_cols, str_to_remove_for_main_col=method_str)
+        updated_df_for_unit = self.update_companion_cols(df=df, companion_col_list=unit_cols, str_to_remove_for_main_col=unit_str)
+        updated_df_for_woce = self.update_companion_cols(df=updated_df_for_unit, companion_col_list=woce_cols, str_to_remove_for_main_col=woce_str)
+        updated_df_for_method = self.update_companion_cols(df=updated_df_for_woce, companion_col_list=method_cols, str_to_remove_for_main_col=method_str)
 
         return updated_df_for_method
     
-    def update_woce_and_unit_cols(self, df: pd.DataFrame, companion_col_list: list, str_to_remove_for_main_col: str) -> pd.DataFrame:
+    def update_companion_cols(self, df: pd.DataFrame, companion_col_list: list, str_to_remove_for_main_col: str) -> pd.DataFrame:
             # iterates through a list of unit columns or WOCE flag columns and updates df
             for companion_col in companion_col_list:
                 if companion_col == 'DepthInMeters_method':
@@ -990,7 +990,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
             return df
     
-    def fill_empty_sample_values(self, df: pd.DataFrame, default_message="missing: not collected"):
+    def fill_empty_sample_values_and_finalize_sample_df(self, df: pd.DataFrame, default_message="missing: not collected"):
         # fill empty values for samples after mapping over all sample data without control samples
 
         if df.empty: # for empty NC dataframes (like in Aquamonitor)
@@ -1011,10 +1011,12 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         df = df.map(lambda x: default_message if x == "" or x == "-" else x)
 
         # update unit cols for non-values
-        updated_df = self.update_unit_colums_with_no_corresponding_val(df=df)
+        updated_df = self.update_companion_colums_with_no_corresponding_val(df=df)
 
+        # replace niskin anywhere in the df with captial "Niskin"
+        final_df = updated_df.replace('niskin', 'Niskin')
 
-        return updated_df
+        return final_df
 
     def fill_nc_metadata(self) -> pd.DataFrame:
         # Fills the negative control data frame
@@ -1099,7 +1101,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             col for col in final_sample_df.columns if col not in neg_controls_df.columns]
         for col in new_cols:
             neg_controls_df[col] = 'not applicable: control sample'
-        neg_controls_df = self.fill_empty_sample_values(
+        neg_controls_df = self.fill_empty_sample_values_and_finalize_sample_df(
             df=neg_controls_df, default_message='not applicable: control sample')
 
         return neg_controls_df
