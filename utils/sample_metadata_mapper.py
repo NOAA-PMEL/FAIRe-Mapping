@@ -262,7 +262,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         # Keep Below Range
         if all(isinstance(conc, str) and ("below range" in conc.lower() or "br" == conc.lower() or "bdl" == conc.lower()) for conc in extractions_df):
-            return "BR"
+            return "BDL"
 
         # For everything else, convert to numeric and calculate mean
         numeric_series = pd.to_numeric(
@@ -1173,7 +1173,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # pos_condition_const is the value that should be return if the str_condition is present in col_value
         # neg_condition_const is the value that should be returned if the str_condition is absent in col_value
         col_value = metadata_row[col_name]
-        if str_condition.lower() in col_value.lower():
+        if str_condition.lower() in col_value.lower().strip():
             return pos_condition_const
         else:
             return neg_condition_const
