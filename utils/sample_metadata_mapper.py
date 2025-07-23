@@ -724,9 +724,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         aphotic = "marine aphotic zone [ENVO:00000210]"
         photic = "marine photic zone [ENVO:00000209]"
 
-        if depth <= 200:
+       
+        if float(depth) <= 200:
             env_local_scale = photic
-        elif depth > 200:
+        elif float(depth) > 200:
             env_local_scale = aphotic
 
         return env_local_scale
@@ -953,7 +954,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         woce_str = 'WOCE_flag'
 
         # method has some exceptions
-        method_cols = [col for col in df.columns if col.endswith('method') and col is not 'samp_collect_method']
+        method_cols = [col for col in df.columns if col.endswith('method') and col != 'samp_collect_method']
         method_str = '_method'
 
         updated_df_for_unit = self.update_companion_cols(df=df, companion_col_list=unit_cols, str_to_remove_for_main_col=unit_str)
