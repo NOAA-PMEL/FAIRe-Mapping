@@ -262,13 +262,15 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         # Keep Below Range
         if all(isinstance(conc, str) and ("below range" in conc.lower() or "br" == conc.lower() or "bdl" == conc.lower()) for conc in extractions_df):
-            return "BR"
+            return "BDL"
 
         # For everything else, convert to numeric and calculate mean
         numeric_series = pd.to_numeric(
             extractions_df, errors='coerce')  # Non numeric becomes NaN
 
-        return numeric_series.mean()
+        mean_value = numeric_series.mean()
+
+        return round(mean_value, 2)
 
     def get_extraction_blanks_applicable_to_cruise_samps(self):
         # Get extraction blank df (applicable to RC0083 cruise)
