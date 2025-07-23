@@ -1013,7 +1013,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # update unit cols for non-values
         updated_df = self.update_companion_colums_with_no_corresponding_val(df=df)
 
-        # replace niskin anywhere in the df with captial "Niskin"
+        # replace niskin anywhere in the df with captial "Niskin" - Sean request 07/23/2025
         final_df = updated_df.replace('niskin', 'Niskin')
 
         return final_df
