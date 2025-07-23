@@ -614,7 +614,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             concentration = float(concentration)
             sample_vol = float(sample_vol)
             dna_yield = (concentration * 100)/sample_vol
-            return dna_yield
+            return round(dna_yield, 3)
         except:
             if '.nc' in metadata_row[self.faire_sample_name_col].lower():
                 return 'not applicable: control sample'
