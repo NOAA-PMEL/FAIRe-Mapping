@@ -344,6 +344,13 @@ class SampleMetadata(BaseModel):
             raise ValueError(f"Longitude {v} is outside valid latitude range (-180 to 180)")
         return v
     
+    @field_validator('maximumDepthInMeters')
+    @classmethod
+    def validate_max_depth_more_than_3_m(cls, v, info):
+         if info.data.get('samp_category') != 'sample':
+            return v
+         if v < 3:
+             raise ValueError(f"MaximumDepthInMeters has value {v} which is less than 3.")
     
     @field_validator('eventDate')
     @classmethod
