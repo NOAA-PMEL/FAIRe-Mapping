@@ -1175,7 +1175,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # pos_condition_const is the value that should be return if the str_condition is present in col_value
         # neg_condition_const is the value that should be returned if the str_condition is absent in col_value
         col_value = metadata_row[col_name]
-        if str_condition.lower() in col_value.lower():
+        if str_condition.lower() in col_value.lower().strip():
             return pos_condition_const
         else:
             return neg_condition_const

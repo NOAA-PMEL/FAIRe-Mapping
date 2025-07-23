@@ -71,10 +71,10 @@ class OmeFaireMapper:
         
         return pd.read_excel(file_path, sheet_name=sheet_name, header=header)
     
-    def load_csv_as_df(self, file_path: Path, header=0) -> pd. DataFrame:
+    def load_csv_as_df(self, file_path: Path, header=0, sep=',') -> pd. DataFrame:
         # Load csv files as a data frame
 
-        return pd.read_csv(file_path, header=header, dtype=str)
+        return pd.read_csv(file_path, header=header, dtype=str, sep=sep)
     
     def load_google_sheet_as_df(self, google_sheet_id: str, sheet_name: str, header: int) -> pd.DataFrame:
 

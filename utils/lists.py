@@ -64,17 +64,25 @@ nc_faire_field_cols = ['samp_name',
 # TODO: mappings will probably need to be added by run. These map from run2
 marker_to_assay_mapping = {
     '18S V9': 'ssu18sv9_amaralzettler',
+    '18Sv9': 'ssu18sv9_amaralzettler',
     'dLoop': 'dloopv1.5v4_baker',
     '16S Kelley': 'lsu16s_2434-2571_kelly',
+    'Kelly16S': 'lsu16s_2434-2571_kelly',
     'Kelly 16S': 'lsu16s_2434-2571_kelly',
     'Leray CO1': 'COI_1835-2198_lerayfolmer', #geller and folmer is same region
+    'COI': 'COI_1835-2198_lerayfolmer',
     '18S Machida': ['ssu18sv8_machida', 'ssu18sv8_machida_OSUmod'],
+    'Machida18S': ['ssu18sv8_machida', 'ssu18sv8_machida_OSUmod'],
     'MiFish 12S': 'ssu12sv5v6_mifish_u_sales',
+    'MiFish': 'ssu12sv5v6_mifish_u_sales',
     '16S Furhman': ['ssu16sv4v5_parada', 'ssu16sv4v5_parada_OSUmod'],
     '16S Fuhrman': ['ssu16sv4v5_parada', 'ssu16sv4v5_parada_OSUmod'],
     '16S Furhman/Parada': ['ssu16sv4v5_parada', 'ssu16sv4v5_parada_OSUmod'],
+    'Parada16S': ['ssu16sv4v5_parada', 'ssu16sv4v5_parada_OSUmod'],
     '18S V4': 'ssu18sv4_stoeck',
+    '18Sv4': 'ssu18sv4_stoeck',
     'ITS': 'ITS1_sterling',
+    'ITS1': 'ITS1_sterling', 
 }
 
 # Dictionary that maps the JV metabarcoding marker in the run sample metadata to the actual directory names on Poseidon

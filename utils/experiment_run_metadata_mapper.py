@@ -1,6 +1,7 @@
 from .faire_mapper import OmeFaireMapper
 from .lists import marker_to_assay_mapping, marker_to_shorthand_mapping, mismatch_sample_names_metadata_to_raw_data_files_dict
 from .custom_exception import NoAcceptableAssayMatch
+from pathlib import Path
 import yaml
 import pandas as pd
 import os
@@ -16,6 +17,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
 
     experiment_run_mapping_sheet_name = "experimentRunMetadata"
     faire_template_exp_run_sheet_name = "experimentRunMetadata"
+    faire_seq_run_id_col = 'seq_run_id'
 
     def __init__(self, config_yaml: yaml):
         super().__init__(config_yaml)
@@ -40,6 +42,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         self.raw_filename_dict = {} # dictionary of forward raw data files with checksums
         self.raw_filename2_dict = {} # dictionary of reverse raw data files with checksums
         self.asv_data_dict =  {}
+        self.asv_samp_name_dict = {} # dictionary to store sample names and updated samples names since they don't match
         self._create_marker_sample_raw_data_file_dicts() 
         self._create_count_asv_dict(revamp_blast=self.config_file['revamp_blast'])
 
@@ -109,6 +112,9 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         exp_df = pd.DataFrame(exp_metadata_results)
         faire_exp_df = pd.concat([self.exp_run_faire_template_df, exp_df])
 
+        # Create non-curated asv tables (rawOtu)
+        self.create_non_curated_osu_tables()
+
         return faire_exp_df
 
     def _create_experiment_run_mapping_dict(self):
@@ -138,7 +144,6 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             return metadata_row[self.run_metadata_sample_name_column]
     
     def _create_experiment_metadata_df(self) -> pd.DataFrame:
-        # TODO: maybe rethink th
 
         exp_df = self.load_google_sheet_as_df(google_sheet_id=self.run_sample_metadata_file_id, sheet_name=self.run_metadata_sample_sheet_name, header=0)
 
@@ -427,6 +432,13 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             # store output_read_count in the nested dictionary
             self.asv_data_dict[marker][updated_sample_name] = {'output_read_count': output_read_count.item(), 
                                                             'output_otu_num': non_zero_output_asv_num.item()}
+            
+
+            # Add sample names to dictionary (for curating otu tables)
+            if marker not in self.asv_samp_name_dict:
+                self.asv_samp_name_dict[marker] = {sample_name: updated_sample_name}
+            else:
+                self.asv_samp_name_dict[marker][sample_name] = updated_sample_name
 
     def _create_count_asv_dict_for_merged_asvs(self, single_asv_df: pd.DataFrame, merged_asv_df: pd.DataFrame, marker: str):
         # Creates the count asv dict for merged  asvs per marker. So the output_read_count will be from the origin run asv table and the 
@@ -588,7 +600,59 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             formatted_bioaccessions = ' | '.join(bioaccessions)
             return formatted_bioaccessions
 
+    def create_non_curated_osu_tables(self):
+        # creates the non_curated osu_tables - it will be a otu_table.csv per seq_run_id per assay_name - so multiple per sequencing run
 
+        seq_run_id = self.mapping_dict[self.constant_mapping].get(self.faire_seq_run_id_col)
+        
+        for marker, file_path in self.asv_counts_tsvs_for_run.items(): 
+            asv_table = self._read_asv_counts_tsv(asv_tsv_file=file_path)
+            
+            # Get ASVs.fa file to get DNA sequences
+            asv_tsv_path = Path(file_path)
+            asvs_fa_path = asv_tsv_path.parent / "ASVs.fa"
+
+            # rename samples to match the updated sample names
+            asv_table_samples_updated = asv_table.rename(columns=self.asv_samp_name_dict.get(marker))
+
+            # replace ASV names with hash
+            asv_hash_dict = self.create_asv_hash_dict(asvs_fasta_path=asvs_fa_path)
+            asv_table_hash_updated = asv_table_samples_updated.rename(index=asv_hash_dict)
+
+            # save the csv file
+            assay_name = self.convert_assay_to_standard(marker=marker)
+            non_curated_csv_path = (Path(self.final_faire_template_path)).parent / f"otuRaw_{assay_name}_{seq_run_id}.csv"
+            asv_table_hash_updated.to_csv(non_curated_csv_path index='seq_id')
+            print(f"Saved {assay_name} otuRaw.csv")
+
+    def create_asv_hash_dict(self, asvs_fasta_path: str):
+        # creates a dictionary like {'ASV1': laksdjfalksdjfalksdjf}
+        asv_hash_dict = {}
+        current_asv = None
+        sequence = ''
+
+        print(f"Creating ASV hash dict for {asvs_fasta_path}")
+        with open(asvs_fasta_path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith('>'):
+                    #Process previous sequence if exists
+                    if current_asv and sequence:
+                        seq_hash = hashlib.md5(sequence.encode()).hexdigest()
+                        asv_hash_dict[current_asv] = seq_hash
+
+                    # Extract ASV number from header
+                    current_asv = line[1:] # Remove '>' character
+                    sequence = ""
+                else:
+                    sequence += line
+
+            # Process the last sequence
+            if current_asv and sequence:
+                seq_hash = hashlib.md5(sequence.encode()).hexdigest()
+                asv_hash_dict[current_asv] = seq_hash
+
+        return asv_hash_dict
         
 
     
