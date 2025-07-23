@@ -689,7 +689,6 @@ class ProjectMapper(OmeFaireMapper):
         workbook.save(self.final_faire_template_path)
         workbook.close()
 
-    
     def save_list_to_csv(self, the_list: list, file_name: str) -> None:
         # Puts a list into a csv and saves
         df = pd.DataFrame(the_list)

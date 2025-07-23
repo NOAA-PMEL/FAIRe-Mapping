@@ -945,32 +945,50 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                 if closest_alt_station == distance.get('station'):
                     print(f"\033[36m{samp_name}'s reported station ({reported_station}) is not found within 5 km, the closest station found to it's lat/lon coords is {closest_alt_station} with a distance of {distance.get('distance_km')}\033[0m")   
     
-    def update_unit_colums_with_no_corresponding_val(self, df: pd.DataFrame) -> pd.DataFrame:
-        # Update the final sample dataframe unit columns to be "not applicable" if there is no value in its corresponding column
+    def update_unit_colums_with_no_corresponding_val(self, df: pd.DataFrame) -> pd.DataFrame: 
+        # Update the final sample dataframe unit, woce flag, and method columns to be "not applicable" if there is no value in its corresponding column
         unit_cols = [col for col in df.columns if col.endswith('unit')]
+        unit_str = '_unit'
+        woce_cols = [col for col in df.columns if col.endswith('WOCE_flag')]
+        woce_str = 'WOCE_flag'
 
-        for unit_col in unit_cols:
-            main_col = unit_col.replace('_unit', '') # Remove the 'unit' from the column name
+        # method has some exceptions
+        method_cols = [col for col in df.columns if col.endswith('method') and col is not 'samp_collect_method']
+        method_str = '_method'
 
-            if main_col in df.columns:
-                for idx in df.index:
-                    val = df.at[idx, main_col]
-                    # Check if we should update the unit
-                    try:
-                        should_update = False
-                        if pd.isna(val) or val == None:
-                            should_update = True
-                        elif isinstance(val, str):
-                            val_lower = val.lower()
-                            if 'missing' in val_lower or 'not applicable' in val_lower:
+        updated_df_for_unit = self.update_woce_and_unit_cols(df=df, companion_col_list=unit_cols, str_to_remove_for_main_col=unit_str)
+        updated_df_for_woce = self.update_unit_colums_with_no_corresponding_val(df=updated_df_for_unit, companion_col_list=woce_cols, str_to_remove_for_main_col=woce_str)
+        updated_df_for_method = self.update_unit_colums_with_no_corresponding_val(df=updated_df_for_woce, companion_col_list=method_cols, str_to_remove_for_main_col=method_str)
+
+        return updated_df_for_method
+    
+    def update_woce_and_unit_cols(self, df: pd.DataFrame, companion_col_list: list, str_to_remove_for_main_col: str) -> pd.DataFrame:
+            # iterates through a list of unit columns or WOCE flag columns and updates df
+            for companion_col in companion_col_list:
+                if companion_col == 'DepthInMeters_method':
+                    main_col = 'maximumDepthInMeters'
+                else:
+                    main_col = companion_col.replace(str_to_remove_for_main_col, '') # Remove the 'unit' or 'WOCE_flag' from the column name
+
+                if main_col in df.columns:
+                    for idx in df.index:
+                        val = df.at[idx, main_col]
+                        # Check if we should update the unit
+                        try:
+                            should_update = False
+                            if pd.isna(val) or val == None:
                                 should_update = True
-                        
-                        if should_update:
-                            df.at[idx, unit_col] = 'not applicable'
-                    except:
-                        print("does not work!")
+                            elif isinstance(val, str):
+                                val_lower = val.lower()
+                                if 'missing' in val_lower or 'not applicable' in val_lower:
+                                    should_update = True
+                            
+                            if should_update:
+                                df.at[idx, companion_col] = 'not applicable'
+                        except:
+                            print("updating companion col is not working!")
 
-        return df
+            return df
     
     def fill_empty_sample_values(self, df: pd.DataFrame, default_message="missing: not collected"):
         # fill empty values for samples after mapping over all sample data without control samples
