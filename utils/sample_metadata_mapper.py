@@ -38,6 +38,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     faire_pressure_col_name = "pressure"
     faire_salinity_col_name = "salinity"
     faire_density_col_name = "density"
+    faire_max_depth_col_name = "maximumDepthInMeters"
+    faire_min_depth_col_name = "minimumDepthInMeters"
     faire_nucl_acid_ext_method_additional_col_name = "nucl_acid_ext_method_additional"
     faire_tot_depth_water_col_method_col_name = 'tot_depth_water_col_method'
     not_applicable_to_samp_faire_col_dict = {"neg_cont_type": "not applicable: sample group",
@@ -1017,8 +1019,21 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # replace niskin anywhere in the df with captial "Niskin" - Sean request 07/23/2025
         final_df = updated_df.replace('niskin', 'Niskin')
 
-        return final_df
+        # Fix depths that are less than three to make it 3 m - Requested by Sean/Shannon on 07/23/2025
+        update_depths_df = self.fix_too_low_depths(df=final_df)
 
+        return update_depths_df
+
+    def fix_too_low_depths(self, df: pd.DataFrame) -> pd.DataFrame:
+        # If the depth is less than 3 m, change to 3 m, and fix min depth to be -1
+        try:
+            condition = df[self.faire_max_depth_col_name] < 3
+            df.loc[condition, self.faire_max_depth_col_name] = 3
+            df.loc[condition, self.faire_min_depth_col_name] = df.loc[condition, self.faire_max_depth_col_name] - 1
+            return df
+        except:
+            return df
+    
     def fill_nc_metadata(self) -> pd.DataFrame:
         # Fills the negative control data frame
 
