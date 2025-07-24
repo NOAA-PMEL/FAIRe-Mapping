@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator, Field, model_validator
+from pydantic import BaseModel, field_validator, Field, model_validator, ConfigDict
 from typing import Literal, Optional, Union, Any, List, ClassVar, Dict
 from shapely.geometry import Point
 import geopandas as gpd
@@ -38,6 +38,7 @@ def load_iho_dataset():
 _iho_dataset = load_iho_dataset()
 
 class SampleMetadata(BaseModel):
+    model_config = ConfigDict(extra='forbid')
     samp_name: str
     samp_category: Literal['sample', 'negative control', 'positive control', 'PCR standard']
     neg_cont_type: Optional[Literal['site negative', 'field negative', 'process negative', 'extraction negative', 'PCR negative']]
@@ -234,7 +235,7 @@ class SampleMetadata(BaseModel):
     air_temperature: Optional[float] = None
     air_temperature_unit: Optional[Literal['degree Celsius']] = None
     par: Optional[float] = None
-    par_unit: Optional[Literal['µmol s-1 m-2']] = None
+    par_unit: Optional[Literal['µmols/s/m2']] = None
     air_pressure_at_sea_level: Optional[float] = None
     air_pressure_at_sea_level_unit: Optional[Literal['mb']] = None
     d18O_permil: Optional[float] = Field(default=None, description='18O oxygen iostope ratio, expressed in per mill (%) unit deviations from the international standard which is Standard Mean Ocean Water, as distributed by the International Atomic Energy Agency.')
@@ -280,7 +281,29 @@ class SampleMetadata(BaseModel):
     altitude: Optional[float] = Field(default=None, description="Can be calculated using by subtracting the MaximumDepthInMeters from the tot_depth_water_col.")
     altitude_unit: Optional[Literal['m']] = None
     altitude_method: Optional[str] = None
-
+    ###### extraction fields TODO: eventually peel out into its own class?
+    date_ext: Optional[str]
+    samp_vol_we_dna_ext: Optional[float]
+    samp_vol_we_dna_ext_unit: Optional[Literal['mL']]
+    nucl_acid_ext_lysis: Optional[Literal['physical | enzymatic | thermal']]
+    nucl_acid_ext_sep: Optional[Literal['column-based', 'magnetic beads', 'centrifugation', 'precipitation', 'phenol chloroform', 'gel electrophoresis']]
+    nucl_acid_ext: Optional[str]
+    nucl_acid_ext_kit: Optional[str]
+    nucl_acid_ext_modify: Optional[str]
+    dna_cleanup_0_1: Optional[Literal['0', '1', 0, 1]]
+    concentration: Optional[Union[float, Literal['BDL']]]
+    concentration_unit: Optional[Literal['ng/µl']]
+    concentration_method: Optional[str]
+    ratioOfAbsorbance260_280: Optional[float]
+    pool_dna_num: Optional[int]
+    nucl_acid_ext_method_additional: Optional[str]
+    extract_id: Optional[str]
+    extract_plate: Optional[str] = None
+    extract_well_number: Optional[int] = None
+    extract_well_position: Optional[str] = None
+    dna_yield: Optional[float] = None
+    dna_yield_unit: Optional[Literal['ng DNA/mL seawater']] = None
+    dna_cleanup_method: Optional[str]
     
     # class variables loaded once and shared across all datasets
     # list of arctic region keywods

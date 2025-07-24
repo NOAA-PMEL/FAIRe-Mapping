@@ -570,7 +570,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             if pos_control_str in metadata_row[metadata_col]:
                 return self.check_cv_word(value='positive control', faire_attribute=faire_col)
 
-    def add_material_sample_id(self, metadata_row) -> str:
+    def add_material_sample_id(self, metadata_row, cruise_code: str) -> str:
         # Formats MaterialSampleID to be numerical (discussed with Sean) - double check if this needs to be updated for three digit cast numbers
         # can also be used for sample_derived_from if no other in between parent samples
         cast_int = int(metadata_row.get(self.sample_metadata_cast_no_col_name))
@@ -580,7 +580,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         formatted_cast = f'{cast_int:02d}'
         formatted_btl = f'{btl_int:02d}'
 
-        material_sample_id = formatted_cast + formatted_btl
+        material_sample_id = cruise_code + '_' + formatted_cast + formatted_btl
         return str(material_sample_id)
 
     def add_material_samp_id_for_pps_samp(self, metadata_row: pd.Series, cast_or_event_col: str, prefix: str):

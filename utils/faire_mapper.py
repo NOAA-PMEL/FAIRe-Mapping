@@ -236,6 +236,12 @@ class OmeFaireMapper:
         else:
             return "missing: not provided"
         
+    def fix_cruise_code_in_samp_names(self, df: pd.DataFrame, cruise_code_to_replace: str, replacement: str) -> pd.DataFrame:
+        # fixes the cruise code in the sample names to be SKQ21-15S as requested by Shannon on 07/23/2025
+        df['samp_name'] = df['samp_name'].str.replace( cruise_code_to_replace, replacement)
+
+        return df 
+
     def reorder_columns(self, df: pd.DataFrame) -> pd.DataFrame:
         # orders the final columns so unit and method columns are next to their corresponding fields
         original_cols = df.columns.tolist()

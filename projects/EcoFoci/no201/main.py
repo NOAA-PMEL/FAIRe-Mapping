@@ -48,7 +48,7 @@ def create_no201_sample_metadata():
 
         elif faire_col == 'materialSampleID' or faire_col == 'sample_derived_from':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
-                lambda row: sample_mapper.add_material_sample_id(metadata_row=row),
+                lambda row: sample_mapper.add_material_sample_id(metadata_row=row, cruise_code='NO20-01'),
                 axis=1
             )
 

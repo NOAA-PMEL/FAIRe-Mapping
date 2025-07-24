@@ -20,12 +20,6 @@ def fix_stations(df: pd.DataFrame)  -> pd.DataFrame:
 
     return df
 
-def fix_cruise_code_in_samp_names(df: pd.DataFrame) -> pd.DataFrame:
-    # fixes the cruise code in the sample names to be SKQ21-15S as requested by Shannon on 07/23/2025
-    df['samp_name'] = df['samp_name'].str.replace('.SKQ2021', '.SKQ21-15S')
-
-    return df 
-
 def create_skq21_12S_sample_metadata():
     
     # initiate mapper
@@ -56,7 +50,7 @@ def create_skq21_12S_sample_metadata():
 
         elif faire_col == 'materialSampleID' or faire_col == 'sample_derived_from':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
-                lambda row: sample_mapper.add_material_sample_id(metadata_row=row),
+                lambda row: sample_mapper.add_material_sample_id(metadata_row=row, cruise_code='SKQ21-15S'),
                 axis=1
             )
 
@@ -214,7 +208,9 @@ def create_skq21_12S_sample_metadata():
     faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df,controls_df])
     # Add rel_cont_id
     faire_sample_df_updated = sample_mapper.add_extraction_blanks_to_rel_cont_id(final_sample_df=faire_sample_df)
-    faire_sample_df_cruise_code_updated = fix_cruise_code_in_samp_names(df=faire_sample_df_updated)
+    faire_sample_df_cruise_code_updated = sample_mapper.fix_cruise_code_in_samp_names(df=faire_sample_df_updated, 
+                                                                                      cruise_code_to_replace='.SKQ2021',
+                                                                                      replacement='.SKQ21-15S')
 
     # step 7: save as csv:
     sample_mapper.save_final_df_as_csv(final_df=faire_sample_df_cruise_code_updated, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/skq21_12S/data/skq21_12S_faire.csv')
