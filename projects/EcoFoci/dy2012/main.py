@@ -27,16 +27,16 @@ def swap_e27_e28_sample_metadata(df: pd.DataFrame) -> pd.DataFrame:
                        'density_unit', 'air_temperature_unit', 'par_unit', 'air_pressure_at_sea_level_unit', 'measurements_from', 'collected_by']
     
     # Create temporary copies of the values
-    temp_e27_1b = df.loc[df['samp_name'] == 'E27.1B.DY2012', columns_to_swap].copy()
-    temp_e28_1b = df.loc[df['samp_name'] == 'E28.1B.DY2012', columns_to_swap].copy()
-    temp_e27_2b = df.loc[df['samp_name'] == 'E27.2B.DY2012', columns_to_swap].copy()
-    temp_e28_2b = df.loc[df['samp_name'] == 'E28.2B.DY2012', columns_to_swap].copy()
+    temp_e27_1b = df.loc[df['samp_name'] == 'E27.1B.DY20-12', columns_to_swap].copy()
+    temp_e28_1b = df.loc[df['samp_name'] == 'E28.1B.DY20-12', columns_to_swap].copy()
+    temp_e27_2b = df.loc[df['samp_name'] == 'E27.2B.DY20-12', columns_to_swap].copy()
+    temp_e28_2b = df.loc[df['samp_name'] == 'E28.2B.DY20-12', columns_to_swap].copy()
 
     # Perform the swaps
-    df.loc[df['samp_name'] == 'E27.1B.DY2012', columns_to_swap] = temp_e28_1b.values
-    df.loc[df['samp_name'] == 'E28.1B.DY2012', columns_to_swap] = temp_e27_1b.values
-    df.loc[df['samp_name'] == 'E27.2B.DY2012', columns_to_swap] = temp_e28_2b.values
-    df.loc[df['samp_name'] == 'E28.2B.DY2012', columns_to_swap] = temp_e27_2b.values
+    df.loc[df['samp_name'] == 'E27.1B.DY20-12', columns_to_swap] = temp_e28_1b.values
+    df.loc[df['samp_name'] == 'E28.1B.DY20-12', columns_to_swap] = temp_e27_1b.values
+    df.loc[df['samp_name'] == 'E27.2B.DY20-12', columns_to_swap] = temp_e28_2b.values
+    df.loc[df['samp_name'] == 'E28.2B.DY20-12', columns_to_swap] = temp_e27_2b.values
 
     return df
 
