@@ -3,6 +3,7 @@ import sys
 sys.path.append("../../..")
 from utils.sample_metadata_mapper import FaireSampleMetadataMapper
 
+# metadata was swapped
 def swap_e27_e28_sample_metadata(df: pd.DataFrame) -> pd.DataFrame:
     # According to Sean's email "Note on NCBI submission and swapped metadata" samples, E27_2B_DY20 (SAMN35688246) and E28_1B_DY20 (SAMN35688288) 
     # metadata need to be swapped for sample collection and environmental data (not extraction and downstream)
