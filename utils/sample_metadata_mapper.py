@@ -485,6 +485,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             nc_df = samp_df[nc_mask].copy()
             samp_df_filtered = samp_df[~nc_mask].copy()
 
+            # Replace any - with NaN
+            nc_df = nc_df.replace('-', pd.NA)
+            samp_df_filtered = samp_df_filtered.replace('-', pd.NA)
+
             # fix cruise codes in sample names
             if self.unwanted_cruise_code and self.deisred_cruise_code:
                 nc_df = self.fix_cruise_code_in_samp_names(df=nc_df)
