@@ -114,6 +114,18 @@ def create_dy2012_sample_metadata():
                 sample_mapper.create_extract_id
             )
 
+        elif faire_col == 'extract_well_number':
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.get_well_number_from_well_field(metadata_row=row, well_col=metadata_col),
+                axis=1
+            )
+        
+        elif faire_col == 'extract_well_position':
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.get_well_position_from_well_field(metadata_row=row, well_col=metadata_col),
+                axis = 1 
+            )
+
         elif faire_col == 'dna_yield':
             metadata_cols = metadata_col.split(' | ')
             sample_vol_col = metadata_cols[1]

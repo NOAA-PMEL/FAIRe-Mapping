@@ -1087,6 +1087,18 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                         lambda row: self.calculate_dna_yield(metadata_row=row, sample_vol_metadata_col=vol_col),
                         axis = 1
                     )
+            elif faire_col == 'extract_well_number':
+                nc_results[faire_col] = self.nc_df.apply(
+                    lambda row: self.get_well_number_from_well_field(metadata_row=row, well_col=metadata_col),
+                    axis=1
+                )
+        
+            elif faire_col == 'extract_well_position':
+                nc_results[faire_col] = self.nc_df.apply(
+                    lambda row: self.get_well_position_from_well_field(metadata_row=row, well_col=metadata_col),
+                    axis = 1 
+                )
+
 
         # First concat with sample_faire_template to get rest of columns,
         # # and add user_defined columnsthen
