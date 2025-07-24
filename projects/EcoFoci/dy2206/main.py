@@ -200,11 +200,9 @@ def create_dy2206_sample_metadata():
     faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df,controls_df])
     # Add rel_cont_id
     faire_sample_df_updated = sample_mapper.add_extraction_blanks_to_rel_cont_id(final_sample_df=faire_sample_df)
-    faire_sample_df_cruise_code_updated = sample_mapper.fix_cruise_code_in_samp_names(df=faire_sample_df_updated, 
-                                                                                      cruise_code_to_replace='.DY2206',
-                                                                                      replacement='DY22-06')
+
     # step 7: save as csv:
-    sample_mapper.save_final_df_as_csv(final_df=faire_sample_df_cruise_code_updated, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2206/data/dy2206_faire.csv')
+    sample_mapper.save_final_df_as_csv(final_df=faire_sample_df_updated, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2206/data/dy2206_faire.csv')
    
 
     # # step 7: save to excel file

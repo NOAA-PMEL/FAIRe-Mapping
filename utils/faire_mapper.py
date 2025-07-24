@@ -10,6 +10,7 @@ import warnings
 import yaml
 import re
 from .custom_exception import ControlledVocabDoesNotExistError
+from .lists import faire_int_cols
 import gspread #library that makes it easy for us to interact with the sheet
 from google.oauth2.service_account import Credentials
 # import requests
@@ -235,13 +236,23 @@ class OmeFaireMapper:
             
         else:
             return "missing: not provided"
-        
-    def fix_cruise_code_in_samp_names(self, df: pd.DataFrame, cruise_code_to_replace: str, replacement: str) -> pd.DataFrame:
-        # fixes the cruise code in the sample names to be SKQ21-15S as requested by Shannon on 07/23/2025
-        df['samp_name'] = df['samp_name'].str.replace( cruise_code_to_replace, replacement)
 
-        return df 
+    def fix_int_cols(self, df:pd.DataFrame) -> pd.DataFrame:
+        # converts columns that are int to so will not save as float. May need to update list in .lists
+        df = df.copy()
 
+        # Add WOCE that may have been missed
+        cols_to_convert = []
+        cols_to_convert.extend(faire_int_cols)
+        cols_to_convert.extend([col for col in df.columns if 'WOCE' in col])
+        cols_to_convert = list(set(cols_to_convert))
+
+        for col in cols_to_convert:
+            if col in df.columns:
+                df[col] = df[col].apply(lambda x: x if pd.isna(x) or x in self.faire_missing_values else int(float(x))) 
+
+        return df
+    
     def reorder_columns(self, df: pd.DataFrame) -> pd.DataFrame:
         # orders the final columns so unit and method columns are next to their corresponding fields
         original_cols = df.columns.tolist()
@@ -318,7 +329,9 @@ class OmeFaireMapper:
 
         faire_final_df = pd.concat([faire_template_df, final_df], ignore_index=True)
 
-        faire_final_df_reorderd = self.reorder_columns(df=faire_final_df)
+        faire_final_int_fixed = self.fix_int_cols(df=faire_final_df)
+
+        faire_final_df_reorderd = self.reorder_columns(df=faire_final_int_fixed)
 
         faire_final_df_reorderd.to_csv(csv_path, quoting=csv.QUOTE_NONNUMERIC, index=False)
 
@@ -338,8 +351,9 @@ class OmeFaireMapper:
                 # Store the row 2 value for this column name
                 original_row2_headers[col_name] = sheet.cell(row=2, column=col_idx).value
 
-        # Step 3: Reorder the input DataFrame's columns using your reorder_columns method
+        # Step 3: Reorder the input DataFrame's columns and fix the ints
         reordered_faire_template_df = self.reorder_columns(faire_template_df)
+        faire_ints_fixed_df = self.fix_int_cols(df=reordered_faire_template_df)
         
         # Step 4: Clear existing headers (rows 2 and 3) and all data from row 4 onwards
         # This ensures a clean slate before writing new, reordered headers and data.
@@ -348,7 +362,7 @@ class OmeFaireMapper:
                 sheet.cell(row=row, column=col).value = None
 
         # Step 5: Write the new headers (row 2 and row 3) based on the reordered DataFrame
-        for col_idx, col_name in enumerate(reordered_faire_template_df.columns, 1):
+        for col_idx, col_name in enumerate(faire_ints_fixed_df.columns, 1):
             col_letter = get_column_letter(col_idx)
             
             # Write column name to row 3 (the main header row)
@@ -364,7 +378,7 @@ class OmeFaireMapper:
 
         # Step 6: Write the data frame data to the sheet (starting at row 4)
         # Iterate through the reordered DataFrame and write its values to the Excel sheet.
-        for row_idx, row_data in enumerate(reordered_faire_template_df.values, 4):
+        for row_idx, row_data in enumerate(faire_ints_fixed_df.values, 4):
             for col_idx, value in enumerate(row_data, 1):
                 sheet.cell(row=row_idx, column=col_idx).value = value
 

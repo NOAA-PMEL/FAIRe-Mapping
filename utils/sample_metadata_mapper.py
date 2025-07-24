@@ -72,6 +72,9 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.vessel_name = self.config_file['vessel_name']
         self.faire_template_file = self.config_file['faire_template_file']
         self.google_sheet_mapping_file_id = self.config_file['google_sheet_mapping_file_id']
+        self.unwanted_cruise_code = self.config_file['cruise_code_fixes']['unwanted_cruise_code'] if 'cruise_code_fixes' in self.config_file else None
+        self.deisred_cruise_code = self.config_file['cruise_code_fixes']['desired_cruise_code'] if 'cruise_code_fixes' in self.config_file else None
+
         self.samp_dur_info = self.config_file['samp_store_dur_sheet_info'] if 'samp_store_dur_sheet_info' in self.config_file else None
         self.samp_stor_dur_dict = self.create_samp_stor_dict() if 'samp_store_dur_sheet_info' in self.config_file else None
         
@@ -172,6 +175,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     def create_samp_stor_dict(self) -> dict:
 
         samp_dur_df = self.load_google_sheet_as_df(google_sheet_id=self.samp_dur_info['google_sheet_id'], sheet_name='Sheet1', header=0)
+
+        # fix sample names if cruise-code was corrrected in sample names
+        if self.unwanted_cruise_code and self.deisred_cruise_code:
+            samp_dur_df = self.fix_cruise_code_in_samp_names(df=samp_dur_df, sample_name_col=self.samp_dur_info['samp_name_col'])
         samp_dur_dict = dict(zip(samp_dur_df[self.samp_dur_info['samp_name_col']], samp_dur_df[self.samp_dur_info['samp_stor_dur_col']]))
 
         return samp_dur_dict
@@ -477,7 +484,14 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                 str).str.contains('.NC', case=True)
             nc_df = samp_df[nc_mask].copy()
             samp_df_filtered = samp_df[~nc_mask].copy()
+
+            # fix cruise codes in sample names
+            if self.unwanted_cruise_code and self.deisred_cruise_code:
+                nc_df = self.fix_cruise_code_in_samp_names(df=nc_df)
+                samp_df_filtered = self.fix_cruise_code_in_samp_names(df=samp_df_filtered)
+            
             return samp_df_filtered, nc_df
+        
         except:
             print(
                 "Looks like there are no negatives in the sample df, returning an empty nc_df")
@@ -607,6 +621,15 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         except:
             None
 
+    def fix_cruise_code_in_samp_names(self, df: pd.DataFrame, sample_name_col: str = None) -> pd.DataFrame:
+        # fixes the cruise code in the sample names to be SKQ21-15S as requested by Shannon on 07/23/2025
+        # if sample name is not specified the will use the sample metadata sample name specified in the config - may be different (for sampe dur storage df)
+        if not sample_name_col:
+            sample_name_col = self.sample_metadata_sample_name_column
+        df[sample_name_col] = df[sample_name_col].str.replace(self.unwanted_cruise_code, self.deisred_cruise_code)
+
+        return df 
+    
     def calculate_dna_yield(self, metadata_row: pd.Series, sample_vol_metadata_col: str) -> float:
         # calculate the dna yield based on the concentration (ng/uL) and the sample_volume (mL)
         concentration = str(metadata_row[self.extract_conc_col])

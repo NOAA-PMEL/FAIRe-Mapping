@@ -19,6 +19,11 @@ extractions:
     extraction_blank_vol_we_dna_ext: 1000 # The volume or mass of blanks extracted if there are blanks extracted
     extraction_set_grouping_col_name: 'Plate' # The name of the column that groups the samples together if they were extracted together
 
+  # only if the cruise code in the sample name needs to be changed
+cruise_code_fixes:
+  unwanted_cruise_code: '.DY2012'
+  desired_cruise_code: '.DY20-12' 
+
 # mapping file related
 google_sheet_mapping_file_id: 1PKYStbZN3ygUvjXi9SmaXGwmwt-eJCZyDCZ8xzlQq0E
 nc_samp_mat_process:  'Water samples were filtered through a 0.22 µm swinnex filter using a vacuum pump.' # mapping for negative controls for nc_samp_mapt_process

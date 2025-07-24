@@ -430,3 +430,26 @@ ncbi_faire_sra_column_mappings_exact = {
     "filename": "filename",
     "filename2": "filename2"
 }
+
+# fAIRE columns that are int columns and will need to be converted before saving
+faire_int_cols = [
+                    'temp_WOCE_flag',
+                    'ph_WOCE_flag',
+                    'salinity_WOCE_flag',
+                    'diss_inorg_carb_WOCE_flag',
+                    'nitrite_WOCE_flag',
+                    'ammonium_WOCE_flag',
+                    'carbonate_WOCE_flag',
+                    'phosphate_WOCE_flag',
+                    'silicate_WOCE_flag',
+                    'tot_alkalinity_WOCE_flag',
+                    'ctd_cast_number',
+                    'ctd_bottle_number',
+                    'replicate_number',
+                    'rosette_position',
+                    'niskin_WOCE_flag',
+                    'd18O_permil_WOCE_flag',
+                    'nitrite_WOCE_flag',
+                    'pool_dna_num',
+                    'extract_well_number'
+                ]

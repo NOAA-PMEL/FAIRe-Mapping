@@ -35,6 +35,11 @@ samp_store_dur_sheet_info: # Include only if cruise sample info in a samp_store_
   samp_stor_dur_col: sample_stor_dur
   dur_units: hour
 
+# only if the cruise code in the sample name needs to be changed
+cruise_code_fixes:
+  unwanted_cruise_code: '.SKQ2021'
+  desired_cruise_code: '.SKQ21-15' 
+
 # mapping file related
 google_sheet_mapping_file_id: 13mqrAXO0dpE3vrCfG10Eze-KnYo-rAZmxb0HverQWy8 
 nc_samp_mat_process:  'Water samples were filtered through a 0.22 micron sterivex filter using a peristaltic pump with tubing attached to the outlet end of the sterivex.' # mapping for negative controls for nc_samp_mapt_process

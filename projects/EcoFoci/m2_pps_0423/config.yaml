@@ -24,6 +24,11 @@ google_sheet_mapping_file_id: 1qTAFyDNysLYAauicMZxc9nN5EsKfX4KEryyU4vYk9ZA
 nc_samp_mat_process: 'placeholder' # mapping for negative controls for nc_samp_mapt_process. No .NC samples for this pps
 nc_prepped_samp_store_dur: 'placeholder' # which columns the NC prepped samp_store_dur map to (will most likely be different than rest of samples because no ctd or bottle dates for NC). No .NC samples for this pps.
 
+# only if the cruise code in the sample name needs to be changed
+cruise_code_fixes:
+  unwanted_cruise_code: '.DY2306'
+  desired_cruise_code: '.DY23-06' 
+
 # Station reference file
 station_name_reference_google_sheet_id: 1bJiX5pXpUuk74tbuoiYRc7iNXAVYU2dD8nTnZAFpZg8
 
