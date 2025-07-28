@@ -686,6 +686,12 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             min_depth = max_depth
         return min_depth
 
+    def calculate_filter_sa_from_filter_diam(self, filter_diam: float) -> float:
+        # calculate the filter surface area from the filter diameter (pie*r^2)
+        radius = filter_diam/2
+        filter_sa = round(np.pi * (radius**2), 2)
+        return filter_sa
+
     def format_geo_loc(self, metadata_row: str, geo_loc_metadata_col: str) -> dict:
         # TODO: add if statement for Arctic OCean? SKQ21-12S?
 
@@ -1107,6 +1113,9 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             elif faire_col == self.faire_neg_cont_type_name_col:
                 nc_results[faire_col] = self.nc_df[metadata_col].apply(
                     self.add_neg_cont_type)
+                
+            elif faire_col == 'filter_surface_area':
+                nc_results[faire_col] = self.calculate_filter_sa_from_filter_diam(filter_diam=float(metadata_col))
 
             elif faire_col == 'dna_yield':
                 vol_col = self.mapping_dict[self.exact_mapping].get('samp_vol_we_dna_ext')

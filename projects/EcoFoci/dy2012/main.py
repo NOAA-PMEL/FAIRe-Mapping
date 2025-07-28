@@ -158,6 +158,9 @@ def create_dy2012_sample_metadata():
             
             sample_metadata_results['env_local_scale'] = sample_mapper.sample_metadata_df['finalMaxDepth'].apply(sample_mapper.calculate_env_local_scale)
 
+        elif faire_col == 'filter_surface_area':
+            sample_metadata_results[faire_col] = sample_mapper.calculate_filter_sa_from_filter_diam(filter_diam=float(metadata_col))
+        
         elif faire_col =='collected_by':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(
                 lambda row: row.replace(', ', ' | ')

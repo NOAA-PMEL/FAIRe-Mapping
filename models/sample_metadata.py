@@ -39,6 +39,7 @@ _iho_dataset = load_iho_dataset()
 
 class SampleMetadata(BaseModel):
     model_config = ConfigDict(extra='forbid')
+    
     samp_name: str
     samp_category: Literal['sample', 'negative control', 'positive control', 'PCR standard']
     neg_cont_type: Optional[Literal['site negative', 'field negative', 'process negative', 'extraction negative', 'PCR negative']]
@@ -518,8 +519,37 @@ class SampleMetadata(BaseModel):
             raise ValueError('rosette_position must match the ctd_bottle_number ')
         return self
 
+# a wrapper model for the entire SampleMetadata dataset - allows for validation across the whole dataset
+class SampleMetadataDatasetModel(BaseModel):
+    rows: List[SampleMetadata]
+
+    @model_validator(mode='after')
+    def validate_tot_water_depth_across_casts(self):
+        # Convert to dict for easier processing
+        rows_data = [row.model_dump() for row in self.rows]
+
+        # group by ctd_cast_number
+        groups = defaultdict(list)
+        for row in rows_data:
+            groups[row['ctd_cast_number']].append(row['tot_depth_water_col'])
+
+        # Check for inconsistencies
+        inconsistent_groups = []
+        for group_id, values in groups. items():
+            unique_values = set(values)
+            if len(unique_values) > 1:
+                inconsistent_groups.append({
+                    'ctd_cast_number': group_id,
+                    'found_values': list(unique_values)
+                })
+
+        if inconsistent_groups:
+            raise ValueError(f"Inconsistent tot_depth_water_col values in ctd_cast_number groups {inconsistent_groups}")
+        
+        return self
+    
 ## Notes: without @classmethod you can access self.other_field, but iwth @class_method you cannot. Use @classmethod when you only need to validate a single field.
-## mode='after' runs after all the fields are processed and vliadted
+## mode='after' runs after all the fields are processed and valiadated
 ## Notes: @model_Validator with @class_method mode='before' runs before the model is constructed. your working with data before feild validation. Must use 
 # @class_method because no instance exists yet
 ## NOtes @model_validator without @class_method mode='after' runs after the model is fully constructed and vliadted

@@ -6,7 +6,7 @@ import warnings
 from typing import Type
 from pydantic import BaseModel, ValidationError
 from models.experiment_run_metadata import ExperimentRunMetadata
-from models.sample_metadata import SampleMetadata
+from models.sample_metadata import SampleMetadata, SampleMetadataDatasetModel
 
 
 class CSVValidationResult:
@@ -46,6 +46,9 @@ class CSVValidator:
             print(f"📊 Validating {result.total_rows} rows from '{csv_path}'")
             print(f"🔎 Using model: {self.model_class.__name__}")
 
+            # Added for corss dataset validation
+            validated_rows = []
+
             for idx, row in df.iterrows():
                 try: 
                     # row_data = self._clean_row_data(row.to_dict())
@@ -64,6 +67,8 @@ class CSVValidator:
                                 'category': warning.category.__name__,
                                 'data': row_data
                             })
+                    
+                    validated_rows.append(validated_record)
 
                     result.valid_records.append(validated_record.model_dump())
 
@@ -82,6 +87,20 @@ class CSVValidator:
                     result.errors.append(error_msg)
                     if strict:
                         raise Exception(error_msg)
+                    
+            # NEW: cross-row validation using dataset model (right now only applicable to SampleMetadata)
+            if self.model_class == SampleMetadata and  validated_rows:
+                try:
+                    dataset = SampleMetadataDatasetModel(rows=validated_rows)
+                    print("✅ Cross-row validation passed")
+                except ValidationError as e:
+                    dataset_error_info = { 
+                        'errors': e.errors()
+                    }
+                    result.invalid_records.append(dataset_error_info)
+                    result.errors.append(f"dataset level error: {str(e)}")
+                    if strict:
+                        raise ValidationError(f"Validation failed for dataset: {e}")
                     
         except Exception as e:
             result.errors.append(f"Failed to read CSV file: {str(e)}")
@@ -107,7 +126,7 @@ def main():
     try: 
         result = validator.validate_file(csv_path, strict=strict_mode)
         print(f"\n📋 Validation Results: ")
-        print(f"    ✅  Valid rows: {len(result.valid_records)}" )
+        print(f"    ✅ Valid rows: {len(result.valid_records)}" )
         print(f"    ❌ Invalid rows: {len(result.invalid_records)}")
         print(f"    📊 Total rows: {result.total_rows}")
         print(f"    📈 Success rate: {result.to_dict()['success_rate']:.1%}")
