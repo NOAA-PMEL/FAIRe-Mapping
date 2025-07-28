@@ -319,7 +319,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                     blank_df = pd.concat([blank_df, extraction_blank_samps])
 
             blank_df[self.extract_conc_col] = blank_df[self.extract_conc_col].replace(
-                "BDL", "BR").replace("Below Range", "BR").replace("br", "BR")
+                "BR", "BDL").replace("Below Range", "BDL").replace("br", "BDL")
         except:
             raise ValueError(
                 "Warning: Extraction samples are not grouped, double check this")
@@ -443,6 +443,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         metadata_df = metadata_df.dropna(
             subset=[self.sample_metadata_sample_name_column])
 
+    
         return metadata_df
 
     def _check_nc_samp_name_has_nc(self, metadata_row: pd.Series) -> str:
@@ -464,6 +465,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             sample_name = sample_name.replace('_', '-')
         if '.DY23-06' in sample_name:
             sample_name = sample_name.replace('-', '')
+        if '.SKQ2021': # had to add this because shannon changed the sample names in the extraction sheet mid process.
+            sample_name = sample_name.replace('.SKQ2021', '.SKQ21-15S')
 
         return sample_name
 
@@ -1028,7 +1031,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     
     def fill_empty_sample_values_and_finalize_sample_df(self, df: pd.DataFrame, default_message="missing: not collected"):
         # fill empty values for samples after mapping over all sample data without control samples
-
         if df.empty: # for empty NC dataframes (like in Aquamonitor)
             pass
         # check if data frame is sample data frame and if so, then adds not applicable: control sample to control columns
@@ -1054,6 +1056,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         # Fix depths that are less than three to make it 3 m - Requested by Sean/Shannon on 07/23/2025
         update_depths_df = self.fix_too_low_depths(df=final_df)
+
 
         return update_depths_df
 

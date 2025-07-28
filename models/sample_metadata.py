@@ -9,8 +9,6 @@ from datetime import datetime
 from collections import defaultdict
 import xarray as xr
 
-#TODO: Add beam_attenuation and beam_attenuation_units? and fix beam_attenutation_units to be unit
- # Field(default=None) is for USer defined fields that might be missing in each csv
 # TODO: Add custom data validation for controlled vocabs that accept 'other: <description>' (samp_category, neg_cont_type, verbatimCoordinateSystem, verbatimSRS,
 # samp_size_unit, samp_store_temp, samp_store_sol, precip_chem_prep, filter_material)
 # TODO: Add list validation abstracted out (sample_derived_from)
@@ -50,7 +48,9 @@ class SampleMetadata(BaseModel):
     rel_cont_id: Optional[str] # needs custom list validation
     biological_rep_relation: Optional[str] # needs custom list validation
     decimalLongitude: Optional[float]
+    decimalLongitude_standard_deviation: Optional[float] = Field(default=None)
     decimalLatitude: Optional[float]
+    decimalLatitude_standard_deviation: Optional[float] = Field(default=None)
     verbatimLongitude: Optional[str]
     verbatimLatitude: Optional[str]
     verbatimCoordinateSystem: Optional[Literal['decimal degrees', 'degrees minutes seconds', 'UTM']]
@@ -99,12 +99,14 @@ class SampleMetadata(BaseModel):
     samp_weather: Optional[str]
     minimumDepthInMeters: Optional[float]
     maximumDepthInMeters: Optional[float]
+    maximumDepthInMeters_standard_deviation: Optional[float] = None
     DepthInMeters_method: Optional[str] = None
     tot_depth_water_col: Optional[float]
     tot_depth_water_col_method: Optional[str] = None
     elev: Optional[float]
     temp: Optional[float] = Field(description = 'in degree Celsius')
     temp_WOCE_flag: Optional[int] = Field(default=None)
+    temp_standard_deviation: Optional[float] = Field(default=None)
     chlorophyll: Optional[float] = Field(description = 'in mg/m3')
     light_intensity: Optional[float] = Field(description = 'in lux')
     ph: Optional[float]
@@ -112,6 +114,7 @@ class SampleMetadata(BaseModel):
     ph_WOCE_flag: Optional[int] = Field(default=None)
     salinity: Optional[float] = Field(description = 'partical salinity unit (psu)')
     salinity_WOCE_flag: Optional[int] = Field(default=None)
+    salinity_standard_deviation: Optional[float] = Field(default=None)
     suspend_part_matter: Optional[float] = Field(description = 'in mg/L')
     tidal_stage: Optional[str]
     turbidity: Optional[float] = Field(description = 'nephelometric turbidity unit (ntu)')
@@ -130,6 +133,7 @@ class SampleMetadata(BaseModel):
     diss_org_nitro_unit: Optional[Literal['µM', 'mol/m3', 'mmol/m3', 'µmol/m3 ', 'mol/L', 'mmol/L', 'µmol/L', 'mg/L',  'µg/L', 'µmol/kg', 'mmol/kg ', 'parts per million']]
     diss_oxygen: Optional[float]
     diss_oxygen_unit: Optional[Literal['mg/L', 'µg/L', 'µM', 'mol/m3', 'mmol/m3', 'µmol/m3', 'mol/L', 'mmol/L', 'µmol/L' , 'mg/L ', 'µg/L x', 'mL/L', 'mmol/kg', 'parts per million', 'other: µmol/kg']]
+    diss_oxygen_standard_deviation: Optional[float] = Field(default=None)
     tot_diss_nitro: Optional[float]
     tot_diss_nitro_unit: Optional[Literal['µM', 'mol/m3', 'mmol/m3', 'µmol/m3 ', 'mol/L', 'mmol/L', 'µmol/L', 'mg/L',  'µg/L', 'µmol/kg', 'mmol/kg ', 'parts per million']]
     tot_inorg_nitro: Optional[float]
@@ -183,6 +187,7 @@ class SampleMetadata(BaseModel):
     phosphate_WOCE_flag: Optional[int] = Field(default=None)
     pressure: Optional[float]
     pressure_unit: Optional[Literal['dbar']]
+    pressure_standard_deviation: Optional[float] = Field(default=None)
     silicate: Optional[float]
     silicate_unit: Optional[Literal['µmol/L', 'µM', 'µmol/kg']]
     silicate_WOCE_flag: Optional[int] = Field(default=None)
@@ -191,6 +196,17 @@ class SampleMetadata(BaseModel):
     tot_alkalinity_WOCE_flag: Optional[int] = Field(default=None)
     transmittance: Optional[float]
     transmittance_unit: Optional[Literal['']] # need to add cv here when known
+    ammonia: Optional[float] = Field(default=None)
+    ammonia_unit: Optional[Literal['µM']] = Field(default=None)
+    beam_attenuation: Optional[float] = Field(default=None)
+    beam_attenuation_unit: Optional[Literal['/m']] = Field(default=None)
+    beam_attenuation_standard_deviation: Optional[float] = Field(default=None)
+    tot_inorg_nitro_to_phos_ratio: Optional[float] = Field(default=None)
+    potential_temperature_C: Optional[float] = Field(default=None)
+    potential_temperature_C_standard_deviation: Optional[float] = Field(default=None)
+    oxygen_solubility: Optional[float] = Field(default=None)
+    oxygen_solubility_unit: Optional[Literal['mmol/kg']] = None
+    oxygen_solubility_standard_deviation: Optional[float] = None
     serial_number: Optional[str]
     line_id: Optional[str]
     station_id: Optional[Literal['BF2', 'DBO1.1', 'DBO1.2', 'DBO1.3', 'DBO1.4', 'DBO1.5', 'DBO1.6',
@@ -231,6 +247,7 @@ class SampleMetadata(BaseModel):
     organism: Optional[str]
     samp_collect_notes: Optional[str]
     percent_oxygen_sat: Optional[float] = None
+    percent_oxygen_sat_standard_deviation: Optional[float] = None
     density: Optional[float] = None
     density_unit: Optional[Literal['kg/m3']] = None
     air_temperature: Optional[float] = None
@@ -535,18 +552,19 @@ class SampleMetadataDatasetModel(BaseModel):
 
         # Check for inconsistencies
         inconsistent_groups = []
-        for group_id, values in groups. items():
-            unique_values = set(values)
-            if len(unique_values) > 1:
-                inconsistent_groups.append({
-                    'ctd_cast_number': group_id,
-                    'found_values': list(unique_values)
-                })
+        for cast_no, values in groups. items():
+            if cast_no is not None: # this cast_no is not None - which it would be for PPS cruises, so skips these
+                unique_values = set(values)
+                if len(unique_values) > 1:
+                    inconsistent_groups.append({
+                        'ctd_cast_number': cast_no,
+                        'found_values': list(unique_values)
+                    })
 
-        if inconsistent_groups:
-            raise ValueError(f"Inconsistent tot_depth_water_col values in ctd_cast_number groups {inconsistent_groups}")
-        
-        return self
+            if inconsistent_groups:
+                raise ValueError(f"Inconsistent tot_depth_water_col values in ctd_cast_number groups {inconsistent_groups}")
+            
+            return self
     
 ## Notes: without @classmethod you can access self.other_field, but iwth @class_method you cannot. Use @classmethod when you only need to validate a single field.
 ## mode='after' runs after all the fields are processed and valiadated

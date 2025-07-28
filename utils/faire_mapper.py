@@ -240,7 +240,7 @@ class OmeFaireMapper:
     def fix_int_cols(self, df:pd.DataFrame) -> pd.DataFrame:
         # converts columns that are int to so will not save as float. May need to update list in .lists
         df = df.copy()
-
+      
         # Add WOCE that may have been missed
         cols_to_convert = []
         cols_to_convert.extend(faire_int_cols)
