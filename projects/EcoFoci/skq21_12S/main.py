@@ -24,6 +24,7 @@ def create_skq21_12S_sample_metadata():
     
     # initiate mapper
     sample_mapper = FaireSampleMetadataMapper(config_yaml='config.yaml')
+   
     # fix the stations
     sample_mapper.sample_metadata_df = fix_stations(df=sample_mapper.sample_metadata_df)
 
@@ -109,11 +110,16 @@ def create_skq21_12S_sample_metadata():
                 sample_metadata_results['env_local_scale'] = sample_mapper.sample_metadata_df['final_max_depth'].apply(sample_mapper.calculate_env_local_scale)
 
                 # calculate tot_depth_water_col
+                # calculate tot_depth_water_col
                 tot_depth_water_metadata_col = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('tot_depth_water_col')
                 tot_depth_water_col = sample_mapper.sample_metadata_df.apply(
-                lambda row: sample_mapper.get_tot_depth_water_col_from_lat_lon(metadata_row=row, lat_col='decimalLatitude', lon_col='decimalLongitude', exact_map_col=tot_depth_water_metadata_col),
-                axis=1
-                )  
+                    lambda row: sample_mapper.get_tot_depth_water_col_from_lat_lon(metadata_row=row, lat_col='decimalLatitude', lon_col='decimalLongitude', exact_map_col=tot_depth_water_metadata_col),
+                    axis=1
+                    )  
+                
+                sample_metadata_results['tot_depth_water_col'] = tot_depth_water_col
+                sample_mapper.sample_metadata_df['tot_depth_water_col'] = tot_depth_water_col 
+           
                 sample_metadata_results['tot_depth_water_col'] = tot_depth_water_col
                 sample_mapper.sample_metadata_df['tot_depth_water_col'] = tot_depth_water_col
                 
@@ -197,6 +203,13 @@ def create_skq21_12S_sample_metadata():
                 axis = 1
             )
    
+        elif faire_col == 'ctd_bottle_number':
+            metadata_cols = metadata_col.split(' | ')
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.map_using_two_or_three_cols_if_one_is_na_use_other(metadata_row=row, desired_col_name=metadata_cols[0], use_if_na_col_name=metadata_cols[1]),
+                axis=1
+            )
+
     # Step 4: fill in NA with missing not collected or not applicable because they are samples and adds NC to rel_cont_id
     sample_df = sample_mapper.fill_empty_sample_values_and_finalize_sample_df(df = pd.DataFrame(sample_metadata_results))
     
