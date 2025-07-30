@@ -78,10 +78,10 @@ class ProjectMapper(OmeFaireMapper):
 
         # Save sample metadata first to excel file and csv, and then use that excel file and save experimentRunMetadata df
         self.add_final_df_to_FAIRe_excel(excel_file_to_read_from=self.faire_template_file, sheet_name=self.faire_sample_metadata_sheet_name, faire_template_df=sample_metadata_df)
-        self.save_final_df_as_csv(final_df=sample_metadata_df, sheet_name=self.faire_sample_metadata_sheet_name, header=2, csv_path=f"{data_dir}/sampleMetadata_{self.project_id}")
+        self.save_final_df_as_csv(final_df=sample_metadata_df, sheet_name=self.faire_sample_metadata_sheet_name, header=2, csv_path=f"{data_dir}/sampleMetadata_{self.project_id}.csv")
 
         self.add_final_df_to_FAIRe_excel(excel_file_to_read_from=self.final_faire_template_path, sheet_name=self.faire_experiment_run_metadata_sheet_name, faire_template_df=experiment_run_metadata_df)
-        self.save_final_df_as_csv(final_df=experiment_run_metadata_df, sheet_name=self.faire_experiment_run_metadata_sheet_name, header=2, csv_path=f"{data_dir}/experimentRunMetadata_{self.project_id}")
+        self.save_final_df_as_csv(final_df=experiment_run_metadata_df, sheet_name=self.faire_experiment_run_metadata_sheet_name, header=2, csv_path=f"{data_dir}/experimentRunMetadata_{self.project_id}.csv")
 
         # Add projectMetadata, first project_level metadata then assay level metadata
         self.load_project_level_metadata_to_excel_and_save_as_csv()
@@ -668,7 +668,7 @@ class ProjectMapper(OmeFaireMapper):
         # save as csv
         data_dir = os.path.dirname(self.final_faire_template_path)
         self.project_info_df['mod_date'] = today_str
-        self.save_final_df_as_csv(final_df=self.project_info_df, sheet_name='Sheet1', header=0, csv_path=f"{data_dir}/projectMetadata_{self.project_id}")
+        self.save_final_df_as_csv(final_df=self.project_info_df, sheet_name='Sheet1', header=0, csv_path=f"{data_dir}/projectMetadata_{self.project_id}.csv")
 
         # save as excel
         workbook = openpyxl.load_workbook(self.final_faire_template_path)

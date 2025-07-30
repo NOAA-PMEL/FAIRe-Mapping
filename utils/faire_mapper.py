@@ -330,9 +330,12 @@ class OmeFaireMapper:
 
     def save_final_df_as_csv(self, final_df: pd.DataFrame, sheet_name: str, header: int, csv_path: str) -> None:
         
-        faire_template_df = self.load_faire_template_as_df(file_path=self.faire_template_file, sheet_name=sheet_name, header=header)
+        try:
+            faire_template_df = self.load_faire_template_as_df(file_path=self.faire_template_file, sheet_name=sheet_name, header=header)
 
-        faire_final_df = pd.concat([faire_template_df, final_df], ignore_index=True)
+            faire_final_df = pd.concat([faire_template_df, final_df], ignore_index=True)
+        except: # for project metadata (who doesn't have colun names as headers)
+            faire_final_df = final_df
 
         faire_final_int_fixed = self.fix_int_cols(df=faire_final_df)
 

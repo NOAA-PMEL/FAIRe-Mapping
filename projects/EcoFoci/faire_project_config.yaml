@@ -70,8 +70,8 @@ pooled_samps:
     cont_type: extraction negative
   - pooled_samp_name: Dyson_NC_pool
     samps_that_were_pooled:
-    - E1717.NC.DY2306
-    - E1157.NC.DY2206
+    - E1717.NC.DY23-06
+    - E1157.NC.DY22-06
     sample_category: negative control
     cont_type: field negative
   - pooled_samp_name: SKQ23_NC_pool
