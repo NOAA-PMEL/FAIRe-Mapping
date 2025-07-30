@@ -122,7 +122,7 @@ mismatch_sample_names_metadata_to_raw_data_files_dict = {
     'E2139.': 'E.2139.',
     'E687.WCOA21': 'E687',
     '.SKQ21-15S': '.SKQ2021',
-    '.NO20-01': '.NO20'
+    '.NO20-01': '.NO20',
 }
 
 # Dictionary with assay_name as keys and links to associated pcr library preparation bebops
@@ -464,6 +464,6 @@ update_cruise_codes = {
     '.DY2306': '.DY23-06',
     '.SKQ2021': '.SKQ21-15S',
     '.DY20': '.DY20-12',
-    '.DY2012': '.DY20-12'
-    
+    '.DY2012': '.DY20-12',
+    '.SKQ21': '.SKQ21-15S'   
 }

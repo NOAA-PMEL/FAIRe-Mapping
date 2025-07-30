@@ -199,10 +199,13 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                     sample_name_lookup = sample_name
 
             # Had to add this because the .NO201 in the mismatch_sample_names_metadata_to_raw_data_files_dict was causing problems
+            # same with the Mid.NC.SKQ21
             # TODO: remove this after NO20 is finalized and moving onto new version of FAIRe-Mapper (wont' be backwards compatible)
             if 'E265.1B' in sample_name:
                 sample_name = 'E265.1B.NO20-01'
                 sample_name_lookup = 'E265.IB.NO20'
+            if sample_name == 'MID.NC.SKQ21-15S':
+                sample_name_lookup = 'Mid.NC.SKQ21'
             
             pattern = re.compile(f"^{re.escape(sample_name_lookup)}[_.]R[{file_num}].+")
 
@@ -381,7 +384,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                 sample_name = f'{self.run_name}.{marker}.POSITIVE.{sample_name}'
                 return sample_name
             else: # For regular samples
-                sample_name =  sample_name.replace('MP_', '').replace('_', '.').replace('.12S', '-12S') # replace .12S to -12S for SKQ23-12S samples.
+                sample_name =  sample_name.replace('MP_', '').replace('_', '.').replace('.12S', '-12S').replace('Mid', 'MID') # replace .12S to -12S for SKQ23-12S samples.
                 for old, new in update_cruise_codes.items():
                     sample_name = sample_name.replace(old, new)
                 return sample_name
