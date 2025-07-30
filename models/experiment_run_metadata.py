@@ -47,7 +47,13 @@ class ExperimentRunMetadata(BaseModel):
         if self.input_read_count < self.output_read_count:
             raise ValueError(f"Sample: {self.samp_name} has an input_read_count of {self.input_read_count} which is less than the output_read_count of {self.output_read_count}")
         return self
-
+    
+    @model_validator(mode='after')
+    def validate_count_metadata_is_not_none_for_all(self):
+        # throws warning if input_read_count, output_read_count, output_otu_num, and otu_num_tax_assigned are all 0 - insinuates sample mismatches when running experimentRunMetadata code
+        if self.input_read_count == 0 and self.output_read_count == 0 and self.output_otu_num == 0 and self.otu_num_tax_assigned == 0:
+             warnings.warn(f"{self.samp_name} has 0 for input_read_count, output_read_count, output_otu_num, and otu_num_tax_assigned. Check metadata/data. There may be as sample name mismatch!")
+        return self
 
 
 
