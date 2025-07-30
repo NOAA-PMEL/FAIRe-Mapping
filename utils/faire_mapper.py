@@ -125,7 +125,10 @@ class OmeFaireMapper:
             samp_name = samp_name.replace('.SKQ2021', '.SKQ21-15S')
         if '.NO20' in samp_name:
             samp_name = samp_name.replace('.NO20', '.NO20-01')
+        if 'Mid.NC.SKQ21' in samp_name:
+            samp_name = samp_name.replace('Mid.NC.SKQ21', 'MID.NC.SKQ21-15S')
       
+    
         return samp_name
     
     def extract_controlled_vocab(self, faire_attribute: str) -> list:

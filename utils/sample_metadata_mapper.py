@@ -465,7 +465,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             sample_name = sample_name.replace('_', '-')
         if '.DY23-06' in sample_name:
             sample_name = sample_name.replace('-', '')
-        if '.SKQ2021': # had to add this because shannon changed the sample names in the extraction sheet mid process.
+        if '.SKQ2021': 
             sample_name = sample_name.replace('.SKQ2021', '.SKQ21-15S')
 
         return sample_name
