@@ -97,7 +97,7 @@ class ProjectMapper(OmeFaireMapper):
         # 1. Combine all sample metadata spreadsheets into one and combine all experiment run metadata spreadsheets into one
 
         combined_sample_metadata_df = self.create_sample_metadata_df()
-        combined_exp_run_df = self.create_exp_run_metadata_df()
+        combined_exp_run_df = self.create_exp_run_metadata_df() 
 
         # Update sample names to match for sample name and rel_cont_id
         combined_sample_metadata_df[self.faire_sample_name_col] = combined_sample_metadata_df[self.faire_sample_name_col].apply(self.update_mismatch_sample_names)

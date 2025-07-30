@@ -73,7 +73,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.faire_template_file = self.config_file['faire_template_file']
         self.google_sheet_mapping_file_id = self.config_file['google_sheet_mapping_file_id']
         self.unwanted_cruise_code = self.config_file['cruise_code_fixes']['unwanted_cruise_code'] if 'cruise_code_fixes' in self.config_file else None
-        self.deisred_cruise_code = self.config_file['cruise_code_fixes']['desired_cruise_code'] if 'cruise_code_fixes' in self.config_file else None
+        self.desired_cruise_code = self.config_file['cruise_code_fixes']['desired_cruise_code'] if 'cruise_code_fixes' in self.config_file else None
 
         self.samp_dur_info = self.config_file['samp_store_dur_sheet_info'] if 'samp_store_dur_sheet_info' in self.config_file else None
         self.samp_stor_dur_dict = self.create_samp_stor_dict() if 'samp_store_dur_sheet_info' in self.config_file else None
@@ -177,7 +177,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         samp_dur_df = self.load_google_sheet_as_df(google_sheet_id=self.samp_dur_info['google_sheet_id'], sheet_name='Sheet1', header=0)
 
         # fix sample names if cruise-code was corrrected in sample names
-        if self.unwanted_cruise_code and self.deisred_cruise_code:
+        if self.unwanted_cruise_code and self.desired_cruise_code:
             samp_dur_df = self.fix_cruise_code_in_samp_names(df=samp_dur_df, sample_name_col=self.samp_dur_info['samp_name_col'])
         samp_dur_dict = dict(zip(samp_dur_df[self.samp_dur_info['samp_name_col']], samp_dur_df[self.samp_dur_info['samp_stor_dur_col']]))
 
@@ -311,6 +311,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                         for sample in valid_samples:
                             if 'blank' in sample.lower() or 'Larson NC' in sample:
                                 other_samples = [samp for samp in valid_samples if samp != sample]
+                                # update cruise codes in sample names
+                                if self.unwanted_cruise_code and self.desired_cruise_code:
+                                    sample = sample.replace(self.unwanted_cruise_code, self.desired_cruise_code)
+                                    other_samples = [samp.replace(self.unwanted_cruise_code, self.desired_cruise_code) for samp in other_samples]
                                 self.extraction_blank_rel_cont_dict[sample] = other_samples
                     except:
                         raise ValueError("blank dictionary mapping not working!")
@@ -357,13 +361,12 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             for faire_col, metadata_col in maps.items():
                 if metadata_col in extraction_column_mappings.keys():
                     maps[faire_col] = extraction_column_mappings.get(metadata_col)
-        
+
         return final_extraction_df
 
     def filter_cruise_avg_extraction_conc(self) -> pd.DataFrame:
         # If extractions have multiple measurements for extraction concentrations, calculates the avg.
         # and creates a column called pool_num to show the number of samples pooled
-
         # First filter extractions df for samples that contain the cruise key in their sample name
         cruise_key_mask = self.extractions_df.apply(
             lambda row: str(row[self.extraction_cruise_key_col]) in str(row[self.extract_samp_name_col])
@@ -398,6 +401,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # update dates to iso8601 TODO: may need to adjust this for ones that are already in this format
         extract_avg_df[self.extract_date_col] = extract_avg_df[self.extract_date_col].apply(
             self.convert_mdy_date_to_iso8061)
+        
+        if self.unwanted_cruise_code and self.desired_cruise_code:
+            if 'NO20' not in self.unwanted_cruise_code: # NO20 is updated in str_replace_samps (can't remove it from there because the experimentRunMetadata uses it)
+                extract_avg_df = self.fix_cruise_code_in_samp_names(df=extract_avg_df, sample_name_col=self.extract_samp_name_col)
 
         return extract_avg_df
 
@@ -419,7 +426,9 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # Remove 'CTD' from Cast_No. value if present
         samp_metadata_df[self.sample_metadata_cast_no_col_name] = samp_metadata_df[self.sample_metadata_cast_no_col_name].apply(
             self.remove_extraneous_cast_no_chars)
-
+        
+        if self.unwanted_cruise_code and self.desired_cruise_code:
+            samp_metadata_df = self.fix_cruise_code_in_samp_names(df=samp_metadata_df)
 
         return samp_metadata_df
 
@@ -491,11 +500,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             # Replace any - with NaN
             nc_df = nc_df.replace('-', pd.NA)
             samp_df_filtered = samp_df_filtered.replace('-', pd.NA)
-
-            # fix cruise codes in sample names
-            if self.unwanted_cruise_code and self.deisred_cruise_code:
-                nc_df = self.fix_cruise_code_in_samp_names(df=nc_df)
-                samp_df_filtered = self.fix_cruise_code_in_samp_names(df=samp_df_filtered)
             
             return samp_df_filtered, nc_df
         
@@ -633,7 +637,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # if sample name is not specified the will use the sample metadata sample name specified in the config - may be different (for sampe dur storage df)
         if not sample_name_col:
             sample_name_col = self.sample_metadata_sample_name_column
-        df[sample_name_col] = df[sample_name_col].str.replace(self.unwanted_cruise_code, self.deisred_cruise_code)
+        df[sample_name_col] = df[sample_name_col].str.replace(self.unwanted_cruise_code, self.desired_cruise_code)
 
         return df 
     
