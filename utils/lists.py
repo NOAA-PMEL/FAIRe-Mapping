@@ -118,10 +118,11 @@ marker_shorthand_to_pos_cont_gblcok_name = {
 # Mismatched samples metadata to raw data file matching
 # this dictionary has correct sample names (key), and the wrong sample name strings that might exist for the names in the raw data files.
 mismatch_sample_names_metadata_to_raw_data_files_dict = {
-    '.DY2012': '.DY20',
-    'E265.1B.NO20': 'E265.IB.NO20',
+    '.DY20-12': '.DY20',
     'E2139.': 'E.2139.',
-    'E687.WCOA21': 'E687'
+    'E687.WCOA21': 'E687',
+    '.SKQ21-15S': '.SKQ2021',
+    '.NO20-01': '.NO20'
 }
 
 # Dictionary with assay_name as keys and links to associated pcr library preparation bebops
@@ -453,3 +454,16 @@ faire_int_cols = [
                     'pool_dna_num',
                     'extract_well_number'
                 ]
+
+# used in the experiment run metadata to update to desired cruise codes. key is old cruise code (in experiment run metadata sheet) and value is desired code
+update_cruise_codes = {
+    # '.DY2012': '.DY20-12',
+    '.NO20': '.NO20-01',
+    '.DY2206': '.DY22-06',
+    '.DY2209': '.DY22-09',
+    '.DY2306': '.DY23-06',
+    '.SKQ2021': '.SKQ21-15S',
+    '.DY20': '.DY20-12',
+    '.DY2012': '.DY20-12'
+    
+}

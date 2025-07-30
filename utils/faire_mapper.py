@@ -108,11 +108,11 @@ class OmeFaireMapper:
         if '_' in samp_name and 'pool' not in samp_name: # osu samp names have _ that needs to be . For example, E62_1B_DY20. Pooled samples keep the underscore
             samp_name = samp_name.replace('_', '.')
         if '.DY20' in samp_name:
-           samp_name = samp_name.replace('.DY20', '.DY2012')
+           samp_name = samp_name.replace('.DY20', '.DY20-12')
         if '(P10 D2)' in samp_name:
             samp_name = samp_name.replace(' (P10 D2)', '') # for E1875.OC0723 (P10 D2) in Run2
-        if '.IB' in samp_name: # for E265.1B.NO20 sample - in metadata was E265.1B.NO20
-            return samp_name.replace('.IB', '.1B')
+        if '.IB.NO20' in samp_name: # for E265.1B.NO20 sample - in metadata was E265.1B.NO20
+            return samp_name.replace('.IB.NO20', '.1B.NO20-01')
         if 'E.2139.' in samp_name:
             return samp_name.replace('E.2139.', 'E2139.') # For E239 QiavacTest, had a . between E and number in metadata
         if 'E687' in samp_name:
@@ -123,6 +123,8 @@ class OmeFaireMapper:
             samp_name = samp_name.replace('*','')
         if '.SKQ2021' in samp_name:
             samp_name = samp_name.replace('.SKQ2021', '.SKQ21-15S')
+        if '.NO20' in samp_name:
+            samp_name = samp_name.replace('.NO20', '.NO20-01')
       
         return samp_name
     
