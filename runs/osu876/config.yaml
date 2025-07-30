@@ -2,8 +2,8 @@ run_metadata_sample_name_column: Sample
 run_metadata_marker_col_name: Marker
 run_metadata_sample_sheet_name: run_OSU876
 run_raw_data_path: # The raw data path of each marker folder (a lot are in a renamed folder) 
-  'Machida18S': /home/poseidon/mcallister/eDNA_bioinformatics/OSU/OSU876_HalfNorsemanWOAC_lane1/reads_dir_18S/
-  'Parada16S': /home/poseidon/mcallister/eDNA_bioinformatics/OSU/OSU876_HalfNorsemanWOAC_lane1/reads_dir_16S/
+  'Machida18S': /data/raw_data/2022-2023_OSU_MiSeq/20220127_OSU876_HalfNorsemanWOAC_Lane1_rawreads/renamed/reads_dir_18S/
+  'Parada16S': /data/raw_data/2022-2023_OSU_MiSeq/20220127_OSU876_HalfNorsemanWOAC_Lane1_rawreads/renamed/reads_dir_16S/
 run_sample_metadata_file_id: 1yiaidi6k2qtiDSzqAJ3h46eK258wgLnwx9PIwO0jQ1Q
 google_sheet_mapping_file_id: 18TNqn5H_spFEKed3N6PRIIPgTQ4SOoNFhCdU2BexHCk
 run_name: osu876 # for adding to the Positive control sample names
@@ -12,14 +12,14 @@ ignore_markers: # Add Metabarcoding Marker name EXACTLY from run_sample_metadata
 merged: True
 asv_counts_tsvs_for_run: 
   'Machida18S': 
-    secondary_path: /home/poseidon/mcallister/eDNA_bioinformatics/OSU/OSU876_HalfNorsemanWOAC_lane1/Machida18S_REVAMP_out/dada2/ASVs_counts.tsv
-    merged: /home/poseidon/mcallister/eDNA_bioinformatics/Run3/Machida18S_REVAMP_MERGE_NEW/dada2/ASVs_counts.tsv
+    secondary_path: /home/poseidon/mcallister/eDNA_bioinformatics/Orphans/DysonNorseman20_EcoFOCI_OSUruns/OSU876_HalfNorsemanWOAC_lane1/Machida18S_REVAMP_out/dada2/ASVs_counts.tsv
+    merged: /home/poseidon/mcallister/eDNA_bioinformatics/Run3/01_REVAMP/Machida18S_REVAMP_MERGE_NEW/dada2/ASVs_counts.tsv
   'Parada16S': 
-    secondary_path: /home/poseidon/mcallister/eDNA_bioinformatics/OSU/OSU876_HalfNorsemanWOAC_lane1/Parada16S_REVAMP_out/dada2/ASVs_counts.tsv
-    merged: /home/poseidon/mcallister/eDNA_bioinformatics/Run3_rerun/Parada16S_REVAMP_merged/dada2/ASVs_counts.tsv
+    secondary_path: /home/poseidon/mcallister/eDNA_bioinformatics/Orphans/DysonNorseman20_EcoFOCI_OSUruns/OSU876_HalfNorsemanWOAC_lane1/Parada16S_REVAMP_out/dada2/ASVs_counts.tsv
+    merged: /home/poseidon/mcallister/eDNA_bioinformatics/Run3_rerun/01_REVAMP/Parada16S_REVAMP_merged/dada2/ASVs_counts.tsv
 otu_num_tax_assigned_files_for_run: # The files used to calculate the otu_num_tax_assigned - Sean said it depends on the version of taxonomy we are using
-  'Machida18S': /home/poseidon/mcallister/eDNA_bioinformatics/Run3/Machida18S_REVAMP_MERGE_NEW/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
-  'Parada16S': /home/poseidon/mcallister/eDNA_bioinformatics/Run3_rerun/Parada16S_REVAMP_merged/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
+  'Machida18S': /home/poseidon/mcallister/eDNA_bioinformatics/Run3/01_REVAMP/Machida18S_REVAMP_MERGE_NEW/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
+  'Parada16S': /home/poseidon/mcallister/eDNA_bioinformatics/Run3_rerun/01_REVAMP/Parada16S_REVAMP_merged/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
 
 # path to json creds file for google sheets
 json_creds: /home/poseidon/zalmanek/FAIRe-Mapping/credentials.json
