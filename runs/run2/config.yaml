@@ -20,7 +20,7 @@ asv_counts_tsvs_for_run: #dloop left out because Sean said dLoop did not work fo
   '18Sv4': /home/poseidon/mcallister/eDNA_bioinformatics/Run2/01_REVAMP/18Sv4/dada2/ASVs_counts.tsv
   '18Sv9': /home/poseidon/mcallister/eDNA_bioinformatics/Run2/01_REVAMP/18Sv9/dada2/ASVs_counts.tsv
   'COI': /home/poseidon/mcallister/eDNA_bioinformatics/Run2/01_REVAMP/COI/dada2/ASVs_counts.tsv
-  'ITS1': //home/poseidon/mcallister/eDNA_bioinformatics/Run2/01_REVAMP/ITS1/dada2/ASVs_counts.tsv
+  'ITS1': /home/poseidon/mcallister/eDNA_bioinformatics/Run2/01_REVAMP/ITS1/dada2/ASVs_counts.tsv
   'Kelly16S': /home/poseidon/mcallister/eDNA_bioinformatics/Run2/01_REVAMP/Kelly16S/dada2/ASVs_counts.tsv
   'Machida18S': /home/poseidon/mcallister/eDNA_bioinformatics/Run2/01_REVAMP/Machida18S/dada2/ASVs_counts.tsv
   'MiFish': /home/poseidon/mcallister/eDNA_bioinformatics/Run2/01_REVAMP/MiFish/dada2/ASVs_counts.tsv
