@@ -107,7 +107,7 @@ class ProjectMapper(OmeFaireMapper):
         sample_metadata_with_pooled = self.add_pooled_samps_to_sample_metadata(sample_df=combined_sample_metadata_df, experiment_run_df=combined_exp_run_df)
         sample_metadata_with_pooled_rel_cont_id = self.update_rel_cont_id_with_pool_samp(sample_df=sample_metadata_with_pooled)
 
-         # Add positive samples to rel_cont_id and sample_df
+        # Add positive samples to rel_cont_id and sample_df
         pos_samp_map = self.create_positive_sample_map(run_df=combined_exp_run_df, sample_df=sample_metadata_with_pooled_rel_cont_id)
         sample_metadata_with_pooled_rel_cont_id[self.faire_rel_cont_id_col_name] = sample_metadata_with_pooled_rel_cont_id.apply(
             lambda row: self.add_pos_samps_to_rel_cont_id(metadata_row=row, positive_sample_map=pos_samp_map),
@@ -227,9 +227,10 @@ class ProjectMapper(OmeFaireMapper):
 
     def update_rel_cont_id_for_mismatch_samps(self, rel_cont_id: str) -> str:
         # Update the rel_cont_id to samples that had mistmatch names
-        rel_cont_id_list = rel_cont_id.split(' | ')
-        updated_rel_cont_id_list = [self.mismatch_samp_names_dict.get(samp) if samp in self.mismatch_samp_names_dict else samp for samp in rel_cont_id_list]
-        return ' | '.join(updated_rel_cont_id_list)
+        if pd.notna(rel_cont_id):
+            rel_cont_id_list = rel_cont_id.split(' | ')
+            updated_rel_cont_id_list = [self.mismatch_samp_names_dict.get(samp) if samp in self.mismatch_samp_names_dict else samp for samp in rel_cont_id_list]
+            return ' | '.join(updated_rel_cont_id_list)
 
     def add_pooled_samps_to_sample_metadata(self, sample_df: pd.DataFrame, experiment_run_df: pd.DataFrame) -> pd.DataFrame:
         # add pooled samples that are relevant to sample metadata spreadsheet
@@ -595,31 +596,35 @@ class ProjectMapper(OmeFaireMapper):
         event_date = metadata_row[self.faire_eventDate_col]
 
         sample_cat = metadata_row[self.faire_sample_category_col_name]
+        
+        try:
+            if sample_cat == 'sample':
+                # Handle both "Z" and "+00:00" UTC formats
+                if event_date.endswith('Z'):
+                    event_date = event_date[:-1] + '+00:00'
 
-        if sample_cat == 'sample':
-            # Handle both "Z" and "+00:00" UTC formats
-            if event_date.endswith('Z'):
-                event_date = event_date[:-1] + '+00:00'
+                dt_utc = datetime.fromisoformat(event_date)
+                date_obj = dt_utc.date()
 
-            dt_utc = datetime.fromisoformat(event_date)
-            date_obj = dt_utc.date()
-
-            # create location
-            location = LocationInfo(latitude=lat, longitude=lon)
+                # create location
+                location = LocationInfo(latitude=lat, longitude=lon)
 
             # Calculate sun times in UTC
-            s = sun(location.observer, date=date_obj, tzinfo=pytz.UTC)
+                s = sun(location.observer, date=date_obj, tzinfo=pytz.UTC)
 
-            # Convert to ISO format with 'Z' suffix
-            sunrise_iso = s['sunrise'].isoformat().replace('+00:00', 'Z')
-            sunset_iso = s['sunset'].isoformat().replace('+00:00', 'Z')
+                # Convert to ISO format with 'Z' suffix
+                sunrise_iso = s['sunrise'].isoformat().replace('+00:00', 'Z')
+                sunset_iso = s['sunset'].isoformat().replace('+00:00', 'Z')
 
-            sunset_sunrise_method = "sunset and sunrise times calculated using eventDate and python's astral sun library."
-        
+                sunset_sunrise_method = "sunset and sunrise times calculated using eventDate and python's astral sun library."
+            
 
-            return sunrise_iso, sunset_iso, sunset_sunrise_method
-        else:
-            return 'not applicable: control sample', 'not applicable: control sample', 'not applicable: control sample'
+                return sunrise_iso, sunset_iso, sunset_sunrise_method
+            else:
+                return 'not applicable: control sample', 'not applicable: control sample', 'not applicable: control sample'
+        except ValueError as e:
+            print(f"\033[93m{metadata_row[self.faire_sample_name_col]}: {e}\033[0m")
+            return 'not applicable'
 
     def drop_samps_from_faire_rel_column_that_dropped(self, df: pd.DataFrame) -> pd.DataFrame:
         # Drop the sample names from rel_cont_id, or biological_rep_relation that dont' exist as a samp_name in the sample metadata df
