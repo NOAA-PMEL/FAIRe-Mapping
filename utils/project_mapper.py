@@ -58,7 +58,7 @@ class ProjectMapper(OmeFaireMapper):
         self.project_name = self.config_file['project_name'] if 'project_name' in self.config_file else None # None for NCBI
         self.project_info_google_sheet_id = self.config_file['project_info_google_sheet_id'] if 'project_info_google_sheet_id' in self.config_file else None # None for NCBI
         self.project_info_df = self.load_google_sheet_as_df(google_sheet_id=self.project_info_google_sheet_id, sheet_name='Sheet1', header=0) if 'project_info_google_sheet_id' in self.config_file else None # None for NCBI
-        self.project_id = dict(zip(self.project_info_df['faire_field'], self.project_info_df['value']))['project_id']
+        self.project_id = dict(zip(self.project_info_df['faire_field'], self.project_info_df['value']))['project_id'] if 'project_info_google_sheet_id' in self.config_file else None # None for NCBI
         self.mismatch_samp_names_dict = self.config_file['mismatch_sample_names'] if 'mismatch_sample_names' in self.config_file else {}
         self.pooled_samps_dict = self.config_file['pooled_samps'] if 'pooled_samps' in self.config_file else {}
         self.bioinformatics_bebop_path = self.config_file['bioinformatics_bebop_path'] if 'bioinformatics_bebop_path' in self.config_file else None # None if NCBI

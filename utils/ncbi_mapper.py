@@ -4,6 +4,7 @@ import frontmatter
 import requests
 import base64
 import tempfile
+import re
 from .lists import faire_to_ncbi_units, ncbi_faire_to_ncbi_column_mappings_exact, ncbi_faire_sra_column_mappings_exact
 from openpyxl import load_workbook
 
@@ -27,6 +28,7 @@ class NCBIMapper:
     ncbi_library_selection = 'PCR'
     ncbi_library_layout = 'Paired-end'
     ncbi_file_type = 'fastq'
+    ncbi_bioprojec_col_name = 'bioproject_accession'
     faire_missing_values = ["not applicable: control sample",
                             "not applicable: sample group",
                             "not applicable",
@@ -41,6 +43,7 @@ class NCBIMapper:
                             ]
     faire_samp_name_col = "samp_name"
     faire_stations_in_5km_col = "station_ids_within_5km_of_lat_lon"
+    faire_associated_seqs_col_name = "associatedSequences"
 
     def __init__(self, final_faire_sample_metadata_df: pd.DataFrame, 
                  final_faire_experiment_run_metadata_df: pd.DataFrame,
@@ -132,12 +135,19 @@ class NCBIMapper:
         # Fifth add description for PCR technical replicates and additional column - needed to differentiate their metadata for submission to be accepted
         updated_df['description'] = self.faire_sample_df['samp_name'].apply(self.add_description_for_pcr_reps)
         updated_df['technical_rep_id'] = self.faire_sample_df['samp_name'].apply(self.add_pcr_technical_rep)
+        # Get Bioproject accession from exp run df
+        updated_df[self.ncbi_bioprojec_col_name] = self.faire_experiment_run_df[self.faire_associated_seqs_col_name].apply(self.get_ncbi_bioproject_if_exists)
+        
+        # drop technical_rep_id if its empty
+        if 'technical_rep_id' in updated_df.columns and updated_df['technical_rep_id'].isnull().all():
+            updated_df = updated_df.drop(columns=['technical_rep_id'])
 
         # 6th add additional column in FAIRe sample df that do not exist in ncbi template
         final_ncbi_df = self.add_additional_faire_cols(faire_samp_df=self.faire_sample_df, updated_ncbi_df=updated_df)
 
         # 7th drop fields that should not be included in NCBI submission (like within_5km and rel_cont_id)
         last_final_ncbi_df = self.drop_samp_cols_not_meant_for_submission(final_ncbi_df)
+
             
         return last_final_ncbi_df
 
@@ -365,3 +375,18 @@ class NCBIMapper:
             return sample_df.drop(columns=[self.faire_stations_in_5km_col])
         else:
             return sample_df
+
+    def get_ncbi_bioproject_if_exists(self, associated_sequences: str) -> str:
+        # Uses the associatedSequences column in the FAIRe df to get the NCBI bioproject accession number:
+        try:
+            associated_seqs = associated_sequences.split(' | ')
+            for accession_num in associated_seqs:
+                if 'PRJNA' in accession_num:
+                    match = re.search(r'PRJNA\w+', accession_num)
+                    if match:
+                        bioproject_id = match.group()
+                        return bioproject_id
+        except:
+            pass
+
+                        

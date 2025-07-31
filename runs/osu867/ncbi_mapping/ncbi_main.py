@@ -1,4 +1,5 @@
 import pandas as pd
+import argparse
 import sys
 sys.path.append("../../..")
 from utils.project_mapper import ProjectMapper
@@ -6,8 +7,13 @@ from utils.ncbi_mapper import NCBIMapper
 
 def main() -> None:
 
+    parser = argparse.ArgumentParser(description='Process project configuration path for FAIRe mapping of projects for GBIF/OBIS')
+    parser.add_argument('gh_token', type=str, help='Github personal access token') 
+
+    args = parser.parse_args()
+
     # Create final FAIRe experimentRunMetadata and final FAIRe sampleMetadata
-    project_creator = ProjectMapper(config_yaml='ncbi_config.yaml')
+    project_creator = ProjectMapper(config_yaml='ncbi_config.yaml', gh_token=args.gh_token)
     sample_metadata_df, experiment_run_metadata_df = project_creator.process_sample_run_data()
 
     # saves faire sample metadata and experimentRunMetadata as csvs for viewing purposes (uncomment if needed)
