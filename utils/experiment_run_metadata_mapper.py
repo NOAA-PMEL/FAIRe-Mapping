@@ -384,7 +384,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                 sample_name = f'{self.run_name}.{marker}.POSITIVE.{sample_name}'
                 return sample_name
             else: # For regular samples
-                sample_name =  sample_name.replace('MP_', '').replace('_', '.').replace('.12S', '-12S').replace('Mid', 'MID') # replace .12S to -12S for SKQ23-12S samples.
+                sample_name =  sample_name.replace('MP_', '').replace('_', '.').replace('.12S', '-12S').replace('Mid', 'MID').replace('DY2306', 'DY23-06').replace('DY2209', 'DY22-09').replace('DY2206', 'DY22-06') # replace .12S to -12S for SKQ23-12S samples.
                 for old, new in update_cruise_codes.items():
                     sample_name = sample_name.replace(old, new)
                 return sample_name
@@ -576,7 +576,38 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         sample_name = metadata_row[self.run_metadata_sample_name_column]
         # Get the count
         try:
-            count = self.asv_data_dict.get(marker).get(sample_name).get(faire_col)
+            count = self.asv_data_dict.get(marker).get(sample_name.strip()).get(faire_col)
+        except AttributeError:
+            # If there is a key error because sample_name does not exist in the dictionary, try searching for a part of the sample name (the sample names most likely mismatch a little bit)
+            # This breaks the sample name into its E number, Tech rep (if exists), and bio rep (if exists) and puts those pieces into a list, then checks the asv_data_dict for keys that include
+            # all of those pieces (so will essentially check the dict for keys with the same E number, bio rep, and tech rep (will ignore cruise code or underscores/periods)
+            sample_name = sample_name.strip()
+            if '.' in sample_name:
+                sample_name_bits = sample_name.split('.')
+                e_number = sample_name_bits[0]
+
+                samp_bit_without_cruise_code = [e_number]
+                for i, bit in enumerate(sample_name_bits):
+                    if 'PCR' in bit:
+                        tech_rep = bit
+                        samp_bit_without_cruise_code.append(tech_rep)
+                    if 'B' in bit:
+                        if tech_rep and i != len(sample_name_bits) - 2: # if there is a technical rep, the cruise code comes before the PCR part, so will be -2 (don't want B to be in the cruise code) 
+                            bio_rep = bit
+                        if not tech_rep and i != len(sample_name_bits) - 1: # check for B, but make sure its not the last item (this could be in the cruise code)
+                            bio_rep = bit
+                        samp_bit_without_cruise_code.append(bio_rep)
+
+                for samp_name, count_data in self.asv_data_dict[marker].items():
+                    if all(samp_bit in samp_name for samp_bit in samp_bit_without_cruise_code):
+                        count = count_data.get(faire_col)
+                        if count:
+                            print(f'\033[32m{sample_name} cant find a match in the asv_data_dict exactly for marker {marker}, but did find a match based on similarity: {samp_name}. If this is incorrect please look into!\033[0m')
+                        break
+                    else:
+                        count = 0
+                        
+        
         except Exception as e:
             print(f"No count data for {sample_name} with {marker} {e}")
             count = 0
