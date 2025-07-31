@@ -2,10 +2,10 @@ name: CSV FAIRe Validation
 on:
   pull_request:
     paths: 
-      - 'runs/**/data/*.csv'
+      - 'runs/**/data/*faire.csv'
       - 'projects/**/**/data/*.csv'
-      - 'projects/**/data/*experimentRunMetadata.csv'
-      - 'projects/**/data/*sampleMetadata.csv'
+      - 'projects/**/data/*experimentRunMetadata*.csv'
+      - 'projects/**/data/*sampleMetadata*.csv'
 
 permissions:
   contents: read
@@ -54,10 +54,10 @@ jobs:
       uses: tj-actions/changed-files@v40
       with:
         files: | 
-          runs/**/data/*.csv
-          projects/**/**/data/*.csv
-          projects/**/data/*experimentRunMetadata.csv
-          projects/**/data/*sampleMetadata.csv
+          'runs/**/data/*faire.csv'
+          'projects/**/**/data/*.csv'
+          'projects/**/data/*experimentRunMetadata*.csv'
+          'projects/**/data/*sampleMetadata*.csv'
 
     - name: Conditionally download LFS files
       if: steps.changed-files.outputs.any_change == 'true'   
@@ -77,8 +77,8 @@ jobs:
         # Function to determine model class
         get_model_class() {
           case "$1" in
-            *runs/*/data/*.csv|projects/**/data/*experimentRunMetadata.csv) echo "ExperimentRunMetadata" ;;
-            *projects/*/data/*.csv|projects/**/data/*sampleMetadata.csv) echo "SampleMetadata" ;;
+            *runs/**/data/*faire.csv|projects/**/data/*experimentRunMetadata*.csv) echo "ExperimentRunMetadata" ;;
+            *projects/**/data/*sampleMetadata*.csv|projects/**/**/data/*.csv) echo "SampleMetadata" ;;
             *) echo "SampleMetadata" ;;
           esac
         }
