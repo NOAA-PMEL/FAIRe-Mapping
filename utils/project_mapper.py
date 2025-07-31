@@ -74,6 +74,10 @@ class ProjectMapper(OmeFaireMapper):
 
         sample_metadata_df, experiment_run_metadata_df = self.process_sample_run_data()
 
+        # Drop submission_type for experiment_run_metadata_df - only applicable to ncbi and needs to be dropped here
+        if 'submission_type' in experiment_run_metadata_df.columns:
+            experiment_run_metadata_df.drop(columns=['submission_type'])
+
         data_dir = os.path.dirname(self.final_faire_template_path)
 
         # Save sample metadata first to excel file and csv, and then use that excel file and save experimentRunMetadata df
@@ -659,6 +663,7 @@ class ProjectMapper(OmeFaireMapper):
             return sample_df.drop(columns=[self.faire_stations_in_5km_col])
         else:
             return sample_df
+        
 
     def load_project_level_metadata_to_excel_and_save_as_csv(self) -> None:
         # Maps the project level metadata to the projectMetadata excel sheet
