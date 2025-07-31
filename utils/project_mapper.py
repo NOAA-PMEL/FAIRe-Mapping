@@ -672,8 +672,7 @@ class ProjectMapper(OmeFaireMapper):
 
         # save as csv
         data_dir = os.path.dirname(self.final_faire_template_path)
-        self.project_info_df['mod_date'] = today_str
-        self.save_final_df_as_csv(final_df=self.project_info_df, sheet_name='Sheet1', header=0, csv_path=f"{data_dir}/projectMetadata_{self.project_id}.csv")
+        self.save_final_df_as_csv(final_df=pd.DataFrame([project_dict]), sheet_name='Sheet1', header=0, csv_path=f"{data_dir}/projectMetadata_{self.project_id}.csv")
 
         # save as excel
         workbook = openpyxl.load_workbook(self.final_faire_template_path)

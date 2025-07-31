@@ -661,7 +661,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         depth = metadata_row[depth_col]
         tot_depth_water_col = metadata_row[tot_depth_col]
 
-        return tot_depth_water_col - depth
+        return round((tot_depth_water_col - depth), 2)
 
     def get_line_id(self, station) -> str:
         # Get the line id by the referance station (must be standardized station name)
@@ -693,11 +693,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             min_depth = max_depth
         return min_depth
 
-    def calculate_filter_sa_from_filter_diam(self, filter_diam: float) -> float:
-        # calculate the filter surface area from the filter diameter (pie*r^2)
-        radius = filter_diam/2
-        filter_sa = round(np.pi * (radius**2), 2)
-        return filter_sa
 
     def format_geo_loc(self, metadata_row: str, geo_loc_metadata_col: str) -> dict:
         # TODO: add if statement for Arctic OCean? SKQ21-12S?
