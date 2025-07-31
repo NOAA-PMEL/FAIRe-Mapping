@@ -3,6 +3,7 @@ import sys
 sys.path.append("../../..")
 from utils.sample_metadata_mapper import FaireSampleMetadataMapper
 
+# metadata was swapped
 def swap_e27_e28_sample_metadata(df: pd.DataFrame) -> pd.DataFrame:
     # According to Sean's email "Note on NCBI submission and swapped metadata" samples, E27_2B_DY20 (SAMN35688246) and E28_1B_DY20 (SAMN35688288) 
     # metadata need to be swapped for sample collection and environmental data (not extraction and downstream)
@@ -26,16 +27,16 @@ def swap_e27_e28_sample_metadata(df: pd.DataFrame) -> pd.DataFrame:
                        'density_unit', 'air_temperature_unit', 'par_unit', 'air_pressure_at_sea_level_unit', 'measurements_from', 'collected_by']
     
     # Create temporary copies of the values
-    temp_e27_1b = df.loc[df['samp_name'] == 'E27.1B.DY2012', columns_to_swap].copy()
-    temp_e28_1b = df.loc[df['samp_name'] == 'E28.1B.DY2012', columns_to_swap].copy()
-    temp_e27_2b = df.loc[df['samp_name'] == 'E27.2B.DY2012', columns_to_swap].copy()
-    temp_e28_2b = df.loc[df['samp_name'] == 'E28.2B.DY2012', columns_to_swap].copy()
+    temp_e27_1b = df.loc[df['samp_name'] == 'E27.1B.DY20-12', columns_to_swap].copy()
+    temp_e28_1b = df.loc[df['samp_name'] == 'E28.1B.DY20-12', columns_to_swap].copy()
+    temp_e27_2b = df.loc[df['samp_name'] == 'E27.2B.DY20-12', columns_to_swap].copy()
+    temp_e28_2b = df.loc[df['samp_name'] == 'E28.2B.DY20-12', columns_to_swap].copy()
 
     # Perform the swaps
-    df.loc[df['samp_name'] == 'E27.1B.DY2012', columns_to_swap] = temp_e28_1b.values
-    df.loc[df['samp_name'] == 'E28.1B.DY2012', columns_to_swap] = temp_e27_1b.values
-    df.loc[df['samp_name'] == 'E27.2B.DY2012', columns_to_swap] = temp_e28_2b.values
-    df.loc[df['samp_name'] == 'E28.2B.DY2012', columns_to_swap] = temp_e27_2b.values
+    df.loc[df['samp_name'] == 'E27.1B.DY20-12', columns_to_swap] = temp_e28_1b.values
+    df.loc[df['samp_name'] == 'E28.1B.DY20-12', columns_to_swap] = temp_e27_1b.values
+    df.loc[df['samp_name'] == 'E27.2B.DY20-12', columns_to_swap] = temp_e28_2b.values
+    df.loc[df['samp_name'] == 'E28.2B.DY20-12', columns_to_swap] = temp_e27_2b.values
 
     return df
 
@@ -85,7 +86,7 @@ def create_dy2012_sample_metadata():
             )
         elif faire_col == 'materialSampleID' or faire_col == 'sample_derived_from':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
-                lambda row: sample_mapper.add_material_sample_id(metadata_row=row),
+                lambda row: sample_mapper.add_material_sample_id(metadata_row=row, cruise_code='DY20-12'),
                 axis=1
             )
         elif faire_col == 'wind_direction':
@@ -112,6 +113,18 @@ def create_dy2012_sample_metadata():
         elif faire_col == 'extract_id':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(
                 sample_mapper.create_extract_id
+            )
+
+        elif faire_col == 'extract_well_number':
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.get_well_number_from_well_field(metadata_row=row, well_col=metadata_col),
+                axis=1
+            )
+        
+        elif faire_col == 'extract_well_position':
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.get_well_position_from_well_field(metadata_row=row, well_col=metadata_col),
+                axis = 1 
             )
 
         elif faire_col == 'dna_yield':
@@ -144,7 +157,7 @@ def create_dy2012_sample_metadata():
             )
             
             sample_metadata_results['env_local_scale'] = sample_mapper.sample_metadata_df['finalMaxDepth'].apply(sample_mapper.calculate_env_local_scale)
-
+        
         elif faire_col =='collected_by':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(
                 lambda row: row.replace(', ', ' | ')
@@ -171,7 +184,7 @@ def create_dy2012_sample_metadata():
 
 
     # Step 4: fill in NA with missing not collected or not applicable because they are samples and adds NC to rel_cont_id
-    sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))
+    sample_df = sample_mapper.fill_empty_sample_values_and_finalize_sample_df(df = pd.DataFrame(sample_metadata_results))
 
     swap_samps_sample_df = swap_e27_e28_sample_metadata(df=sample_df)
     
@@ -183,7 +196,7 @@ def create_dy2012_sample_metadata():
     faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, swap_samps_sample_df, controls_df])
     # Add rel_cont_id
     faire_sample_df_updated = sample_mapper.add_extraction_blanks_to_rel_cont_id(final_sample_df=faire_sample_df)
- 
+    
     # step 7: save as csv:
     sample_mapper.save_final_df_as_csv(final_df=faire_sample_df_updated, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2012/data/dy2012_faire.csv')
    

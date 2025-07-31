@@ -10,6 +10,7 @@ import warnings
 import yaml
 import re
 from .custom_exception import ControlledVocabDoesNotExistError
+from .lists import faire_int_cols
 import gspread #library that makes it easy for us to interact with the sheet
 from google.oauth2.service_account import Credentials
 # import requests
@@ -74,7 +75,7 @@ class OmeFaireMapper:
     def load_csv_as_df(self, file_path: Path, header=0, sep=',') -> pd. DataFrame:
         # Load csv files as a data frame
 
-        return pd.read_csv(file_path, header=header, dtype=str, sep=sep)
+        return pd.read_csv(file_path, header=header, sep=sep)
     
     def load_google_sheet_as_df(self, google_sheet_id: str, sheet_name: str, header: int) -> pd.DataFrame:
 
@@ -107,11 +108,11 @@ class OmeFaireMapper:
         if '_' in samp_name and 'pool' not in samp_name: # osu samp names have _ that needs to be . For example, E62_1B_DY20. Pooled samples keep the underscore
             samp_name = samp_name.replace('_', '.')
         if '.DY20' in samp_name:
-           samp_name = samp_name.replace('.DY20', '.DY2012')
+           samp_name = samp_name.replace('.DY20', '.DY20-12')
         if '(P10 D2)' in samp_name:
             samp_name = samp_name.replace(' (P10 D2)', '') # for E1875.OC0723 (P10 D2) in Run2
-        if '.IB' in samp_name: # for E265.1B.NO20 sample - in metadata was E265.1B.NO20
-            return samp_name.replace('.IB', '.1B')
+        if '.IB.NO20' in samp_name: # for E265.1B.NO20 sample - in metadata was E265.1B.NO20
+            return samp_name.replace('.IB.NO20', '.1B.NO20-01')
         if 'E.2139.' in samp_name:
             return samp_name.replace('E.2139.', 'E2139.') # For E239 QiavacTest, had a . between E and number in metadata
         if 'E687' in samp_name:
@@ -120,7 +121,19 @@ class OmeFaireMapper:
             samp_name = samp_name.replace('E.', '')
         if '*' in samp_name:
             samp_name = samp_name.replace('*','')
-      
+        if '.SKQ2021' in samp_name:
+            samp_name = samp_name.replace('.SKQ2021', '.SKQ21-15S')
+        if '.NO20' in samp_name:
+            samp_name = samp_name.replace('.NO20', '.NO20-01')
+        if 'Mid.NC.SKQ21' in samp_name:
+            samp_name = samp_name.replace('Mid.NC.SKQ21', 'MID.NC.SKQ21-15S')
+        if '.DY2206' in samp_name:
+            samp_name = samp_name.replace('.DY2206', '.DY22-06')
+        if '.DY2209' in samp_name:
+            samp_name =  samp_name.replace('.DY2209', '.DY22-09')
+        if '.DY2306' in samp_name:
+            samp_name =  samp_name.replace('.DY2306', '.DY23-06')
+
         return samp_name
     
     def extract_controlled_vocab(self, faire_attribute: str) -> list:
@@ -233,7 +246,23 @@ class OmeFaireMapper:
             
         else:
             return "missing: not provided"
-        
+
+    def fix_int_cols(self, df:pd.DataFrame) -> pd.DataFrame:
+        # converts columns that are int to so will not save as float. May need to update list in .lists
+        df = df.copy()
+      
+        # Add WOCE that may have been missed
+        cols_to_convert = []
+        cols_to_convert.extend(faire_int_cols)
+        cols_to_convert.extend([col for col in df.columns if 'WOCE' in col])
+        cols_to_convert = list(set(cols_to_convert))
+
+        for col in cols_to_convert:
+            if col in df.columns:
+                df[col] = df[col].apply(lambda x: x if pd.isna(x) or x in self.faire_missing_values else int(float(x))) 
+
+        return df
+    
     def reorder_columns(self, df: pd.DataFrame) -> pd.DataFrame:
         # orders the final columns so unit and method columns are next to their corresponding fields
         original_cols = df.columns.tolist()
@@ -306,11 +335,16 @@ class OmeFaireMapper:
 
     def save_final_df_as_csv(self, final_df: pd.DataFrame, sheet_name: str, header: int, csv_path: str) -> None:
         
-        faire_template_df = self.load_faire_template_as_df(file_path=self.faire_template_file, sheet_name=sheet_name, header=header)
+        try:
+            faire_template_df = self.load_faire_template_as_df(file_path=self.faire_template_file, sheet_name=sheet_name, header=header)
 
-        faire_final_df = pd.concat([faire_template_df, final_df], ignore_index=True)
+            faire_final_df = pd.concat([faire_template_df, final_df], ignore_index=True)
+        except: # for project metadata (who doesn't have colun names as headers)
+            faire_final_df = final_df
 
-        faire_final_df_reorderd = self.reorder_columns(df=faire_final_df)
+        faire_final_int_fixed = self.fix_int_cols(df=faire_final_df)
+
+        faire_final_df_reorderd = self.reorder_columns(df=faire_final_int_fixed)
 
         faire_final_df_reorderd.to_csv(csv_path, quoting=csv.QUOTE_NONNUMERIC, index=False)
 
@@ -330,8 +364,9 @@ class OmeFaireMapper:
                 # Store the row 2 value for this column name
                 original_row2_headers[col_name] = sheet.cell(row=2, column=col_idx).value
 
-        # Step 3: Reorder the input DataFrame's columns using your reorder_columns method
+        # Step 3: Reorder the input DataFrame's columns and fix the ints
         reordered_faire_template_df = self.reorder_columns(faire_template_df)
+        faire_ints_fixed_df = self.fix_int_cols(df=reordered_faire_template_df)
         
         # Step 4: Clear existing headers (rows 2 and 3) and all data from row 4 onwards
         # This ensures a clean slate before writing new, reordered headers and data.
@@ -340,7 +375,7 @@ class OmeFaireMapper:
                 sheet.cell(row=row, column=col).value = None
 
         # Step 5: Write the new headers (row 2 and row 3) based on the reordered DataFrame
-        for col_idx, col_name in enumerate(reordered_faire_template_df.columns, 1):
+        for col_idx, col_name in enumerate(faire_ints_fixed_df.columns, 1):
             col_letter = get_column_letter(col_idx)
             
             # Write column name to row 3 (the main header row)
@@ -356,7 +391,7 @@ class OmeFaireMapper:
 
         # Step 6: Write the data frame data to the sheet (starting at row 4)
         # Iterate through the reordered DataFrame and write its values to the Excel sheet.
-        for row_idx, row_data in enumerate(reordered_faire_template_df.values, 4):
+        for row_idx, row_data in enumerate(faire_ints_fixed_df.values, 4):
             for col_idx, value in enumerate(row_data, 1):
                 sheet.cell(row=row_idx, column=col_idx).value = value
 

@@ -24,6 +24,11 @@ samp_store_dur_sheet_info: # Include only if cruise sample info in a samp_store_
   samp_name_col: FINAL Sample NAME
   samp_stor_dur_col: sample_stor_dur
   dur_units: hour
+
+# only if the cruise code in the sample name needs to be changed
+cruise_code_fixes:
+  unwanted_cruise_code: '.DY2209'
+  desired_cruise_code: '.DY22-09' 
   
 # mapping file related
 google_sheet_mapping_file_id: 1QO3m-Nnc0H9WjqRz8BnihUgTxDX-CaNgOys26TqAYjQ

@@ -47,8 +47,23 @@ class ExperimentRunMetadata(BaseModel):
         if self.input_read_count < self.output_read_count:
             raise ValueError(f"Sample: {self.samp_name} has an input_read_count of {self.input_read_count} which is less than the output_read_count of {self.output_read_count}")
         return self
+    
+    @model_validator(mode='after')
+    def validate_count_metadata_is_not_none_for_all(self):
+        # throws warning if input_read_count, output_read_count, output_otu_num, and otu_num_tax_assigned are all 0 - insinuates 
+        # sample mismatches for raw data files and asv dict when running experimentRunMetadata code (e.g. sample in metadata does not match what's in raw_dicts and asv_dict)
+        if self.input_read_count == 0 and self.output_read_count == 0 and self.output_otu_num == 0 and self.otu_num_tax_assigned == 0:
+             warnings.warn(f"{self.samp_name} with {self.assay_name} has 0 for input_read_count, output_read_count, output_otu_num, and otu_num_tax_assigned. Check metadata/data. There may be as sample name mismatch in the raw_dict and asv_dict compared to the sample name in the metadata!")
+        return self
 
-
+    @model_validator(mode='after')
+    def validate_count_metadata_is_not_none_for_asv_reliant_fields(self):
+         # throws wanring if output_read_count, output_otu_num, and otu_num_tax_assigned are 0 - this insinuates there is a sample mismatch 
+         # in the asv_dict that needs to be checked (e.g. sample name in the metadata does not match what is in the asv_dict so it comes out to 0 for all three fields)
+        if self.output_read_count == 0 and self.output_otu_num == 0 and self.otu_num_tax_assigned == 0 and self.input_read_count != 0:
+              warnings.warn(f"{self.samp_name} with assay {self.assay_name} has 0 for output_read_count, output_otu_num and otu_num_tax_assigned - please check that sample name in metadata matches what is in the asv_dict")
+        return self
+              
 
 
 

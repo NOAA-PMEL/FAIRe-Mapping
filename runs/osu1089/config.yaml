@@ -2,7 +2,7 @@ run_metadata_sample_name_column: Sample
 run_metadata_marker_col_name: Marker
 run_metadata_sample_sheet_name: run_OSU1089
 run_raw_data_path: # The raw data path of each marker folder (a lot are in a renamed folder) 
-  'Machida18S': /home/poseidon/mcallister/eDNA_bioinformatics/OSU/MiSeq1089_Norseman_Pool2_18S/reads_dir_18S/
+  'Machida18S': /data/raw_data/2022-2023_OSU_MiSeq/20231002_MiSeq1089/renamed/reads_dir_18S/
 run_sample_metadata_file_id: 1dmVFwA_Dx7wuO0xFgAKv2Rp4EXdRXx2La50JO4uoDjI
 google_sheet_mapping_file_id: 1QK12F9nj1QJfKLjBVIsBYO_C7ftU7XHA2IX7FgKq4D8
 run_name: osu1089 # for adding to the Positive control sample names
@@ -11,10 +11,10 @@ ignore_markers: # Add Metabarcoding Marker name EXACTLY from run_sample_metadata
 merged: True
 asv_counts_tsvs_for_run: #dloop left out because Sean said dLoop did not work for Run2, keys match metabarcoding marker in metadata spreadsheet
   'Machida18S': 
-    secondary_path: /home/poseidon/mcallister/eDNA_bioinformatics/OSU/MiSeq1089_Norseman_Pool2_18S/Machida18S_REVAMP_out/dada2/ASVs_counts.tsv
-    merged: /home/poseidon/mcallister/eDNA_bioinformatics/Run3/Machida18S_REVAMP_MERGE_NEW/dada2/ASVs_counts.tsv
+    secondary_path: /home/poseidon/mcallister/eDNA_bioinformatics/Orphans/DysonNorseman20_EcoFOCI_OSUruns/MiSeq1089_Norseman_Pool2_18S/Machida18S_REVAMP_out/dada2/ASVs_counts.tsv
+    merged: /home/poseidon/mcallister/eDNA_bioinformatics/Run3/01_REVAMP/Machida18S_REVAMP_MERGE_NEW/dada2/ASVs_counts.tsv
 otu_num_tax_assigned_files_for_run: # The files used to calculate the otu_num_tax_assigned - Sean said it depends on the version of taxonomy we are using
-  'Machida18S': /home/poseidon/mcallister/eDNA_bioinformatics/Run3/Machida18S_REVAMP_MERGE_NEW/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
+  'Machida18S': /home/poseidon/mcallister/eDNA_bioinformatics/Run3/01_REVAMP/Machida18S_REVAMP_MERGE_NEW/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
  
 # path to json creds file for google sheets
 json_creds: /home/poseidon/zalmanek/FAIRe-Mapping/credentials.json

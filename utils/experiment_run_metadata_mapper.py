@@ -1,5 +1,5 @@
 from .faire_mapper import OmeFaireMapper
-from .lists import marker_to_assay_mapping, marker_to_shorthand_mapping, mismatch_sample_names_metadata_to_raw_data_files_dict
+from .lists import marker_to_assay_mapping, marker_to_shorthand_mapping, mismatch_sample_names_metadata_to_raw_data_files_dict, update_cruise_codes
 from .custom_exception import NoAcceptableAssayMatch
 from pathlib import Path
 import yaml
@@ -47,7 +47,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         self._create_count_asv_dict(revamp_blast=self.config_file['revamp_blast'])
 
         self.exp_run_faire_template_df = self.load_faire_template_as_df(file_path=self.config_file['faire_template_file'], sheet_name=self.faire_template_exp_run_sheet_name, header=self.faire_sheet_header).dropna()
-        
+    
     def generate_run_metadata(self) -> pd.DataFrame :
         # Works for run2, need to check other jv runs - maybe can potentially use for OSU runs, if mapping file is generically the same?
         exp_metadata_results = {}
@@ -113,7 +113,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         faire_exp_df = pd.concat([self.exp_run_faire_template_df, exp_df])
 
         # Create non-curated asv tables (rawOtu)
-        self.create_non_curated_osu_tables()
+        self.create_non_curated_osu_tables(final_exp_df=faire_exp_df)
 
         return faire_exp_df
 
@@ -188,7 +188,6 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
     def _outline_raw_data_dict(self, sample_name: str, file_num: int, all_files: list, marker: str, marker_dir: str) -> dict:
         # outlines raw filename dictionary used by create_marker_sample_raw_data_files for filename and filename2 in FAIRe
         # Account for sample name changes in positive samples
-        
         if 'POSITIVE' not in sample_name:
             # checks for mismatch in sample names using mismatch_sample_names_metadata_to_raw_data_files_dict
             for k, v in mismatch_sample_names_metadata_to_raw_data_files_dict.items():
@@ -198,6 +197,16 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                     break
                 else:
                     sample_name_lookup = sample_name
+
+            # Had to add this because the .NO201 in the mismatch_sample_names_metadata_to_raw_data_files_dict was causing problems
+            # same with the Mid.NC.SKQ21
+            # TODO: remove this after NO20 is finalized and moving onto new version of FAIRe-Mapper (wont' be backwards compatible)
+            if 'E265.1B' in sample_name:
+                sample_name = 'E265.1B.NO20-01'
+                sample_name_lookup = 'E265.IB.NO20'
+            if sample_name == 'MID.NC.SKQ21-15S':
+                sample_name_lookup = 'Mid.NC.SKQ21'
+            
             pattern = re.compile(f"^{re.escape(sample_name_lookup)}[_.]R[{file_num}].+")
 
         else:
@@ -217,7 +226,6 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             for filename in matching_files:
                 filepath = os.path.join(marker_dir, filename)
                 md5_checksum = self._get_md5_checksum(filepath)
-                # change sample name back for key of dict for DY2012 samps
                 target_dict[marker][sample_name.strip()] = {
                     "filename": filename,
                     "checksum": md5_checksum,
@@ -254,7 +262,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                 }
         else:
             print(f"Warning: No matching files found for sample {sample_name} in marker {marker}, using sample lookup name {sample_name_lookup}, pattern {pattern}.")
-
+    
     def _create_marker_sample_raw_data_file_dicts(self):
         # Finds all matching data files by marker for each sample returns two nested dict one for forward raw data files, and one for reverse raw data files
         # {marker1: {sample1: {filename: file1.gz, checksum: 56577, filepath: eff/dsdf.fastq.gz}}
@@ -376,7 +384,10 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                 sample_name = f'{self.run_name}.{marker}.POSITIVE.{sample_name}'
                 return sample_name
             else: # For regular samples
-                return sample_name.replace('MP_', '').replace('_', '.').replace('.12S', '-12S').replace('.DY20', '.DY2012') # replace .12S to -12S for SKQ23-12S samples.
+                sample_name =  sample_name.replace('MP_', '').replace('_', '.').replace('.12S', '-12S').replace('Mid', 'MID').replace('DY2306', 'DY23-06').replace('DY2209', 'DY22-09').replace('DY2206', 'DY22-06') # replace .12S to -12S for SKQ23-12S samples.
+                for old, new in update_cruise_codes.items():
+                    sample_name = sample_name.replace(old, new)
+                return sample_name
         else: # for regular positive samples (JV runs)
             sample_name = sample_name.replace('MP_', '')
             return f'{self.run_name}.{marker}.{sample_name}' 
@@ -387,15 +398,20 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             sample_name = sample_name.replace('POSITIVE', '')
             if 'ferret' in sample_name.lower():
                 sample_name = sample_name.replace('Ferret', 'Ferett')
-        sample_name = 'MP_' + sample_name.replace('.', '_').replace('DY2012', 'DY20')
+        # try diffierent (old cruise code) cruise code because it may have been updated
+        if '.DY20-12' in sample_name:
+            sample_name = sample_name.replace('.DY20-12', '.DY20')
+        else:
+            for old, new in update_cruise_codes.items():
+                sample_name = sample_name.replace(new, old)
+        sample_name = 'MP_' + sample_name.replace('.', '_')
+   
         return sample_name
     
     def _fix_sample_names_for_asv_lookup(self, sample_name: str) -> str:
-        # Fixes sample names if they are mismatched in metadata spreadsheet and asv tables so they can be looked up for counts
-        if '.DY2012' in sample_name:
-            return sample_name.replace('.DY2012', '.DY20')
-        else:
-            return sample_name
+        for old, new in update_cruise_codes.items():
+            sample_name = sample_name.replace(old, new)
+        return sample_name
 
     def _read_asv_counts_tsv(self, asv_tsv_file: str) -> pd.DataFrame:
         # Reads the asv counts tsv and returns a df
@@ -414,7 +430,6 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
     def _create_count_asv_dict_for_non_merged_asvs(self, asv_df: pd.DataFrame, marker: str):
         # Creates the count asv dict for singular asvs per marker (not merged), so everything except Run3, OSU runs. 
         # calculate sum for each filtered column and the otu num
-        
         for sample_name in asv_df.columns:
             
             # fix sample names if they mismatch in metadata for asv counts look up
@@ -457,6 +472,13 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             
             # store output_read_count in the nested dictionary
             self.asv_data_dict[marker][updated_sample_name] = {'output_read_count': output_read_count.item()}
+
+            # Add sample names to dictionary (for curating otu tables)
+            if marker not in self.asv_samp_name_dict:
+                self.asv_samp_name_dict[marker] = {sample_name: updated_sample_name}
+            else:
+                self.asv_samp_name_dict[marker][sample_name] = updated_sample_name
+
         
         # Get the output_otu_num from the merged file
         for sample_name in merged_asv_df.columns:
@@ -471,11 +493,12 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
 
             # store output_otu_num in the nested dictionary
             try:
-                # will fail if tyring to add samples from other runs (e.g. Run3 positive sample because have not been added to the dictionary)
+                # will fail if tryingto add samples from other runs (e.g. Run3 positive sample because have not been added to the dictionary)
                 self.asv_data_dict[marker][updated_sample_name]['output_otu_num'] = non_zero_output_asv_num.item()
             except:
-                # will skip over the samples that were not added during the single_asv_df iteration above.
-                pass
+                # If it didn't exist in the dictionary then it will add the output_read_count of 0 and then add the ouptut_otu_num
+                self.asv_data_dict[marker][updated_sample_name] = {'output_read_count': 0,
+                                                                   'output_otu_num': non_zero_output_asv_num.item()}
 
     def _create_count_asv_dict(self, revamp_blast: bool = True) -> dict:
         # TODO: add functionality of revamp_bast is not True?
@@ -497,7 +520,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                 singular_asv_df = self._read_asv_counts_tsv(asv_tsv_file=asv_tsv_file_s['secondary_path']) # for calculating output_read_count on the run database level
                 merged_asv_df = self._read_asv_counts_tsv(asv_tsv_file=asv_tsv_file_s['merged']) # for calculating output_otu_num (will include merged numbers from other runs - not necessary for NCBI)
                 self._create_count_asv_dict_for_merged_asvs(single_asv_df=singular_asv_df, merged_asv_df=merged_asv_df, marker=marker)
-        
+
         # Since getting the otu_num_tax_assigned depends on which version of the taxonomy we are using for the submission
         # if revamp_blast == True then use the ASVs_counts_mergedOnTaxonomy.tsv file to get this info.
         if revamp_blast == True:
@@ -553,7 +576,38 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         sample_name = metadata_row[self.run_metadata_sample_name_column]
         # Get the count
         try:
-            count = self.asv_data_dict.get(marker).get(sample_name).get(faire_col)
+            count = self.asv_data_dict.get(marker).get(sample_name.strip()).get(faire_col)
+        except AttributeError:
+            # If there is a key error because sample_name does not exist in the dictionary, try searching for a part of the sample name (the sample names most likely mismatch a little bit)
+            # This breaks the sample name into its E number, Tech rep (if exists), and bio rep (if exists) and puts those pieces into a list, then checks the asv_data_dict for keys that include
+            # all of those pieces (so will essentially check the dict for keys with the same E number, bio rep, and tech rep (will ignore cruise code or underscores/periods)
+            sample_name = sample_name.strip()
+            if '.' in sample_name:
+                sample_name_bits = sample_name.split('.')
+                e_number = sample_name_bits[0]
+
+                samp_bit_without_cruise_code = [e_number]
+                for i, bit in enumerate(sample_name_bits):
+                    if 'PCR' in bit:
+                        tech_rep = bit
+                        samp_bit_without_cruise_code.append(tech_rep)
+                    if 'B' in bit:
+                        if tech_rep and i != len(sample_name_bits) - 2: # if there is a technical rep, the cruise code comes before the PCR part, so will be -2 (don't want B to be in the cruise code) 
+                            bio_rep = bit
+                        if not tech_rep and i != len(sample_name_bits) - 1: # check for B, but make sure its not the last item (this could be in the cruise code)
+                            bio_rep = bit
+                        samp_bit_without_cruise_code.append(bio_rep)
+
+                for samp_name, count_data in self.asv_data_dict[marker].items():
+                    if all(samp_bit in samp_name for samp_bit in samp_bit_without_cruise_code):
+                        count = count_data.get(faire_col)
+                        if count:
+                            print(f'\033[32m{sample_name} cant find a match in the asv_data_dict exactly for marker {marker}, but did find a match based on similarity: {samp_name}. If this is incorrect please look into!\033[0m')
+                        break
+                    else:
+                        count = 0
+                        
+        
         except Exception as e:
             print(f"No count data for {sample_name} with {marker} {e}")
             count = 0
@@ -600,12 +654,18 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             formatted_bioaccessions = ' | '.join(bioaccessions)
             return formatted_bioaccessions
 
-    def create_non_curated_osu_tables(self):
+    def create_non_curated_osu_tables(self, final_exp_df: pd.DataFrame):
         # creates the non_curated osu_tables - it will be a otu_table.csv per seq_run_id per assay_name - so multiple per sequencing run
 
         seq_run_id = self.mapping_dict[self.constant_mapping].get(self.faire_seq_run_id_col)
         
         for marker, file_path in self.asv_counts_tsvs_for_run.items(): 
+            # for OSU and run3, need to use merged path to get the asv tables
+            if isinstance(file_path, dict):
+                file_path = file_path.get('merged')
+            else:
+                file_path = file_path
+           
             asv_table = self._read_asv_counts_tsv(asv_tsv_file=file_path)
             
             # Get ASVs.fa file to get DNA sequences
@@ -619,10 +679,17 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             asv_hash_dict = self.create_asv_hash_dict(asvs_fasta_path=asvs_fa_path)
             asv_table_hash_updated = asv_table_samples_updated.rename(index=asv_hash_dict)
 
+            # This part is primarly for OSU/run3 where there will be extra samples that aren't related
+            # Drops all samples in non_curated osu_table that does not exist in the final exp_df. And removes any hashes with 0 for all columns
+            valid_samples = final_exp_df[self.faire_sample_samp_name_col].tolist()
+            asv_table_has_updated_filtered = asv_table_hash_updated[asv_table_hash_updated.columns.intersection(valid_samples)]
+            asv_table_final = asv_table_has_updated_filtered[(asv_table_has_updated_filtered != 0).any(axis=1)]
+            asv_table_final.index.name = 'seq_id'
+
             # save the csv file
             assay_name = self.convert_assay_to_standard(marker=marker)
             non_curated_csv_path = (Path(self.final_faire_template_path)).parent / f"otuRaw_{assay_name}_{seq_run_id}.csv"
-            asv_table_hash_updated.to_csv(non_curated_csv_path index='seq_id')
+            asv_table_final.to_csv(non_curated_csv_path, index='seq_id')
             print(f"Saved {assay_name} otuRaw.csv")
 
     def create_asv_hash_dict(self, asvs_fasta_path: str):

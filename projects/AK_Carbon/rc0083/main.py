@@ -108,9 +108,13 @@ def create_rc0083_sample_metadata():
                                                                                  pos_condition_const=metadata_cols[2],
                                                                                  neg_condition_const=metadata_cols[1]),
                                                                                  axis=1)
+            
+        # Get line_id from standardized station name
+        elif faire_col == 'line_id':
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(sample_mapper.get_line_id)
 
     # Step 4: fill in NA with missing not collected or not applicable because they are samples and adds NC to rel_cont_id
-    sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))
+    sample_df = sample_mapper.fill_empty_sample_values_and_finalize_sample_df(df = pd.DataFrame(sample_metadata_results))
     
     # Step 5: fill NC data frame if there is - DO THIS ONLY IF negative controls were sequenced! They were not for SKQ21
     # nc_df = sample_mapper.fill_nc_metadata()
@@ -127,7 +131,11 @@ def create_rc0083_sample_metadata():
 
     # Remove ~ from samp_size that is ~500
     faire_sample_df_updated['samp_size'] = faire_sample_df_updated['samp_size'].str.replace('~', '', regex=False)
-    
+
+    # prepend cruise code to material sample id
+    faire_sample_df_updated['materialSampleID'] = 'RC0083_' + faire_sample_df_updated['materialSampleID'].astype(str)
+    # Don't need to update cruise code in sample name vecause already correct
+
     # step 7: save as csv:
     sample_mapper.save_final_df_as_csv(final_df=faire_sample_df_updated, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/AK_Carbon/rc0083/data/rc0083_faire.csv')
    

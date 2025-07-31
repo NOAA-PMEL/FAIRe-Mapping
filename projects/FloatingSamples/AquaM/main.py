@@ -128,7 +128,7 @@ def create_aquamonitor_sample_metadata():
 
   
     # Step 4: fill in NA with missing not collected or not applicable because they are samples and adds NC to rel_cont_id
-    sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))
+    sample_df = sample_mapper.fill_empty_sample_values_and_finalize_sample_df(df = pd.DataFrame(sample_metadata_results))
     
     # Step 5: fill NC data frame if there is - DO THIS ONLY IF negative controls were sequenced! They were not for SKQ21
     # nc_df = sample_mapper.fill_nc_metadata()
@@ -138,6 +138,7 @@ def create_aquamonitor_sample_metadata():
     faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df,controls_df])
     # Add rel_cont_id
     faire_sample_df_updated = sample_mapper.add_extraction_blanks_to_rel_cont_id(final_sample_df=faire_sample_df)
+    # Don't need to update cruise code in sample name because already correct.
 
     # step 7: save as csv:
     sample_mapper.save_final_df_as_csv(final_df=faire_sample_df_updated, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/FloatingSamples/AquaM/data/aquaM_faire.csv')

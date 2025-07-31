@@ -38,6 +38,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     faire_pressure_col_name = "pressure"
     faire_salinity_col_name = "salinity"
     faire_density_col_name = "density"
+    faire_max_depth_col_name = "maximumDepthInMeters"
+    faire_min_depth_col_name = "minimumDepthInMeters"
     faire_nucl_acid_ext_method_additional_col_name = "nucl_acid_ext_method_additional"
     faire_tot_depth_water_col_method_col_name = 'tot_depth_water_col_method'
     not_applicable_to_samp_faire_col_dict = {"neg_cont_type": "not applicable: sample group",
@@ -70,6 +72,9 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.vessel_name = self.config_file['vessel_name']
         self.faire_template_file = self.config_file['faire_template_file']
         self.google_sheet_mapping_file_id = self.config_file['google_sheet_mapping_file_id']
+        self.unwanted_cruise_code = self.config_file['cruise_code_fixes']['unwanted_cruise_code'] if 'cruise_code_fixes' in self.config_file else None
+        self.desired_cruise_code = self.config_file['cruise_code_fixes']['desired_cruise_code'] if 'cruise_code_fixes' in self.config_file else None
+
         self.samp_dur_info = self.config_file['samp_store_dur_sheet_info'] if 'samp_store_dur_sheet_info' in self.config_file else None
         self.samp_stor_dur_dict = self.create_samp_stor_dict() if 'samp_store_dur_sheet_info' in self.config_file else None
         
@@ -170,6 +175,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     def create_samp_stor_dict(self) -> dict:
 
         samp_dur_df = self.load_google_sheet_as_df(google_sheet_id=self.samp_dur_info['google_sheet_id'], sheet_name='Sheet1', header=0)
+
+        # fix sample names if cruise-code was corrrected in sample names
+        if self.unwanted_cruise_code and self.desired_cruise_code:
+            samp_dur_df = self.fix_cruise_code_in_samp_names(df=samp_dur_df, sample_name_col=self.samp_dur_info['samp_name_col'])
         samp_dur_dict = dict(zip(samp_dur_df[self.samp_dur_info['samp_name_col']], samp_dur_df[self.samp_dur_info['samp_stor_dur_col']]))
 
         return samp_dur_dict
@@ -268,7 +277,9 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         numeric_series = pd.to_numeric(
             extractions_df, errors='coerce')  # Non numeric becomes NaN
 
-        return numeric_series.mean()
+        mean_value = numeric_series.mean()
+
+        return round(mean_value, 2)
 
     def get_extraction_blanks_applicable_to_cruise_samps(self):
         # Get extraction blank df (applicable to RC0083 cruise)
@@ -300,6 +311,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                         for sample in valid_samples:
                             if 'blank' in sample.lower() or 'Larson NC' in sample:
                                 other_samples = [samp for samp in valid_samples if samp != sample]
+                                # update cruise codes in sample names
+                                if self.unwanted_cruise_code and self.desired_cruise_code:
+                                    sample = sample.replace(self.unwanted_cruise_code, self.desired_cruise_code)
+                                    other_samples = [samp.replace(self.unwanted_cruise_code, self.desired_cruise_code) for samp in other_samples]
                                 self.extraction_blank_rel_cont_dict[sample] = other_samples
                     except:
                         raise ValueError("blank dictionary mapping not working!")
@@ -308,7 +323,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                     blank_df = pd.concat([blank_df, extraction_blank_samps])
 
             blank_df[self.extract_conc_col] = blank_df[self.extract_conc_col].replace(
-                "BDL", "BR").replace("Below Range", "BR").replace("br", "BR")
+                "BR", "BDL").replace("Below Range", "BDL").replace("br", "BDL")
         except:
             raise ValueError(
                 "Warning: Extraction samples are not grouped, double check this")
@@ -346,13 +361,12 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             for faire_col, metadata_col in maps.items():
                 if metadata_col in extraction_column_mappings.keys():
                     maps[faire_col] = extraction_column_mappings.get(metadata_col)
-        
+
         return final_extraction_df
 
     def filter_cruise_avg_extraction_conc(self) -> pd.DataFrame:
         # If extractions have multiple measurements for extraction concentrations, calculates the avg.
         # and creates a column called pool_num to show the number of samples pooled
-
         # First filter extractions df for samples that contain the cruise key in their sample name
         cruise_key_mask = self.extractions_df.apply(
             lambda row: str(row[self.extraction_cruise_key_col]) in str(row[self.extract_samp_name_col])
@@ -387,6 +401,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # update dates to iso8601 TODO: may need to adjust this for ones that are already in this format
         extract_avg_df[self.extract_date_col] = extract_avg_df[self.extract_date_col].apply(
             self.convert_mdy_date_to_iso8061)
+        
+        if self.unwanted_cruise_code and self.desired_cruise_code:
+            if 'NO20' not in self.unwanted_cruise_code: # NO20 is updated in str_replace_samps (can't remove it from there because the experimentRunMetadata uses it)
+                extract_avg_df = self.fix_cruise_code_in_samp_names(df=extract_avg_df, sample_name_col=self.extract_samp_name_col)
 
         return extract_avg_df
 
@@ -408,7 +426,9 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # Remove 'CTD' from Cast_No. value if present
         samp_metadata_df[self.sample_metadata_cast_no_col_name] = samp_metadata_df[self.sample_metadata_cast_no_col_name].apply(
             self.remove_extraneous_cast_no_chars)
-
+        
+        if self.unwanted_cruise_code and self.desired_cruise_code:
+            samp_metadata_df = self.fix_cruise_code_in_samp_names(df=samp_metadata_df)
 
         return samp_metadata_df
 
@@ -432,6 +452,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         metadata_df = metadata_df.dropna(
             subset=[self.sample_metadata_sample_name_column])
 
+    
         return metadata_df
 
     def _check_nc_samp_name_has_nc(self, metadata_row: pd.Series) -> str:
@@ -453,6 +474,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             sample_name = sample_name.replace('_', '-')
         if '.DY23-06' in sample_name:
             sample_name = sample_name.replace('-', '')
+        if '.SKQ2021': 
+            sample_name = sample_name.replace('.SKQ2021', '.SKQ21-15S')
 
         return sample_name
 
@@ -473,7 +496,13 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                 str).str.contains('.NC', case=True)
             nc_df = samp_df[nc_mask].copy()
             samp_df_filtered = samp_df[~nc_mask].copy()
+
+            # Replace any - with NaN
+            nc_df = nc_df.replace('-', pd.NA)
+            samp_df_filtered = samp_df_filtered.replace('-', pd.NA)
+            
             return samp_df_filtered, nc_df
+        
         except:
             print(
                 "Looks like there are no negatives in the sample df, returning an empty nc_df")
@@ -566,7 +595,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             if pos_control_str in metadata_row[metadata_col]:
                 return self.check_cv_word(value='positive control', faire_attribute=faire_col)
 
-    def add_material_sample_id(self, metadata_row) -> str:
+    def add_material_sample_id(self, metadata_row, cruise_code: str) -> str:
         # Formats MaterialSampleID to be numerical (discussed with Sean) - double check if this needs to be updated for three digit cast numbers
         # can also be used for sample_derived_from if no other in between parent samples
         cast_int = int(metadata_row.get(self.sample_metadata_cast_no_col_name))
@@ -576,7 +605,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         formatted_cast = f'{cast_int:02d}'
         formatted_btl = f'{btl_int:02d}'
 
-        material_sample_id = formatted_cast + formatted_btl
+        material_sample_id = cruise_code + '_' + formatted_cast + formatted_btl
         return str(material_sample_id)
 
     def add_material_samp_id_for_pps_samp(self, metadata_row: pd.Series, cast_or_event_col: str, prefix: str):
@@ -603,6 +632,15 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         except:
             None
 
+    def fix_cruise_code_in_samp_names(self, df: pd.DataFrame, sample_name_col: str = None) -> pd.DataFrame:
+        # fixes the cruise code in the sample names to be SKQ21-15S as requested by Shannon on 07/23/2025
+        # if sample name is not specified the will use the sample metadata sample name specified in the config - may be different (for sampe dur storage df)
+        if not sample_name_col:
+            sample_name_col = self.sample_metadata_sample_name_column
+        df[sample_name_col] = df[sample_name_col].str.replace(self.unwanted_cruise_code, self.desired_cruise_code)
+
+        return df 
+    
     def calculate_dna_yield(self, metadata_row: pd.Series, sample_vol_metadata_col: str) -> float:
         # calculate the dna yield based on the concentration (ng/uL) and the sample_volume (mL)
         concentration = str(metadata_row[self.extract_conc_col])
@@ -612,7 +650,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             concentration = float(concentration)
             sample_vol = float(sample_vol)
             dna_yield = (concentration * 100)/sample_vol
-            return dna_yield
+            return round(dna_yield, 3)
         except:
             if '.nc' in metadata_row[self.faire_sample_name_col].lower():
                 return 'not applicable: control sample'
@@ -623,7 +661,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         depth = metadata_row[depth_col]
         tot_depth_water_col = metadata_row[tot_depth_col]
 
-        return tot_depth_water_col - depth
+        return round((tot_depth_water_col - depth), 2)
 
     def get_line_id(self, station) -> str:
         # Get the line id by the referance station (must be standardized station name)
@@ -654,6 +692,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         else:
             min_depth = max_depth
         return min_depth
+
 
     def format_geo_loc(self, metadata_row: str, geo_loc_metadata_col: str) -> dict:
         # TODO: add if statement for Arctic OCean? SKQ21-12S?
@@ -722,9 +761,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         aphotic = "marine aphotic zone [ENVO:00000210]"
         photic = "marine photic zone [ENVO:00000209]"
 
-        if depth <= 200:
+       
+        if float(depth) <= 200:
             env_local_scale = photic
-        elif depth > 200:
+        elif float(depth) > 200:
             env_local_scale = aphotic
 
         return env_local_scale
@@ -943,36 +983,53 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                 if closest_alt_station == distance.get('station'):
                     print(f"\033[36m{samp_name}'s reported station ({reported_station}) is not found within 5 km, the closest station found to it's lat/lon coords is {closest_alt_station} with a distance of {distance.get('distance_km')}\033[0m")   
     
-    def update_unit_colums_with_no_corresponding_val(self, df: pd.DataFrame) -> pd.DataFrame:
-        # Update the final sample dataframe unit columns to be "not applicable" if there is no value in its corresponding column
+    def update_companion_colums_with_no_corresponding_val(self, df: pd.DataFrame) -> pd.DataFrame: 
+        # Update the final sample dataframe unit, woce flag, and method columns to be "not applicable" if there is no value in its corresponding column
         unit_cols = [col for col in df.columns if col.endswith('unit')]
+        unit_str = '_unit'
+        woce_cols = [col for col in df.columns if col.endswith('WOCE_flag')]
+        woce_str = 'WOCE_flag'
 
-        for unit_col in unit_cols:
-            main_col = unit_col.replace('_unit', '') # Remove the 'unit' from the column name
+        # method has some exceptions
+        method_cols = [col for col in df.columns if col.endswith('method') and col != 'samp_collect_method']
+        method_str = '_method'
 
-            if main_col in df.columns:
-                for idx in df.index:
-                    val = df.at[idx, main_col]
-                    # Check if we should update the unit
-                    try:
-                        should_update = False
-                        if pd.isna(val) or val == None:
-                            should_update = True
-                        elif isinstance(val, str):
-                            val_lower = val.lower()
-                            if 'missing' in val_lower or 'not applicable' in val_lower:
-                                should_update = True
-                        
-                        if should_update:
-                            df.at[idx, unit_col] = 'not applicable'
-                    except:
-                        print("does not work!")
+        updated_df_for_unit = self.update_companion_cols(df=df, companion_col_list=unit_cols, str_to_remove_for_main_col=unit_str)
+        updated_df_for_woce = self.update_companion_cols(df=updated_df_for_unit, companion_col_list=woce_cols, str_to_remove_for_main_col=woce_str)
+        updated_df_for_method = self.update_companion_cols(df=updated_df_for_woce, companion_col_list=method_cols, str_to_remove_for_main_col=method_str)
 
-        return df
+        return updated_df_for_method
     
-    def fill_empty_sample_values(self, df: pd.DataFrame, default_message="missing: not collected"):
-        # fill empty values for samples after mapping over all sample data without control samples
+    def update_companion_cols(self, df: pd.DataFrame, companion_col_list: list, str_to_remove_for_main_col: str) -> pd.DataFrame:
+            # iterates through a list of unit columns or WOCE flag columns and updates df
+            for companion_col in companion_col_list:
+                if companion_col == 'DepthInMeters_method':
+                    main_col = 'maximumDepthInMeters'
+                else:
+                    main_col = companion_col.replace(str_to_remove_for_main_col, '') # Remove the 'unit' or 'WOCE_flag' from the column name
 
+                if main_col in df.columns:
+                    for idx in df.index:
+                        val = df.at[idx, main_col]
+                        # Check if we should update the unit
+                        try:
+                            should_update = False
+                            if pd.isna(val) or val == None:
+                                should_update = True
+                            elif isinstance(val, str):
+                                val_lower = val.lower()
+                                if 'missing' in val_lower or 'not applicable' in val_lower:
+                                    should_update = True
+                            
+                            if should_update:
+                                df.at[idx, companion_col] = 'not applicable'
+                        except:
+                            print("updating companion col is not working!")
+
+            return df
+    
+    def fill_empty_sample_values_and_finalize_sample_df(self, df: pd.DataFrame, default_message="missing: not collected"):
+        # fill empty values for samples after mapping over all sample data without control samples
         if df.empty: # for empty NC dataframes (like in Aquamonitor)
             pass
         # check if data frame is sample data frame and if so, then adds not applicable: control sample to control columns
@@ -991,11 +1048,27 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         df = df.map(lambda x: default_message if x == "" or x == "-" else x)
 
         # update unit cols for non-values
-        updated_df = self.update_unit_colums_with_no_corresponding_val(df=df)
+        updated_df = self.update_companion_colums_with_no_corresponding_val(df=df)
+
+        # replace niskin anywhere in the df with captial "Niskin" - Sean request 07/23/2025
+        final_df = updated_df.replace('niskin', 'Niskin')
+
+        # Fix depths that are less than three to make it 3 m - Requested by Sean/Shannon on 07/23/2025
+        update_depths_df = self.fix_too_low_depths(df=final_df)
 
 
-        return updated_df
+        return update_depths_df
 
+    def fix_too_low_depths(self, df: pd.DataFrame) -> pd.DataFrame:
+        # If the depth is less than 3 m, change to 3 m, and fix min depth to be -1
+        try:
+            condition = df[self.faire_max_depth_col_name] < 3
+            df.loc[condition, self.faire_max_depth_col_name] = 3
+            df.loc[condition, self.faire_min_depth_col_name] = df.loc[condition, self.faire_max_depth_col_name] - 1
+            return df
+        except:
+            return df
+    
     def fill_nc_metadata(self) -> pd.DataFrame:
         # Fills the negative control data frame
 
@@ -1042,6 +1115,9 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             elif faire_col == self.faire_neg_cont_type_name_col:
                 nc_results[faire_col] = self.nc_df[metadata_col].apply(
                     self.add_neg_cont_type)
+                
+            elif faire_col == 'filter_surface_area':
+                nc_results[faire_col] = self.calculate_filter_sa_from_filter_diam(filter_diam=float(metadata_col))
 
             elif faire_col == 'dna_yield':
                 vol_col = self.mapping_dict[self.exact_mapping].get('samp_vol_we_dna_ext')
@@ -1049,6 +1125,18 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                         lambda row: self.calculate_dna_yield(metadata_row=row, sample_vol_metadata_col=vol_col),
                         axis = 1
                     )
+            elif faire_col == 'extract_well_number':
+                nc_results[faire_col] = self.nc_df.apply(
+                    lambda row: self.get_well_number_from_well_field(metadata_row=row, well_col=metadata_col),
+                    axis=1
+                )
+        
+            elif faire_col == 'extract_well_position':
+                nc_results[faire_col] = self.nc_df.apply(
+                    lambda row: self.get_well_position_from_well_field(metadata_row=row, well_col=metadata_col),
+                    axis = 1 
+                )
+
 
         # First concat with sample_faire_template to get rest of columns,
         # # and add user_defined columnsthen
@@ -1079,7 +1167,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             col for col in final_sample_df.columns if col not in neg_controls_df.columns]
         for col in new_cols:
             neg_controls_df[col] = 'not applicable: control sample'
-        neg_controls_df = self.fill_empty_sample_values(
+        neg_controls_df = self.fill_empty_sample_values_and_finalize_sample_df(
             df=neg_controls_df, default_message='not applicable: control sample')
 
         return neg_controls_df

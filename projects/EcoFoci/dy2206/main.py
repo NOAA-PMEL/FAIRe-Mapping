@@ -43,7 +43,7 @@ def create_dy2206_sample_metadata():
 
         elif faire_col == 'materialSampleID' or faire_col == 'sample_derived_from':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
-                lambda row: sample_mapper.add_material_sample_id(metadata_row=row),
+                lambda row: sample_mapper.add_material_sample_id(metadata_row=row, cruise_code='DY22-06'),
                 axis=1
             )
 
@@ -186,7 +186,7 @@ def create_dy2206_sample_metadata():
             sample_metadata_results['line_id'] = sample_mapper.sample_metadata_df['station_id'].apply(sample_mapper.get_line_id)
 
     # Step 4: fill in NA with missing not collected or not applicable because they are samples and adds NC to rel_cont_id
-    sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))
+    sample_df = sample_mapper.fill_empty_sample_values_and_finalize_sample_df(df = pd.DataFrame(sample_metadata_results))
     
     # Step 5: fill NC data frame if there is - DO THIS ONLY IF negative controls were sequenced! They were not for SKQ21
     # nc_df = sample_mapper.fill_nc_metadata()
@@ -200,9 +200,11 @@ def create_dy2206_sample_metadata():
     faire_sample_df = pd.concat([sample_mapper.sample_faire_template_df, sample_df,controls_df])
     # Add rel_cont_id
     faire_sample_df_updated = sample_mapper.add_extraction_blanks_to_rel_cont_id(final_sample_df=faire_sample_df)
+
     # step 7: save as csv:
     sample_mapper.save_final_df_as_csv(final_df=faire_sample_df_updated, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2206/data/dy2206_faire.csv')
    
+
     # # step 7: save to excel file
     # sample_mapper.add_final_df_to_FAIRe_excel(excel_file_to_read_from=sample_mapper.faire_template_file,
     #                                           sheet_name=sample_mapper.sample_mapping_sheet_name, 

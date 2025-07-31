@@ -46,7 +46,7 @@ def create_dy2209_sample_metadata():
         elif faire_col == 'materialSampleID' or faire_col == 'sample_derived_from':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
                 lambda row: sample_mapper.add_material_sample_id(
-                    metadata_row=row),
+                    metadata_row=row, cruise_code='DY22-09'),
                 axis=1
             )
 
@@ -188,7 +188,7 @@ def create_dy2209_sample_metadata():
     
 
     # Step 4: fill in NA with missing not collected or not applicable because they are samples and adds NC to rel_cont_id
-    sample_df = sample_mapper.fill_empty_sample_values(df = pd.DataFrame(sample_metadata_results))
+    sample_df = sample_mapper.fill_empty_sample_values_and_finalize_sample_df(df = pd.DataFrame(sample_metadata_results))
 
     
     # Step 5: fill NC data frame if there is - DO THIS ONLY IF negative controls were sequenced! They were not for SKQ21
