@@ -663,7 +663,6 @@ class ProjectMapper(OmeFaireMapper):
             return sample_df.drop(columns=[self.faire_stations_in_5km_col])
         else:
             return sample_df
-        
 
     def load_project_level_metadata_to_excel_and_save_as_csv(self) -> None:
         # Maps the project level metadata to the projectMetadata excel sheet
