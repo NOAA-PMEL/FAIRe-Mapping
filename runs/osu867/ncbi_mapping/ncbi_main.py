@@ -29,7 +29,8 @@ def main() -> None:
                              ncbi_sample_excel_save_path='/home/poseidon/zalmanek/FAIRe-Mapping/runs/osu867/ncbi_mapping/ncbi_submission_data/osu867_MIMARKS.survey.water.6.0.xlsx',
                              ncbi_sra_excel_save_path = '/home/poseidon/zalmanek/FAIRe-Mapping/runs/osu867/ncbi_mapping/ncbi_submission_data/osu867_SRA_metadata.xlsx',
                              library_prep_dict=library_prep_dict)
-    ncbi_mapper.create_ncbi_submission()
+    # ncbi_mapper.create_ncbi_submission()
+    ncbi_mapper.create_osu_ncbi_submission()
 
 if __name__ == "__main__":
     main()

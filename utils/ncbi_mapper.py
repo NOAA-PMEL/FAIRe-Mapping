@@ -7,6 +7,7 @@ import tempfile
 import re
 from .lists import faire_to_ncbi_units, ncbi_faire_to_ncbi_column_mappings_exact, ncbi_faire_sra_column_mappings_exact
 from openpyxl import load_workbook
+from pathlib import Path
 
 # TODO: add title to get_sra_df method once hear back from Sean
 # TODO: Figure out what is going on when submitting PCR samples - added a custom column to differentiate them and the submitter isn't recognizing it.
@@ -57,8 +58,8 @@ class NCBIMapper:
         self.faire_sample_df = self.clean_samp_df(df=final_faire_sample_metadata_df)
         self.faire_experiment_run_df = final_faire_experiment_run_metadata_df
         self.ncbi_sample_template_df = self.load_ncbi_template_as_df(file_path=self.ncbi_sample_excel_template_path, sheet_name=self.ncbi_sample_sheet_name, header=self.ncbi_sample_header)
-        self.ncbi_sample_excel_save_path = ncbi_sample_excel_save_path
-        self.ncbi_sra_excel_save_path = ncbi_sra_excel_save_path
+        self.ncbi_sample_excel_save_path = Path(ncbi_sample_excel_save_path)
+        self.ncbi_sra_excel_save_path = Path(ncbi_sra_excel_save_path)
         self.library_prep_bebop = self.retrive_github_bebop(owner=library_prep_dict.get('owner'), repo=library_prep_dict.get('repo'), file_path = library_prep_dict.get('file_path'))
 
     def create_ncbi_submission(self):
@@ -82,6 +83,44 @@ class NCBIMapper:
     
     def create_osu_ncbi_submission(self):
         
+        exp_run_groups, samp_groups = self.split_osu_dfs_by_submission_type()
+
+        for submission_type, sample_df in samp_groups.items():
+            # overwrite faire_experiment_run_df and faire_sample_df
+            self.faire_experiment_run_df = exp_run_groups.get(submission_type)
+            self.faire_sample_df = sample_df
+
+
+            # Create new excel file save path: 
+            new_dir = self.ncbi_sample_excel_save_path.parent / submission_type
+            new_sample_file_name = f"{submission_type}_{self.ncbi_sample_excel_save_path.name}"
+            new_expRun_file_name = f"{submission_type}_{self.ncbi_sra_excel_save_path.name}"
+            new_sample_path = new_dir / new_sample_file_name
+            new_expRun_path = new_dir/ new_expRun_file_name
+            # create directory if it doesn't already exist
+            new_dir.mkdir(parents=True, exist_ok=True)
+
+            # process new dfs for ncbi submission
+            # First sample df
+            final_ncbi_sample_df = self.get_ncbi_sample_df()
+            self.save_to_excel_template(template_path=self.ncbi_sample_excel_template_path,
+                                                    ncbi_excel_save_path=new_sample_path, 
+                                                    sheet_name=self.ncbi_sample_sheet_name,
+                                                    header=self.ncbi_sample_header,
+                                                    final_ncbi_df=final_ncbi_sample_df)
+
+            final_sra_df = self.get_sra_df()
+            self.save_to_excel_template(template_path=self.ncbi_sra_excel_template_path,
+                                    ncbi_excel_save_path=new_expRun_path,
+                                    sheet_name=self.ncbi_sra_sheet_name,
+                                    header=self.ncbi_sra_header,
+                                    final_ncbi_df=final_sra_df)
+
+    def split_osu_dfs_by_submission_type(self):
+        # splits the self.samp_df and self.exp_run_df into separate data frames by submission type (e.g. single_direct, nan, etc.)
+        # and returns to dictionary, the samp_groups and the exp_run_groups
+        # replace NaN values for submission_type with 'NEW'
+        self.faire_experiment_run_df['submission_type'] = self.faire_experiment_run_df['submission_type'].fillna('NEW')
         # Step 1: split exp_run_df by submission type (inlcuding NaN or empty)
         exp_run_groups = {}
         for submission_value, group in self.faire_experiment_run_df.groupby('submission_type', dropna=False):
@@ -103,9 +142,8 @@ class NCBIMapper:
             # filter samp_df to only include rows with these samp_names
             samp_groups[submission_value] = self.faire_sample_df[self.faire_sample_df[self.faire_samp_name_col].isin(samp_names_for_submission)]
 
-        ## TODO:next! now have two dictionaries samp_groups and exp_run_groups where key is the submission type and the value are the filtered dataframes
-
-
+        return exp_run_groups, samp_groups
+    
     def load_ncbi_template_as_df(self, file_path: str, sheet_name: str, header: int) -> pd.DataFrame:
         # Load FAIRe excel template as a data frame based on the specified template sheet name
         
