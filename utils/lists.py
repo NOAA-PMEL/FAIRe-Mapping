@@ -333,9 +333,6 @@ faire_to_ncbi_units = {
         "faire_col": "part_org_nitro",
         "faire_unit_col": "part_org_nitro_unit"
     },
-    "ph": {
-        "faire_col": "ph",
-    },
     "phosphate": { #user defined we added
         "faire_col": "phosphate",
         "faire_unit_col": "phosphate_unit"
@@ -424,7 +421,10 @@ ncbi_faire_to_ncbi_column_mappings_exact = {
     "samp_store_dur": "samp_store_dur",
     "samp_store_loc": "samp_store_loc",
     "source_material_id": "materialSampleID",
-    "tidal_stage": "tidal_stage"
+    "tidal_stage": "tidal_stage",
+    "neg_cont_type": "neg_cont_type",
+    "pos_cont_type": "pos_cont_type",
+    "ph": "ph"
 }
 
 # For faire_column as keys and ncbit sra columns as values

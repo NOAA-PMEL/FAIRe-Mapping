@@ -4,8 +4,10 @@ import frontmatter
 import requests
 import base64
 import tempfile
+import re
 from .lists import faire_to_ncbi_units, ncbi_faire_to_ncbi_column_mappings_exact, ncbi_faire_sra_column_mappings_exact
 from openpyxl import load_workbook
+from pathlib import Path
 
 # TODO: add title to get_sra_df method once hear back from Sean
 # TODO: Figure out what is going on when submitting PCR samples - added a custom column to differentiate them and the submitter isn't recognizing it.
@@ -27,6 +29,7 @@ class NCBIMapper:
     ncbi_library_selection = 'PCR'
     ncbi_library_layout = 'Paired-end'
     ncbi_file_type = 'fastq'
+    ncbi_bioprojec_col_name = 'bioproject_accession'
     faire_missing_values = ["not applicable: control sample",
                             "not applicable: sample group",
                             "not applicable",
@@ -41,6 +44,7 @@ class NCBIMapper:
                             ]
     faire_samp_name_col = "samp_name"
     faire_stations_in_5km_col = "station_ids_within_5km_of_lat_lon"
+    faire_associated_seqs_col_name = "associatedSequences"
 
     def __init__(self, final_faire_sample_metadata_df: pd.DataFrame, 
                  final_faire_experiment_run_metadata_df: pd.DataFrame,
@@ -54,8 +58,8 @@ class NCBIMapper:
         self.faire_sample_df = self.clean_samp_df(df=final_faire_sample_metadata_df)
         self.faire_experiment_run_df = final_faire_experiment_run_metadata_df
         self.ncbi_sample_template_df = self.load_ncbi_template_as_df(file_path=self.ncbi_sample_excel_template_path, sheet_name=self.ncbi_sample_sheet_name, header=self.ncbi_sample_header)
-        self.ncbi_sample_excel_save_path = ncbi_sample_excel_save_path
-        self.ncbi_sra_excel_save_path = ncbi_sra_excel_save_path
+        self.ncbi_sample_excel_save_path = Path(ncbi_sample_excel_save_path)
+        self.ncbi_sra_excel_save_path = Path(ncbi_sra_excel_save_path)
         self.library_prep_bebop = self.retrive_github_bebop(owner=library_prep_dict.get('owner'), repo=library_prep_dict.get('repo'), file_path = library_prep_dict.get('file_path'))
 
     def create_ncbi_submission(self):
@@ -76,6 +80,69 @@ class NCBIMapper:
                                     sheet_name=self.ncbi_sra_sheet_name,
                                     header=self.ncbi_sra_header,
                                     final_ncbi_df=final_sra_df)
+    
+    def create_osu_ncbi_submission(self):
+        
+        exp_run_groups, samp_groups = self.split_osu_dfs_by_submission_type()
+
+        for submission_type, sample_df in samp_groups.items():
+            # overwrite faire_experiment_run_df and faire_sample_df
+            self.faire_experiment_run_df = exp_run_groups.get(submission_type)
+            self.faire_sample_df = sample_df
+
+
+            # Create new excel file save path: 
+            new_dir = self.ncbi_sample_excel_save_path.parent / submission_type
+            new_sample_file_name = f"{submission_type}_{self.ncbi_sample_excel_save_path.name}"
+            new_expRun_file_name = f"{submission_type}_{self.ncbi_sra_excel_save_path.name}"
+            new_sample_path = new_dir / new_sample_file_name
+            new_expRun_path = new_dir/ new_expRun_file_name
+            # create directory if it doesn't already exist
+            new_dir.mkdir(parents=True, exist_ok=True)
+
+            # process new dfs for ncbi submission
+            # First sample df
+            final_ncbi_sample_df = self.get_ncbi_sample_df()
+            self.save_to_excel_template(template_path=self.ncbi_sample_excel_template_path,
+                                                    ncbi_excel_save_path=new_sample_path, 
+                                                    sheet_name=self.ncbi_sample_sheet_name,
+                                                    header=self.ncbi_sample_header,
+                                                    final_ncbi_df=final_ncbi_sample_df)
+
+            final_sra_df = self.get_sra_df()
+            self.save_to_excel_template(template_path=self.ncbi_sra_excel_template_path,
+                                    ncbi_excel_save_path=new_expRun_path,
+                                    sheet_name=self.ncbi_sra_sheet_name,
+                                    header=self.ncbi_sra_header,
+                                    final_ncbi_df=final_sra_df)
+
+    def split_osu_dfs_by_submission_type(self):
+        # splits the self.samp_df and self.exp_run_df into separate data frames by submission type (e.g. single_direct, nan, etc.)
+        # and returns to dictionary, the samp_groups and the exp_run_groups
+        # replace NaN values for submission_type with 'NEW'
+        self.faire_experiment_run_df['submission_type'] = self.faire_experiment_run_df['submission_type'].fillna('NEW')
+        # Step 1: split exp_run_df by submission type (inlcuding NaN or empty)
+        exp_run_groups = {}
+        for submission_value, group in self.faire_experiment_run_df.groupby('submission_type', dropna=False):
+            exp_run_groups[submission_value] = group
+
+        # Step 2: Get the unique submission values to know how to split sample_df
+        submission_values = self.faire_experiment_run_df['submission_type'].unique() # includes NaN if present
+
+        # Step 3: split sample_df based on which sample names correspond to each submission value
+        samp_groups = {}
+        for submission_value in submission_values:
+            # Get samp names that correspond to this submission value
+            samp_names_for_submission = self.faire_experiment_run_df[self.faire_experiment_run_df['submission_type'] == submission_value][self.faire_samp_name_col].unique()
+
+            # Handle NaN submission values separately
+            if pd.isna(submission_value):
+                samp_names_for_submission = self.faire_experiment_run_df[self.faire_experiment_run_df['submission_type'].isna()][self.faire_samp_name_col].unique()
+
+            # filter samp_df to only include rows with these samp_names
+            samp_groups[submission_value] = self.faire_sample_df[self.faire_sample_df[self.faire_samp_name_col].isin(samp_names_for_submission)]
+
+        return exp_run_groups, samp_groups
     
     def load_ncbi_template_as_df(self, file_path: str, sheet_name: str, header: int) -> pd.DataFrame:
         # Load FAIRe excel template as a data frame based on the specified template sheet name
@@ -132,13 +199,28 @@ class NCBIMapper:
         # Fifth add description for PCR technical replicates and additional column - needed to differentiate their metadata for submission to be accepted
         updated_df['description'] = self.faire_sample_df['samp_name'].apply(self.add_description_for_pcr_reps)
         updated_df['technical_rep_id'] = self.faire_sample_df['samp_name'].apply(self.add_pcr_technical_rep)
+        
+        # Get Bioproject accession from exp run df and biosample acession
+        updated_df[self.ncbi_bioprojec_col_name] = self.faire_experiment_run_df[self.faire_associated_seqs_col_name].apply(
+            lambda associated_sequences: self.get_ncbi_bioproject_if_exists(associated_sequences, id_prefix='PRJNA'))
+     
+        # drop technical_rep_id if its empty
+        if 'technical_rep_id' in updated_df.columns and updated_df['technical_rep_id'].isnull().all():
+            updated_df = updated_df.drop(columns=['technical_rep_id'])
 
         # 6th add additional column in FAIRe sample df that do not exist in ncbi template
         final_ncbi_df = self.add_additional_faire_cols(faire_samp_df=self.faire_sample_df, updated_ncbi_df=updated_df)
 
         # 7th drop fields that should not be included in NCBI submission (like within_5km and rel_cont_id)
         last_final_ncbi_df = self.drop_samp_cols_not_meant_for_submission(final_ncbi_df)
-            
+
+        # Add biosample_accession - did not like it when I added it before this.
+        last_final_ncbi_df['biosample_accession'] = self.faire_experiment_run_df[self.faire_associated_seqs_col_name].apply(
+            lambda associated_sequences: self.get_ncbi_bioproject_if_exists(associated_sequences, id_prefix='SAMN'))
+        # drop biosample_accession if its empty (for non-osu runs)
+        if 'biosample_accession' in updated_df.columns and updated_df['biosample_accession'].isnull().all():
+            updated_df = updated_df.drop(columns=['biosample_accession'])
+        
         return last_final_ncbi_df
 
     def get_sra_df(self) -> pd.DataFrame:
@@ -159,6 +241,13 @@ class NCBIMapper:
         updated_df['instrument_model'] = self.library_prep_bebop['instrument']
         updated_df['design_description'] = f"Sequencing performed at {self.library_prep_bebop.get('sequencing_location')}"
         updated_df['filetype'] = self.ncbi_file_type
+
+        # Add srr_accession - did not like it when I added it before this.
+        updated_df['srr_accession'] = self.faire_experiment_run_df[self.faire_associated_seqs_col_name].apply(
+            lambda associated_sequences: self.get_ncbi_bioproject_if_exists(associated_sequences, id_prefix='SRR'))
+        # drop srr_accession if its empty (for non-osu runs)
+        if 'srr_accession' in updated_df.columns and updated_df['srr_accession'].isnull().all():
+            updated_df = updated_df.drop(columns=['srr_accession'])
 
         return updated_df
 
@@ -246,7 +335,7 @@ class NCBIMapper:
         for faire_col in additional_reg_faire_cols:
             updated_ncbi_df[faire_col] = faire_samp_df[faire_col]
 
-        # Drop columns that are empty for all rows that were additional faire columsn
+        # Drop columns that are empty for all rows that were additional faire columns
         columns_to_drop = []
         for col in additional_faire_cols:
             if col in updated_ncbi_df.columns:
@@ -365,3 +454,18 @@ class NCBIMapper:
             return sample_df.drop(columns=[self.faire_stations_in_5km_col])
         else:
             return sample_df
+
+    def get_ncbi_bioproject_if_exists(self, associated_sequences: str, id_prefix: str) -> str:
+        # Uses the associatedSequences column in the FAIRe df to get the NCBI accession number 
+        # # (e.g. for bioproject, srr, and biosample):
+        try:
+            associated_seqs = associated_sequences.split(' | ')
+            for accession_num in associated_seqs:
+                if id_prefix in accession_num:
+                    match = re.search(rf'{id_prefix}\w+', accession_num)
+                    if match:
+                        ncbi_accession_id = match.group()
+                        return ncbi_accession_id
+        except:
+            pass
+ 
