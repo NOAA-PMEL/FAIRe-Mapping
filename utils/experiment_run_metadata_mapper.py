@@ -165,6 +165,9 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         if '867' in self.run_name or '873' in self.run_name:
             exp_df = self.drop_E1_23_Machida_samples(df=exp_df)
 
+        # Update cruise code by e-number
+        exp_df = self.change_or_add_cruise_codes_by_e_num(df = exp_df)
+
         # Remove rows with EMPTY, NA, or '' as sample name, and 'sample/primer' (for Run3 the random statistic row in the metadata file)
         exp_df = exp_df[
             (~exp_df[self.run_metadata_sample_name_column].str.contains('EMPTY|sample/primer', case=False, na=False)) &
@@ -387,6 +390,8 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                 sample_name =  sample_name.replace('MP_', '').replace('_', '.').replace('.12S', '-12S').replace('Mid', 'MID').replace('DY2306', 'DY23-06').replace('DY2209', 'DY22-09').replace('DY2206', 'DY22-06') # replace .12S to -12S for SKQ23-12S samples.
                 for old, new in update_cruise_codes.items():
                     sample_name = sample_name.replace(old, new)
+                # update based on E number
+                sample_name = self._clean_asv_samp_names_by_e_num(sample_name=sample_name)
                 return sample_name
         else: # for regular positive samples (JV runs)
             sample_name = sample_name.replace('MP_', '')
@@ -720,9 +725,28 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                 asv_hash_dict[current_asv] = seq_hash
 
         return asv_hash_dict
-        
 
-    
+    def change_or_add_cruise_codes_by_e_num(self, df: pd.DataFrame) -> pd.DataFrame:
+        # Changes the cruise code, or possibly adds the cruise code to the sample name based on the E number
+        e_nums = df[self.run_metadata_sample_name_column].str.extract(r'E(\d+)')[0].astype('Int64')
+
+        # for M2-PPS-0423 sample names E1820 - E1842
+        mask = (e_nums >= 1820) & (e_nums <= 1842)
+        df.loc[mask, self.run_metadata_sample_name_column] = df.loc[mask, self.run_metadata_sample_name_column].str.replace('.DY23-06', '.M2-PPS-0423')
+
+        return df
+
+    def _clean_asv_samp_names_by_e_num(self, sample_name: str) -> str:
+        # updates sample name cruise codes by eNumber (right now just for M2-PPS-0423 samples)
+        # extract E number
+        e_num = re.search(r'E(\d+)', sample_name)
+        if e_num:
+            number = int(e_num.group(1))
+            if 1820 <= number <= 1842: # For the M2-PPS-0423 cruise will need to specifically update these E-numbers
+                sample_name = sample_name.replace('DY23-06', 'M2-PPS-0423')
+
+        return sample_name
+        
         
 
         
