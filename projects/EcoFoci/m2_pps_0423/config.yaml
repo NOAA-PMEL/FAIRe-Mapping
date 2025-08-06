@@ -7,11 +7,16 @@ sample_metadata_cast_no_col_name: 'Cast_No.'  # is NA for PPS - looking into
 sample_metadata_bottle_no_col_name: 'Rosette_position'
 vessel_name: Dyson
 
+# only if the cruise code in the sample name needs to be changed
+cruise_code_fixes:
+  unwanted_cruise_code: '.DY2306'
+  desired_cruise_code: '.M2-PPS-0423' 
+
 # Extraction sheet related
 extractions:
   - extraction_metadata_google_sheet_id: 1KTs7LiITWi4DxmAjevH19HkWzKDY4CSkmd184dKmKxQ
     extraction_name: AlaskaArctic22-23
-    extraction_cruise_key: .DY2306 #the name in the SampleName column of the extractions sheet to filter for the specific cruise
+    extraction_cruise_key: .M2-PPS-0423 #the name in the SampleName column of the extractions sheet to filter for the specific cruise. This gets updated from .DY2306 below to .M2-PPS-0423 (see above)
     extraction_sample_name_col: 'FINAL Sample NAME'
     extraction_conc_col_name: 'Qubit Conc.  (ng/μL)' #to calculate average of extraction concentration
     extraction_date_col_name: 'Extraction Date (Local)'
@@ -23,11 +28,6 @@ extractions:
 google_sheet_mapping_file_id: 1qTAFyDNysLYAauicMZxc9nN5EsKfX4KEryyU4vYk9ZA
 nc_samp_mat_process: 'placeholder' # mapping for negative controls for nc_samp_mapt_process. No .NC samples for this pps
 nc_prepped_samp_store_dur: 'placeholder' # which columns the NC prepped samp_store_dur map to (will most likely be different than rest of samples because no ctd or bottle dates for NC). No .NC samples for this pps.
-
-# only if the cruise code in the sample name needs to be changed
-cruise_code_fixes:
-  unwanted_cruise_code: '.DY2306'
-  desired_cruise_code: '.DY23-06' 
 
 # Station reference file
 station_name_reference_google_sheet_id: 1bJiX5pXpUuk74tbuoiYRc7iNXAVYU2dD8nTnZAFpZg8
