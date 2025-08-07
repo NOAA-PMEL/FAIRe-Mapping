@@ -149,7 +149,11 @@ class ProjectMapper(OmeFaireMapper):
         final_final_df = self.drop_samps_from_faire_rel_column_that_dropped(df = final_sample_df_with_calc_cols)
         last_df = self.drop_samp_cols_not_meant_for_submission(sample_df=final_final_df)
 
-        return last_df, final_exp_df
+        # drop any duplicates
+        sample_df_cleaned = last_df.drop_duplicates()
+        exp_df_cleaned = final_exp_df.drop_duplicates()
+
+        return  sample_df_cleaned, exp_df_cleaned
 
     def process_analysis_metadata(self, project_id: str, final_exp_run_df: pd.DataFrame): 
         # Process analysis metadata using AnalyisMetadata class

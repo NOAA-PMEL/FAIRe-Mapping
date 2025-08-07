@@ -350,7 +350,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             extraction_df[self.extraction_blank_vol_we_dna_ext_col] = extraction.get('extraction_blank_vol_we_dna_ext')
             extraction_df[self.extraction_name_col] = extraction.get('extraction_name')
 
-            extraction_df[self.extract_id_col] = extraction_df[self.extraction_name_col].astype(str) + "_" + extraction_df[self.extraction_set_col].astype(str)
+            extraction_df[self.extract_id_col] = extraction_df[self.extraction_name_col].astype(str).replace(r'\s+', '_', regex=True) + "_" + extraction_df[self.extraction_set_col].astype(str).replace(r'\s+', '_', regex=True)
             extraction_dfs.append(extraction_df)
 
         # Concat dataframes
@@ -1117,9 +1117,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             elif faire_col == self.faire_neg_cont_type_name_col:
                 nc_results[faire_col] = self.nc_df[metadata_col].apply(
                     self.add_neg_cont_type)
-                
-            elif faire_col == 'filter_surface_area':
-                nc_results[faire_col] = self.calculate_filter_sa_from_filter_diam(filter_diam=float(metadata_col))
 
             elif faire_col == 'dna_yield':
                 vol_col = self.mapping_dict[self.exact_mapping].get('samp_vol_we_dna_ext')
@@ -1139,12 +1136,12 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                     axis = 1 
                 )
 
-
         # First concat with sample_faire_template to get rest of columns,
         # # and add user_defined columnsthen
         # Fill na and empty values with not applicable: control sample
         try:
             nc_results_df = pd.DataFrame(nc_results)
+
             # compare columns in df to nc_faire_fields list and if value is missing, fill with missing: not provided
             nc_results_updated = nc_results_df.reindex(columns=nc_faire_field_cols, fill_value="missing: not collected")
             nc_results_updated = nc_results_updated.fillna("missing: not collected")
@@ -1171,6 +1168,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             neg_controls_df[col] = 'not applicable: control sample'
         neg_controls_df = self.fill_empty_sample_values_and_finalize_sample_df(
             df=neg_controls_df, default_message='not applicable: control sample')
+        
+        # repalce any just "not applicable" values with "not applicable: control sample"
+        # Hard time figuring out why some would pop up as just "not applicable"
+        neg_controls_df = neg_controls_df.replace("not applicable", "not applicable: control sample")
 
         return neg_controls_df
 
