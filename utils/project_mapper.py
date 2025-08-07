@@ -153,6 +153,11 @@ class ProjectMapper(OmeFaireMapper):
         sample_df_cleaned = last_df.drop_duplicates()
         exp_df_cleaned = final_exp_df.drop_duplicates()
 
+        # If there are still duplicates (can happen when PPS is split apart from cruise, and values are annotated differently), throw an error
+        duplicates = sample_df_cleaned[sample_df_cleaned[self.faire_sample_name_col].duplicated(keep=False)][self.faire_sample_name_col].unique()
+        if len(duplicates) > 0:
+            raise ValueError(f"Duplicate samples in the sample df: {duplicates}. Please check how these differ and fix!")
+
         return  sample_df_cleaned, exp_df_cleaned
 
     def process_analysis_metadata(self, project_id: str, final_exp_run_df: pd.DataFrame): 
