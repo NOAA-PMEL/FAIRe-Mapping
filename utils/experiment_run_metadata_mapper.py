@@ -8,6 +8,7 @@ import os
 import subprocess
 import re
 import hashlib
+import shutil 
 
 # TODO: update for PCR replicates? - MAke sample name the same, change lib_id?
 # TODO: add associatedSequences functionlity after submittting to NCBI
@@ -68,10 +69,13 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                 exp_metadata_results[faire_col] = self.run_metadata_df[metadata_col].apply(self.convert_assay_to_standard)
 
             elif faire_col == 'lib_id':
-                exp_metadata_results[faire_col] = self.run_metadata_df.apply(
+                lib_ids = self.run_metadata_df.apply(
                     lambda row: self.create_lib_id(metadata_row=row),
                     axis=1
                 )
+                exp_metadata_results[faire_col] = lib_ids
+                self.run_metadata_df['lib_id'] = lib_ids # save to run_metadata_df so can access to update file names
+
             elif faire_col == 'filename':
                 exp_metadata_results[faire_col] = self.run_metadata_df.apply(
                     lambda row: self.get_raw_file_names(metadata_row=row, raw_file_dict=self.raw_filename_dict),
@@ -333,14 +337,17 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
      
         marker_name = metadata_row[self.run_metadata_marker_col_name].strip()
         sample_name = metadata_row[self.run_metadata_sample_name_column].strip()
+        lib_id = metadata_row['lib_id']
 
         try:
             # Get approrpiate nested marker dict and corresponding nested sample list with dictionary of files and checksums
-            filename = raw_file_dict.get(marker_name).get(sample_name).get('filename')
+            filepath = raw_file_dict.get(marker_name).get(sample_name).get('filepath')
+            # Update file name to be unique (for the ncbi sumbissions) and copy raw data file to /home/poseidon/zalmanek/raw_data_copies if it doesn't yet exist
+            updated_filename = self.create_raw_file_copy_with_unique_name(original_file_path=filepath, lib_id=lib_id)
         except:
             raise ValueError(f"sample name {sample_name} with marker {marker_name} does not appear to have a value in the raw data dict, please look into")
 
-        return filename
+        return updated_filename
     
     def get_cheksums(self, metadata_row: pd.Series, raw_file_dict: dict) -> tuple:
         # Gets the checksum of the raw file based on sample name and marker
@@ -747,7 +754,46 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
 
         return sample_name
         
+    def create_raw_file_copy_with_unique_name(self, original_file_path: str, lib_id: str):
+        # Cretes a copy of the raw data file in zalmanek/raw_data_copies/run_name if it doesn't exist with a new unique name that is the lib_id
+        original_file_path = Path(original_file_path)
         
+        # Check if file exists
+        if not original_file_path.exists():
+            raise ValueError(f"Error: File: {original_file_path} does not exist to make a copy of")
+        
+        filename = original_file_path.name
+
+        # Use Regex to find _R1 or _R2 pattern
+        match = re.search(r'(_R[12].*)', filename)
+        if not match:
+            raise ValueError(f"File: {filename} does not contain _R1 or _R2 in the file name. Can not make a copy of the file!")
+        
+        # Extract suffix (everything from _R1 or _R2 onwards)
+        suffix = match.group(1)
+
+        # Create new filename with the lib id instead
+        new_filename = f"{lib_id}{suffix}"
+
+        # Create target directory structure
+        target_dir = Path('/home/poseidon/zalmanek/raw_data_copies') / self.run_name
+        target_file = target_dir / new_filename
+
+        # Check if targe_file already exists
+        if target_file.exists():
+            print(f"Skipping copying raw data file: File '{new_filename} already exists")
+            return new_filename
+
+        # Create directory if it doesn't exist
+        target_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            # Copy file with new name
+            shutil.copy2(original_file_path, target_file)
+            print(f"\033[92mSuccussfully copied '{filename} to {target_file}\033[0m")
+            return new_filename
+        except Exception as e:
+            print(f"\033[91mError copying file: {e}\033[0m")
+            return False
 
         
 
