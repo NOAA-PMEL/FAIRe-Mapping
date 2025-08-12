@@ -254,7 +254,7 @@ class NCBIMapper:
         updated_df['library_layout'] = self.ncbi_library_layout
         updated_df['platform'] = self.library_prep_bebop['platform']
         updated_df['instrument_model'] = self.library_prep_bebop['instrument']
-        updated_df['design_description'] = f"Sequencing performed at {self.library_prep_bebop.get('sequencing_location')}"
+        updated_df['design_description'] = f"Sequencing performed at {self.library_prep_bebop['sequencing_location']}"
         updated_df['filetype'] = self.ncbi_file_type
         updated_df['title'] = updated_df.apply(
             lambda row: self.create_SRA_title(metadata_row=row),
