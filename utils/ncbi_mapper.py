@@ -5,6 +5,7 @@ import requests
 import base64
 import tempfile
 import re
+import numpy as np
 from .lists import faire_to_ncbi_units, ncbi_faire_to_ncbi_column_mappings_exact, ncbi_faire_sra_column_mappings_exact
 from openpyxl import load_workbook
 from pathlib import Path
@@ -45,12 +46,14 @@ class NCBIMapper:
     faire_samp_name_col = "samp_name"
     faire_stations_in_5km_col = "station_ids_within_5km_of_lat_lon"
     faire_associated_seqs_col_name = "associatedSequences"
+    ncbi_samp_name_col = "*sample_name"
 
     def __init__(self, final_faire_sample_metadata_df: pd.DataFrame, 
                  final_faire_experiment_run_metadata_df: pd.DataFrame,
                  ncbi_sample_excel_save_path: str,
                  ncbi_sra_excel_save_path: str, 
-                 library_prep_dict: dict):
+                 library_prep_dict: dict,
+                 assay_type: str):
         # Initialize with the final faire_sample_metadata_df and final_faire_experiment_run_metadata_df
         # Can get these by initializing ProjectMapper and running process_sample_run_data method. Be sure to include config file
         # see run4/ncbi_mapping/ncbi_main.py for example
@@ -61,6 +64,11 @@ class NCBIMapper:
         self.ncbi_sample_excel_save_path = Path(ncbi_sample_excel_save_path)
         self.ncbi_sra_excel_save_path = Path(ncbi_sra_excel_save_path)
         self.library_prep_bebop = self.retrive_github_bebop(owner=library_prep_dict.get('owner'), repo=library_prep_dict.get('repo'), file_path = library_prep_dict.get('file_path'))
+        self.ncbi_bioproject_dict = self.create_ncbi_accession_dict_project_and_biosample(id_prefix='PRJNA')
+        self.ncbi_biosample_dict = self.create_ncbi_accession_dict_project_and_biosample(id_prefix='SAMN')
+        self.ncbi_srr_dict = self.create_ncbi_accession_dict_project_and_biosample(id_prefix='SRR')
+        self.geo_loc_dict = self.create_geo_loc_dict()
+        self.assay_type = assay_type # The assay_type (e.g. metabarcoding or qPCR - used in the title column of the SRA template)
 
     def create_ncbi_submission(self):
         # Will output two excel files
@@ -94,9 +102,7 @@ class NCBIMapper:
             # Create new excel file save path: 
             new_dir = self.ncbi_sample_excel_save_path.parent / submission_type
             new_sample_file_name = f"{submission_type}_{self.ncbi_sample_excel_save_path.name}"
-            new_expRun_file_name = f"{submission_type}_{self.ncbi_sra_excel_save_path.name}"
             new_sample_path = new_dir / new_sample_file_name
-            new_expRun_path = new_dir/ new_expRun_file_name
             # create directory if it doesn't already exist
             new_dir.mkdir(parents=True, exist_ok=True)
 
@@ -109,6 +115,13 @@ class NCBIMapper:
                                                     header=self.ncbi_sample_header,
                                                     final_ncbi_df=final_ncbi_sample_df)
 
+        for submission_type, exp_run_df in exp_run_groups.items():
+            
+            new_dir = self.ncbi_sample_excel_save_path.parent / submission_type
+            new_expRun_file_name = f"{submission_type}_{self.ncbi_sra_excel_save_path.name}"
+            new_expRun_path = new_dir/ new_expRun_file_name
+            self.faire_experiment_run_df = exp_run_df
+            
             final_sra_df = self.get_sra_df()
             self.save_to_excel_template(template_path=self.ncbi_sra_excel_template_path,
                                     ncbi_excel_save_path=new_expRun_path,
@@ -120,27 +133,31 @@ class NCBIMapper:
         # splits the self.samp_df and self.exp_run_df into separate data frames by submission type (e.g. single_direct, nan, etc.)
         # and returns to dictionary, the samp_groups and the exp_run_groups
         # replace NaN values for submission_type with 'NEW'
-        self.faire_experiment_run_df['submission_type'] = self.faire_experiment_run_df['submission_type'].fillna('NEW')
+        
+        mapped_biosamp_accessions = self.faire_experiment_run_df[self.faire_samp_name_col].map(self.ncbi_biosample_dict)
+        has_biosamp_accession_mask = mapped_biosamp_accessions.notna()
+        self.faire_experiment_run_df['group_key'] = np.where(
+            has_biosamp_accession_mask,
+            'has_biosamp_accession',
+            'no_biosamp_accession'
+        )
+        
         # Step 1: split exp_run_df by submission type (inlcuding NaN or empty)
         exp_run_groups = {}
-        for submission_value, group in self.faire_experiment_run_df.groupby('submission_type', dropna=False):
-            exp_run_groups[submission_value] = group
+        for ncbi_biosample_status, group in self.faire_experiment_run_df.groupby('group_key', dropna=False):
+            exp_run_groups[ncbi_biosample_status] = group
 
-        # Step 2: Get the unique submission values to know how to split sample_df
-        submission_values = self.faire_experiment_run_df['submission_type'].unique() # includes NaN if present
+        # Step 2: Get the unique group/key ncbi_submission statuses to know how to split sample_df
+        ncbi_biosample_statuses = self.faire_experiment_run_df['group_key'].unique() 
 
         # Step 3: split sample_df based on which sample names correspond to each submission value
         samp_groups = {}
-        for submission_value in submission_values:
+        for ncbi_biosample_status in ncbi_biosample_statuses:
             # Get samp names that correspond to this submission value
-            samp_names_for_submission = self.faire_experiment_run_df[self.faire_experiment_run_df['submission_type'] == submission_value][self.faire_samp_name_col].unique()
-
-            # Handle NaN submission values separately
-            if pd.isna(submission_value):
-                samp_names_for_submission = self.faire_experiment_run_df[self.faire_experiment_run_df['submission_type'].isna()][self.faire_samp_name_col].unique()
+            samp_names_for_submission = self.faire_experiment_run_df[self.faire_experiment_run_df['group_key'] == ncbi_biosample_status][self.faire_samp_name_col].unique()
 
             # filter samp_df to only include rows with these samp_names
-            samp_groups[submission_value] = self.faire_sample_df[self.faire_sample_df[self.faire_samp_name_col].isin(samp_names_for_submission)]
+            samp_groups[ncbi_biosample_status] = self.faire_sample_df[self.faire_sample_df[self.faire_samp_name_col].isin(samp_names_for_submission)]
 
         return exp_run_groups, samp_groups
     
@@ -199,10 +216,9 @@ class NCBIMapper:
         # Fifth add description for PCR technical replicates and additional column - needed to differentiate their metadata for submission to be accepted
         updated_df['description'] = self.faire_sample_df['samp_name'].apply(self.add_description_for_pcr_reps)
         updated_df['technical_rep_id'] = self.faire_sample_df['samp_name'].apply(self.add_pcr_technical_rep)
-        
+
         # Get Bioproject accession from exp run df and biosample acession
-        updated_df[self.ncbi_bioprojec_col_name] = self.faire_experiment_run_df[self.faire_associated_seqs_col_name].apply(
-            lambda associated_sequences: self.get_ncbi_bioproject_if_exists(associated_sequences, id_prefix='PRJNA'))
+        updated_df[self.ncbi_bioprojec_col_name] = updated_df[self.ncbi_samp_name_col].map(self.ncbi_bioproject_dict)
      
         # drop technical_rep_id if its empty
         if 'technical_rep_id' in updated_df.columns and updated_df['technical_rep_id'].isnull().all():
@@ -215,8 +231,7 @@ class NCBIMapper:
         last_final_ncbi_df = self.drop_samp_cols_not_meant_for_submission(final_ncbi_df)
 
         # Add biosample_accession - did not like it when I added it before this.
-        last_final_ncbi_df['biosample_accession'] = self.faire_experiment_run_df[self.faire_associated_seqs_col_name].apply(
-            lambda associated_sequences: self.get_ncbi_bioproject_if_exists(associated_sequences, id_prefix='SAMN'))
+        last_final_ncbi_df['biosample_accession'] = last_final_ncbi_df[self.ncbi_samp_name_col].map(self.ncbi_biosample_dict)
         # drop biosample_accession if its empty (for non-osu runs)
         if 'biosample_accession' in updated_df.columns and updated_df['biosample_accession'].isnull().all():
             updated_df = updated_df.drop(columns=['biosample_accession'])
@@ -239,12 +254,21 @@ class NCBIMapper:
         updated_df['library_layout'] = self.ncbi_library_layout
         updated_df['platform'] = self.library_prep_bebop['platform']
         updated_df['instrument_model'] = self.library_prep_bebop['instrument']
-        updated_df['design_description'] = f"Sequencing performed at {self.library_prep_bebop.get('sequencing_location')}"
+        updated_df['design_description'] = f"Sequencing performed at {self.library_prep_bebop['sequencing_location']}"
         updated_df['filetype'] = self.ncbi_file_type
+        updated_df['title'] = updated_df.apply(
+            lambda row: self.create_SRA_title(metadata_row=row),
+            axis=1
+        )
 
+        # # Add biosample_accession - did not like it when I added it before this.
+        updated_df['biosample_accession'] =  updated_df['sample_name'].map(self.ncbi_biosample_dict)
+        # drop biosample_accession if its empty (for non-osu runs)
+        if 'biosample_accession' in updated_df.columns and updated_df['biosample_accession'].isnull().all():
+            updated_df = updated_df.drop(columns=['biosample_accession'])
+       
         # Add srr_accession - did not like it when I added it before this.
-        updated_df['srr_accession'] = self.faire_experiment_run_df[self.faire_associated_seqs_col_name].apply(
-            lambda associated_sequences: self.get_ncbi_bioproject_if_exists(associated_sequences, id_prefix='SRR'))
+        updated_df['srr_accession'] = updated_df['library_ID'].map(self.ncbi_srr_dict)
         # drop srr_accession if its empty (for non-osu runs)
         if 'srr_accession' in updated_df.columns and updated_df['srr_accession'].isnull().all():
             updated_df = updated_df.drop(columns=['srr_accession'])
@@ -455,10 +479,11 @@ class NCBIMapper:
         else:
             return sample_df
 
-    def get_ncbi_bioproject_if_exists(self, associated_sequences: str, id_prefix: str) -> str:
+    def get_ncbi_bioproject_if_exists(self, metadata_row: pd.Series, id_prefix: str) -> str:
         # Uses the associatedSequences column in the FAIRe df to get the NCBI accession number 
         # # (e.g. for bioproject, srr, and biosample):
         try:
+            associated_sequences = metadata_row['associatedSequences']
             associated_seqs = associated_sequences.split(' | ')
             for accession_num in associated_seqs:
                 if id_prefix in accession_num:
@@ -468,4 +493,63 @@ class NCBIMapper:
                         return ncbi_accession_id
         except:
             pass
- 
+
+    def create_ncbi_accession_dict_project_and_biosample(self, id_prefix: str) -> dict:
+        # Creates a dictionary of accessions for ncbi (bioproject, biosample) 
+        # Don't use for SRA because some samples will have duplicate or more samp_names and the values will get overwritten. This is
+        # only for PRJNA and SAMN
+        if id_prefix == 'SRR':
+           group_col = 'lib_id'
+        else:
+            group_col = self.faire_samp_name_col
+
+        exp_df = self.faire_experiment_run_df.copy()
+        exp_df[id_prefix] = exp_df.apply(
+            lambda row: self.get_ncbi_bioproject_if_exists(metadata_row=row, id_prefix=id_prefix),
+            axis=1 
+        )
+
+        # Handle duplicate samp_name values and prioritize non-Non accessions
+        grouped = exp_df.groupby(group_col)[id_prefix]
+
+        # Use a dictionary comprehension to find the first non-None value for each group
+        if group_col is self.faire_samp_name_col:
+            ncbi_accession_dict = {
+                samp_name: group.dropna().iloc[0] if not group.dropna().empty else None
+                for samp_name, group in grouped
+            }
+        elif group_col is 'lib_id':
+            ncbi_accession_dict = dict(zip(exp_df[group_col], exp_df[id_prefix]))
+        
+        return ncbi_accession_dict
+
+    def create_geo_loc_dict(self) -> dict:
+        # create a dictionary of sample name as key and geo location portion as value
+        # to be used eventually in the Title of the SRA samples
+
+        geo_loc_samp_dict = {
+            row[self.faire_samp_name_col]: row['geo_loc_name'].split(': ', 1)[1] if ': ' in row['geo_loc_name'] else row['geo_loc_name'] for _, row in self.faire_sample_df.iterrows()
+        }
+
+        return geo_loc_samp_dict
+
+    def create_SRA_title(self, metadata_row: pd.Series) -> str:
+        # Create the title for the SRA template. E.g. 16S metabarcoding of sewater samples from the Bering Sea
+        samp_name = metadata_row['sample_name'] # matches what is in the SRA template column
+        library_id = metadata_row['library_ID'] # matches what is in the SRA template column
+        location = self.geo_loc_dict.get(samp_name)
+
+        run = library_id.split('_')[-1]
+        if 'osu' in run.lower():
+            run = f"Run {run.upper()}"
+        else:
+            run = run.capitalize()
+        
+        if samp_name.startswith('E'): # may need to add additional functionality here
+            if 'PPS' in samp_name:
+                type_of_samp = 'PPS-collected seawater'
+            else:
+                type_of_samp = 'CTD-collected seawater'
+
+            return f"Environmental DNA (eDNA) {self.assay_type} of {type_of_samp} in the {location}: {run}"
+
