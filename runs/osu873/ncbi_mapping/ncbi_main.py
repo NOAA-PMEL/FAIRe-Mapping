@@ -22,7 +22,8 @@ def main() -> None:
                              final_faire_experiment_run_metadata_df=experiment_run_metadata_df,
                              ncbi_sample_excel_save_path='/home/poseidon/zalmanek/FAIRe-Mapping/runs/osu873/ncbi_mapping/ncbi_submission_data/osu873_MIMARKS.survey.water.6.0.xlsx',
                              ncbi_sra_excel_save_path = '/home/poseidon/zalmanek/FAIRe-Mapping/runs/osu873/ncbi_mapping/ncbi_submission_data/osu873_SRA_metadata.xlsx',
-                             library_prep_dict=library_prep_dict)
+                             library_prep_dict=library_prep_dict,
+                             assay_type='metabarcoding')
     ncbi_mapper.create_ncbi_submission()
 
 if __name__ == "__main__":
