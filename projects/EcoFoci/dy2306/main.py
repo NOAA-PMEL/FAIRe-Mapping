@@ -25,6 +25,16 @@ def fix_stations(df: pd.DataFrame)  -> pd.DataFrame:
     df['Station'] = df['Station'].replace(replacements)
 
     return df
+
+def drop_blank_alask_set_7(df: pd.DataFrame) -> pd.DataFrame:
+    # Drop the Blank.Alaska.Set7 from DY23-06. This was grabbed because its associated with the M2-PPS-0423 samples which originally had the 
+    # DY23-06 cruise code in their sample name. The sampleMapper class groups by cruise code in the extraction sheet. But none of the DY23-06 samples
+    # were associated with this blank (just the M2-PPS-0423 samples were), so it needs to be dropped.
+    mask_to_keep = df['samp_name'] != "Blank.Alaska.Set7"
+    df_filtered = df[mask_to_keep]
+
+    return df_filtered
+
 def create_dy2306_sample_metadata():
     
     # initiate mapper
@@ -226,8 +236,11 @@ def create_dy2306_sample_metadata():
     # Add rel_cont_id
     faire_sample_df_updated = sample_mapper.add_extraction_blanks_to_rel_cont_id(final_sample_df=faire_sample_df)
 
+    # Drop the Blank.Alaska.Set7 because not actually associated with any of these samples
+    final_faire_samples = drop_blank_alask_set_7(df=faire_sample_df_updated)
+
     # step 7: save as csv:
-    sample_mapper.save_final_df_as_csv(final_df=faire_sample_df_updated, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2306/data/dy2306_faire.csv')
+    sample_mapper.save_final_df_as_csv(final_df=final_faire_samples, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2306/data/dy2306_faire.csv')
    
     # # step 7: save to excel file
     # sample_mapper.add_final_df_to_FAIRe_excel(excel_file_to_read_from=sample_mapper.faire_template_file,
