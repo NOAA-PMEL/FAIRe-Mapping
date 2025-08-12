@@ -52,7 +52,8 @@ class NCBIMapper:
                  final_faire_experiment_run_metadata_df: pd.DataFrame,
                  ncbi_sample_excel_save_path: str,
                  ncbi_sra_excel_save_path: str, 
-                 library_prep_dict: dict):
+                 library_prep_dict: dict,
+                 assay_type: str):
         # Initialize with the final faire_sample_metadata_df and final_faire_experiment_run_metadata_df
         # Can get these by initializing ProjectMapper and running process_sample_run_data method. Be sure to include config file
         # see run4/ncbi_mapping/ncbi_main.py for example
@@ -66,6 +67,8 @@ class NCBIMapper:
         self.ncbi_bioproject_dict = self.create_ncbi_accession_dict_project_and_biosample(id_prefix='PRJNA')
         self.ncbi_biosample_dict = self.create_ncbi_accession_dict_project_and_biosample(id_prefix='SAMN')
         self.ncbi_srr_dict = self.create_ncbi_accession_dict_project_and_biosample(id_prefix='SRR')
+        self.geo_loc_dict = self.create_geo_loc_dict()
+        self.assay_type = assay_type # The assay_type (e.g. metabarcoding or qPCR - used in the title column of the SRA template)
 
     def create_ncbi_submission(self):
         # Will output two excel files
@@ -253,6 +256,10 @@ class NCBIMapper:
         updated_df['instrument_model'] = self.library_prep_bebop['instrument']
         updated_df['design_description'] = f"Sequencing performed at {self.library_prep_bebop.get('sequencing_location')}"
         updated_df['filetype'] = self.ncbi_file_type
+        updated_df['title'] = updated_df.apply(
+            lambda row: self.create_SRA_title(metadata_row=row),
+            axis=1
+        )
 
         # # Add biosample_accession - did not like it when I added it before this.
         updated_df['biosample_accession'] =  updated_df['sample_name'].map(self.ncbi_biosample_dict)
@@ -516,5 +523,33 @@ class NCBIMapper:
         
         return ncbi_accession_dict
 
+    def create_geo_loc_dict(self) -> dict:
+        # create a dictionary of sample name as key and geo location portion as value
+        # to be used eventually in the Title of the SRA samples
 
- 
+        geo_loc_samp_dict = {
+            row[self.faire_samp_name_col]: row['geo_loc_name'].split(': ', 1)[1] if ': ' in row['geo_loc_name'] else row['geo_loc_name'] for _, row in self.faire_sample_df.iterrows()
+        }
+
+        return geo_loc_samp_dict
+
+    def create_SRA_title(self, metadata_row: pd.Series) -> str:
+        # Create the title for the SRA template. E.g. 16S metabarcoding of sewater samples from the Bering Sea
+        samp_name = metadata_row['sample_name'] # matches what is in the SRA template column
+        library_id = metadata_row['library_ID'] # matches what is in the SRA template column
+        location = self.geo_loc_dict.get(samp_name)
+
+        run = library_id.split('_')[-1]
+        if 'osu' in run.lower():
+            run = f"Run {run.upper()}"
+        else:
+            run = run.capitalize()
+        
+        if samp_name.startswith('E'): # may need to add additional functionality here
+            if 'PPS' in samp_name:
+                type_of_samp = 'PPS-collected seawater'
+            else:
+                type_of_samp = 'CTD-collected seawater'
+
+            return f"Environmental DNA (eDNA) {self.assay_type} of {type_of_samp} in the {location}: {run}"
+
