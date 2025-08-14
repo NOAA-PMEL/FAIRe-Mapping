@@ -10,10 +10,6 @@ API_DELAY := 10
 # Optional filter parameter - can be set on command line
 FILTER ?=
 
-# Find CSV files in projects directories for validation
-SAMPLE_CSV_FILES := $(shell find projects/*/*/data/ -name "*.csv" 2>/dev/null | sort) \
-                   $(shell find projects/*/data/ -name "*sampleMetadata*.csv" 2>/dev/null | sort)
-
 # Default target
 .PHONY: all runSampleMetadata runExperimentMetadata validateSampleCSVs
 all: runSampleMetadata runExperimentMetadata
@@ -58,44 +54,3 @@ runExperimentMetadata:
 	done
 	@echo "Experiment metadata projects completed!"
 
-# Validate sample CSV files
-validateSampleCSVs:
-	@echo "Validating sample CSV files..."
-	@if [ -z "$(SAMPLE_CSV_FILES)" ]; then \
-		echo "No sample CSV files found to validate"; \
-		exit 0; \
-	fi
-	@for csv_file in $(SAMPLE_CSV_FILES); do \
-		echo "-> Validating $csv_file"; \
-		python validators/csv_validator.py "$csv_file" "SampleMetadata"; \
-		echo ""; \
-	done
-	@echo "Sample CSV validation completed!"
-
-# Validate CSV files in projects directories with optional filtering
-validateSampleMetadataCSVs:
-	@echo "Validating sample metadata CSV files..."
-	@if [ "$(FILTER)" != "" ]; then \
-		echo "Filtering for projects containing: $(FILTER)"; \
-		filtered_files=$$(echo "$(SAMPLE_CSV_FILES)" | tr ' ' '\n' | grep "$(FILTER)"); \
-		if [ -z "$$filtered_files" ]; then \
-			echo "No CSV files found in projects containing '$(FILTER)'"; \
-			exit 0; \
-		fi; \
-		for csv_file in $$filtered_files; do \
-			echo "-> Validating $$csv_file"; \
-			python validators/csv_validator.py "$$csv_file" "SampleMetadata"; \
-			echo ""; \
-		done; \
-	else \
-		if [ -z "$(SAMPLE_CSV_FILES)" ]; then \
-			echo "No CSV files found in projects directories"; \
-			exit 0; \
-		fi; \
-		for csv_file in $(SAMPLE_CSV_FILES); do \
-			echo "-> Validating $$csv_file"; \
-			python validators/csv_validator.py "$$csv_file" "SampleMetadata"; \
-			echo ""; \
-		done; \
-	fi
-	@echo "Sample Metadata CSV validation completed!"
