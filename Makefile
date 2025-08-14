@@ -1,3 +1,5 @@
+# make runSampleMetadata FILTER=EcoFoci for specific projects
+
 # Find directories for different metadata types
 SAMPLE_SUBDIRS := $(shell find projects/*/*/ -name "main.py" -exec dirname {} \; 2>/dev/null | sort)
 EXPERIMENT_SUBDIRS := $(shell find runs/ -maxdepth 1 -type d ! -name runs 2>/dev/null | sort)

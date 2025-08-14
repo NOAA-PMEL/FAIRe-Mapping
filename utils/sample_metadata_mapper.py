@@ -362,7 +362,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                 if metadata_col in extraction_column_mappings.keys():
                     maps[faire_col] = extraction_column_mappings.get(metadata_col)
         
-        if self.unwanted_cruise_code and self.desired_cruise_code:
+        if self.unwanted_cruise_code and self.desired_cruise_code and self.unwanted_cruise_code != '.NO20': # this gets updates twice because unwanted cruise code is in the desired cruise code so will update later
             final_extraction_df = self.fix_cruise_code_in_samp_names(df=final_extraction_df, sample_name_col=self.extract_samp_name_col)
      
         return final_extraction_df
@@ -640,7 +640,16 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # if sample name is not specified the will use the sample metadata sample name specified in the config - may be different (for sampe dur storage df)
         if not sample_name_col:
             sample_name_col = self.sample_metadata_sample_name_column
-        df[sample_name_col] = df[sample_name_col].str.replace(self.unwanted_cruise_code, self.desired_cruise_code)
+
+        if self.desired_cruise_code == '.DY20-12': # since the extraction sheet used .DY20 and teh sample metadata use .DY2012 need to replace for both
+            mask = (df[sample_name_col].str.endswith('.DY20')) | (df[sample_name_col].str.endswith(self.unwanted_cruise_code))
+            # Apply the replacement only to the rows where the mask is True
+            df.loc[mask, sample_name_col] = df.loc[mask, sample_name_col].str.replace(
+                self.unwanted_cruise_code, 
+                self.desired_cruise_code
+            )
+        else: # everything else just replaces with the desired cruise code
+            df[sample_name_col] = df[sample_name_col].str.replace(self.unwanted_cruise_code, self.desired_cruise_code)
 
         return df 
     
