@@ -1,5 +1,3 @@
-# make runSampleMetadata FILTER=EcoFoci for specific projects
-
 # Find directories for different metadata types
 SAMPLE_SUBDIRS := $(shell find projects/*/*/ -name "main.py" -exec dirname {} \; 2>/dev/null | sort)
 EXPERIMENT_SUBDIRS := $(shell find runs/ -maxdepth 1 -type d ! -name runs 2>/dev/null | sort)
@@ -12,8 +10,12 @@ API_DELAY := 10
 # Optional filter parameter - can be set on command line
 FILTER ?=
 
+# Find CSV files for validation
+SAMPLE_CSV_FILES := $(shell find projects/*/*/data/ -name "*.csv" 2>/dev/null | sort) \
+                   $(shell find projects/*/data/ -name "*sampleMetadata*.csv" 2>/dev/null | sort)
+
 # Default target
-.PHONY: all runSampleMetadata runExperimentMetadata
+.PHONY: all runSampleMetadata runExperimentMetadata validateSampleCSVs
 all: runSampleMetadata runExperimentMetadata
 
 # Run sample metadata projects
@@ -55,3 +57,17 @@ runExperimentMetadata:
 		echo ""; \
 	done
 	@echo "Experiment metadata projects completed!"
+
+# Validate sample CSV files
+validateSampleCSVs:
+	@echo "Validating sample CSV files..."
+	@if [ -z "$(SAMPLE_CSV_FILES)" ]; then \
+		echo "No sample CSV files found to validate"; \
+		exit 0; \
+	fi
+	@for csv_file in $(SAMPLE_CSV_FILES); do \
+		echo "-> Validating $csv_file"; \
+		python validators/csv_validator.py "$csv_file" "SampleMetadata"; \
+		echo ""; \
+	done
+	@echo "Sample CSV validation completed!"
