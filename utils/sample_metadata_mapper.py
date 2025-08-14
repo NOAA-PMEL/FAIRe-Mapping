@@ -361,8 +361,9 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             for faire_col, metadata_col in maps.items():
                 if metadata_col in extraction_column_mappings.keys():
                     maps[faire_col] = extraction_column_mappings.get(metadata_col)
-
-        final_extraction_df = self.fix_cruise_code_in_samp_names(df=final_extraction_df, sample_name_col=self.extract_samp_name_col)
+        
+        if self.unwanted_cruise_code and self.desired_cruise_code:
+            final_extraction_df = self.fix_cruise_code_in_samp_names(df=final_extraction_df, sample_name_col=self.extract_samp_name_col)
      
         return final_extraction_df
 

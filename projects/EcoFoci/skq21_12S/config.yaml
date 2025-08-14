@@ -11,7 +11,7 @@ vessel_name: Sikuliaq
 extractions:
   - extraction_name: SKQ21
     extraction_metadata_google_sheet_id: 16Zg1MbMupnkXzuypTg4aF37OMyytPd-ZRqfz9QNX2oI
-    extraction_cruise_key: .SKQ2021 #the name in the SampleName column of the extractions sheet to filter for the specific cruise
+    extraction_cruise_key: .SKQ21-15S #the name in the SampleName column of the extractions sheet to filter for the specific cruise
     extraction_sample_name_col: 'FINAL Sample NAME'
     extraction_conc_col_name: 'Qubit Conc. (ng/μL)' #to calculate average of extraction concentration
     extraction_date_col_name: 'Extraction Date (Local)'
@@ -20,7 +20,7 @@ extractions:
     extraction_set_grouping_col_name: 'Extraction Set' # The name of the column that groups the samples together if they were extracted together
   - extraction_name: WCOA21
     extraction_metadata_google_sheet_id: 1aXN_HmGRDgDLvkz1Dbkje6R7rUUg9mNNc630YN8HvFE
-    extraction_cruise_key: .SKQ21
+    extraction_cruise_key: .SKQ21-15S
     extraction_sample_name_col: 'FINAL Sample NAME'
     extraction_conc_col_name: 'Qubit Conc.  (ng/μL)' #to calculate average of extraction concentration
     extraction_date_col_name: 'Extraction Date (Local)'
