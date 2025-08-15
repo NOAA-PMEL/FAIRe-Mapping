@@ -350,7 +350,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             extraction_df[self.extraction_blank_vol_we_dna_ext_col] = extraction.get('extraction_blank_vol_we_dna_ext')
             extraction_df[self.extraction_name_col] = extraction.get('extraction_name')
 
-            extraction_df[self.extract_id_col] = extraction_df[self.extraction_name_col].astype(str) + "_" + extraction_df[self.extraction_set_col].astype(str)
+            extraction_df[self.extract_id_col] = extraction_df[self.extraction_name_col].astype(str).replace(r'\s+', '_', regex=True) + "_" + extraction_df[self.extraction_set_col].astype(str).replace(r'\s+', '_', regex=True)
             extraction_dfs.append(extraction_df)
 
         # Concat dataframes
@@ -361,8 +361,9 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             for faire_col, metadata_col in maps.items():
                 if metadata_col in extraction_column_mappings.keys():
                     maps[faire_col] = extraction_column_mappings.get(metadata_col)
-
-        final_extraction_df = self.fix_cruise_code_in_samp_names(df=final_extraction_df, sample_name_col=self.extract_samp_name_col)
+        
+        if self.unwanted_cruise_code and self.desired_cruise_code and self.unwanted_cruise_code != '.NO20': # this gets updates twice because unwanted cruise code is in the desired cruise code so will update later
+            final_extraction_df = self.fix_cruise_code_in_samp_names(df=final_extraction_df, sample_name_col=self.extract_samp_name_col)
      
         return final_extraction_df
 
@@ -639,7 +640,16 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # if sample name is not specified the will use the sample metadata sample name specified in the config - may be different (for sampe dur storage df)
         if not sample_name_col:
             sample_name_col = self.sample_metadata_sample_name_column
-        df[sample_name_col] = df[sample_name_col].str.replace(self.unwanted_cruise_code, self.desired_cruise_code)
+
+        if self.desired_cruise_code == '.DY20-12': # since the extraction sheet used .DY20 and teh sample metadata use .DY2012 need to replace for both
+            mask = (df[sample_name_col].str.endswith('.DY20')) | (df[sample_name_col].str.endswith(self.unwanted_cruise_code))
+            # Apply the replacement only to the rows where the mask is True
+            df.loc[mask, sample_name_col] = df.loc[mask, sample_name_col].str.replace(
+                self.unwanted_cruise_code, 
+                self.desired_cruise_code
+            )
+        else: # everything else just replaces with the desired cruise code
+            df[sample_name_col] = df[sample_name_col].str.replace(self.unwanted_cruise_code, self.desired_cruise_code)
 
         return df 
     
@@ -1117,9 +1127,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             elif faire_col == self.faire_neg_cont_type_name_col:
                 nc_results[faire_col] = self.nc_df[metadata_col].apply(
                     self.add_neg_cont_type)
-                
-            elif faire_col == 'filter_surface_area':
-                nc_results[faire_col] = self.calculate_filter_sa_from_filter_diam(filter_diam=float(metadata_col))
 
             elif faire_col == 'dna_yield':
                 vol_col = self.mapping_dict[self.exact_mapping].get('samp_vol_we_dna_ext')
@@ -1139,12 +1146,12 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                     axis = 1 
                 )
 
-
         # First concat with sample_faire_template to get rest of columns,
         # # and add user_defined columnsthen
         # Fill na and empty values with not applicable: control sample
         try:
             nc_results_df = pd.DataFrame(nc_results)
+
             # compare columns in df to nc_faire_fields list and if value is missing, fill with missing: not provided
             nc_results_updated = nc_results_df.reindex(columns=nc_faire_field_cols, fill_value="missing: not collected")
             nc_results_updated = nc_results_updated.fillna("missing: not collected")
@@ -1171,6 +1178,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             neg_controls_df[col] = 'not applicable: control sample'
         neg_controls_df = self.fill_empty_sample_values_and_finalize_sample_df(
             df=neg_controls_df, default_message='not applicable: control sample')
+        
+        # repalce any just "not applicable" values with "not applicable: control sample"
+        # Hard time figuring out why some would pop up as just "not applicable"
+        neg_controls_df = neg_controls_df.replace("not applicable", "not applicable: control sample")
 
         return neg_controls_df
 
