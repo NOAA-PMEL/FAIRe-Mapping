@@ -9,14 +9,18 @@ vessel_name: Sikuliaq
 
 extractions:
   - extraction_metadata_google_sheet_id: 1HPXc9LFixqyo-pDRfcn71N7OO-OJtWUdIbBdo62cnjA
-    extraction_name: HgCl2Kotzebue # the name of the extraction performed (for the extract_id)
-    extraction_cruise_key: .SKQ23-12S #the name in the SampleName column of the extractions sheet to filter for the specific cruise
+    extraction_name: HgCl2 # the name of the extraction performed (for the extract_id)
+    extraction_cruise_key: .CEO-AquaM-0923 #the name in the SampleName column of the extractions sheet to filter for the specific cruise
     extraction_sample_name_col: 'FINAL Sample NAME'
     extraction_conc_col_name: 'Qubit Conc.  (ng/μL)' #to calculate average of extraction concentration
     extraction_date_col_name: 'Extraction Date (Local)'
     extraction_metadata_sheet_name: Sheet1
     extraction_blank_vol_we_dna_ext: # The volume or mass of blanks extracted if there are blanks extracted
     extraction_set_grouping_col_name: 'Extraction Set' # The name of the column that groups the samples together if they were extracted together
+
+cruise_code_fixes:
+  unwanted_cruise_code: '.SKQ23-12S'
+  desired_cruise_code: '.CEO-AquaM-0923'
 
 samp_store_dur_sheet_info: # Include only if cruise sample info in a samp_store_dur sheet that Shannon created
   google_sheet_id: 1c0C2HdmwQis9siwPPv5l1dhVZEfAZAeov3tGnl2Hgdw

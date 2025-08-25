@@ -10,7 +10,6 @@ nc_faire_field_cols = ['samp_name',
                     'samp_collect_method',
                     'samp_size',
                     'samp_size_unit',
-                    'samp_store_sol',
                     'samp_store_method_additional',
                     'samp_mat_process', # remove niskin info from it
                     'filter_passive_active_0_1',
@@ -126,7 +125,10 @@ mismatch_sample_names_metadata_to_raw_data_files_dict = {
     '.DY22-06': '.DY2206',
     '.DY22-09': '.DY2209',
     '.DY23-06': '.DY2306',
-    '.M2-PPS-0423': '.DY2306'
+    '.M2-PPS-0423': '.DY2306',
+    'E2084.CEO-AquaM-0923': 'E2084.SKQ23-12S',
+    'E2090.CEO-AquaM-0923': 'E2090.SKQ23-12S',
+    'E2097.CEO-AquaM-0923': 'E2097.SKQ23-12S'
 }
 
 # Dictionary with assay_name as keys and links to associated pcr library preparation bebops
@@ -456,7 +458,9 @@ faire_int_cols = [
                     'd18O_permil_WOCE_flag',
                     'nitrite_WOCE_flag',
                     'pool_dna_num',
-                    'extract_well_number'
+                    'extract_well_number',
+                    'habitat_natural_artificial_0_1',
+                    'dna_cleanup_0_1'
                 ]
 
 # used in the experiment run metadata to update to desired cruise codes. key is old cruise code (in experiment run metadata sheet) and value is desired code

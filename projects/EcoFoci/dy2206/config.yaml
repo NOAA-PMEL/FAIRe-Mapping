@@ -11,7 +11,7 @@ vessel_name: Dyson
 extractions:
   - extraction_metadata_google_sheet_id: 1KTs7LiITWi4DxmAjevH19HkWzKDY4CSkmd184dKmKxQ
     extraction_name:  AlaskaArctic22-23
-    extraction_cruise_key: .DY2206 #the name in the SampleName column of the extractions sheet to filter for the specific cruise
+    extraction_cruise_key: .DY22-06 #the name in the SampleName column of the extractions sheet to filter for the specific cruise
     extraction_sample_name_col: FINAL Sample NAME
     extraction_conc_col_name: Qubit Conc.  (ng/μL) #to calculate average of extraction concentration
     extraction_date_col_name: Extraction Date (Local)

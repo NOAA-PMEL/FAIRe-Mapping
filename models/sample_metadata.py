@@ -199,7 +199,7 @@ class SampleMetadata(BaseModel):
     ammonia: Optional[float] = Field(default=None)
     ammonia_unit: Optional[Literal['µM']] = Field(default=None)
     beam_attenuation: Optional[float] = Field(default=None)
-    beam_attenuation_unit: Optional[Literal['/m']] = Field(default=None)
+    beam_attenuation_unit: Optional[Literal['1/m']] = Field(default=None)
     beam_attenuation_standard_deviation: Optional[float] = Field(default=None)
     tot_inorg_nitro_to_phos_ratio: Optional[float] = Field(default=None)
     potential_temperature_C: Optional[float] = Field(default=None)
@@ -303,7 +303,7 @@ class SampleMetadata(BaseModel):
     date_ext: Optional[str]
     samp_vol_we_dna_ext: Optional[float]
     samp_vol_we_dna_ext_unit: Optional[Literal['mL']]
-    nucl_acid_ext_lysis: Optional[Literal['physical | enzymatic | thermal']]
+    nucl_acid_ext_lysis: Optional[Literal['physical | enzymatic | thermal', 'enzymatic | thermal']]
     nucl_acid_ext_sep: Optional[Literal['column-based', 'magnetic beads', 'centrifugation', 'precipitation', 'phenol chloroform', 'gel electrophoresis']]
     nucl_acid_ext: Optional[str]
     nucl_acid_ext_kit: Optional[str]
@@ -492,10 +492,12 @@ class SampleMetadata(BaseModel):
             return self
         
         # TODO: may need to adjust difference threshold depending on case
-        if self.maximumDepthInMeters > self.tot_depth_water_col and (self.tot_depth_water_col - self.maximumDepthInMeters) > 1:
-            warnings.warn(f"{self.samp_name} (cast:{self.ctd_cast_number}, bottle:{self.ctd_bottle_number}) appears to have a max depth ({self.maximumDepthInMeters}) greater than the total depth ({self.tot_depth_water_col}).")
-        if self.minimumDepthInMeters > self.tot_depth_water_col and (self.tot_depth_water_col - self.maximumDepthInMeters) > 1:
-            warnings.warn(f"{self.samp_name} appears to have a max depth ({self.minimumDepthInMeters}) greater than the total depth ({self.tot_depth_water_col}).")
+        if self.maximumDepthInMeters is not None and self.tot_depth_water_col is not None:
+            if self.maximumDepthInMeters > self.tot_depth_water_col and (self.tot_depth_water_col - self.maximumDepthInMeters) > 1:
+                warnings.warn(f"{self.samp_name} (cast:{self.ctd_cast_number}, bottle:{self.ctd_bottle_number}) appears to have a max depth ({self.maximumDepthInMeters}) greater than the total depth ({self.tot_depth_water_col}).")
+        if self.minimumDepthInMeters is not None and self.tot_depth_water_col is not None:
+            if self.minimumDepthInMeters > self.tot_depth_water_col and (self.tot_depth_water_col - self.maximumDepthInMeters) > 1:
+                warnings.warn(f"{self.samp_name} appears to have a max depth ({self.minimumDepthInMeters}) greater than the total depth ({self.tot_depth_water_col}).")
         return self
 
     @model_validator(mode='after')
@@ -542,29 +544,38 @@ class SampleMetadataDatasetModel(BaseModel):
 
     @model_validator(mode='after')
     def validate_tot_water_depth_across_casts(self):
+        # ensures that all data entries with the same ctd_cast_number and expedition_id also have the exact same value for tot_depth_water_col.
         # Convert to dict for easier processing
         rows_data = [row.model_dump() for row in self.rows]
 
         # group by ctd_cast_number
         groups = defaultdict(list)
         for row in rows_data:
-            groups[row['ctd_cast_number']].append(row['tot_depth_water_col'])
+            group_key = (row.get('ctd_cast_number'), row.get('expedition_id'))
+            groups[group_key].append(row.get('tot_depth_water_col'))
 
         # Check for inconsistencies
         inconsistent_groups = []
-        for cast_no, values in groups. items():
-            if cast_no is not None: # this cast_no is not None - which it would be for PPS cruises, so skips these
+        for cast_expedition_tuple, values in groups.items():
+            # Unpack the tuple for clarity
+            cast_no, expedition_id = cast_expedition_tuple
+            
+            # Now your check is based on whether both fields exist
+            if cast_no is not None and expedition_id is not None:
                 unique_values = set(values)
                 if len(unique_values) > 1:
-                    inconsistent_groups.append({
-                        'ctd_cast_number': cast_no,
-                        'found_values': list(unique_values)
-                    })
+                    range = max(unique_values) - min(unique_values)
+                    if range > 3:
+                        inconsistent_groups.append({
+                            'ctd_cast_number': cast_no,
+                            'expedition_id': expedition_id,
+                            'found_values': list(unique_values)
+                        })
 
-            if inconsistent_groups:
-                raise ValueError(f"Inconsistent tot_depth_water_col values in ctd_cast_number groups {inconsistent_groups}")
-            
-            return self
+        if inconsistent_groups:
+            raise warnings.warn(f"Inconsistent tot_depth_water_col values in ctd_cast_number and expedition_id groups: {inconsistent_groups}")
+        
+        return self
     
 ## Notes: without @classmethod you can access self.other_field, but iwth @class_method you cannot. Use @classmethod when you only need to validate a single field.
 ## mode='after' runs after all the fields are processed and valiadated
