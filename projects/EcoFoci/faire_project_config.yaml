@@ -55,13 +55,6 @@ mismatch_sample_names:
 #pooled samples dict - all pooled samples applicable to this project and the subsamples they make up
 # if sample names are in the mismatch - add the updated sample name as the value here.
 pooled_samps:
-  - pooled_samp_name: RC0083_NC_pool
-    samps_that_were_pooled:
-    - E1573.NC.RC0083
-    - E1451.NC.RC0083
-    - E1500.NC.RC0083
-    sample_category: negative control
-    cont_type: field negative
   - pooled_samp_name: BlankAlaskaSet_NC_pool
     samps_that_were_pooled:
     - Blank.Alaska.Set7

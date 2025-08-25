@@ -44,6 +44,8 @@ class ProjectMapper(OmeFaireMapper):
     faire_stations_in_5km_col = "station_ids_within_5km_of_lat_lon"
     faire_measurements_from_col = "measurements_from"
     faire_seq_run_id_col = "seq_run_id"
+    faire_expedition_id_col = 'expedition_id'
+    faire_sample_derived_from_col = 'sample_derived_from'
     project_sheet_term_name_col_num = 3
     project_sheet_assay_start_col_num = 5
     project_sheet_project_level_col_num = 4
@@ -117,9 +119,12 @@ class ProjectMapper(OmeFaireMapper):
 
         # Add PCR samples to sample_composed_of
         pcr_updated_df = self.add_pcr_rows_to_samp_df(sample_df=updated_pos_samp_df, exp_run_df=combined_exp_run_df)
+
+        # Add sample_derived_from for bio rep samps
+        bio_rep_samp_derived_df = self.add_bio_rep_samp_derived(sample_df=pcr_updated_df)
     
         # Filter primary dataframe based on samp_name values in sequencing run dataframe
-        filtered_samp_df, missing_samples = self._filter_samp_df_by_samp_name(samp_df=pcr_updated_df, associated_seq_df=combined_exp_run_df)
+        filtered_samp_df, missing_samples = self._filter_samp_df_by_samp_name(samp_df=bio_rep_samp_derived_df, associated_seq_df=combined_exp_run_df)
         if missing_samples:
             missing_file_name = 'samps_not_sequenced.csv'
             print(f"\033[35mThere are samples that do not appear to have been sequenced - they don't exist in the experimentRunMetadata, please see {self.logging_directory+missing_file_name} for a list.\33[0m]")
@@ -250,29 +255,33 @@ class ProjectMapper(OmeFaireMapper):
         new_rows = []
         for pooled_info in self.pooled_samps_dict:
             pooled_samp = pooled_info['pooled_samp_name']
+            
+            # Get the sample category for the pooled sample
+            sample_category = pooled_info['sample_category']
+            if sample_category == 'negative control':
+                dict_key = 'neg_cont_type'
+            elif sample_category == 'positive control':
+                dict_key = 'pos_cont_type'
+            elif sample_category == 'sample':
+                dict_key = None
+            else:
+                raise ValueError(f"Don't have functionality for this sample category {sample_category} - please see code and possibly update")
+        
+            # Create new row for pooled sample - add neg_cont_type or pos_conty_type
+            new_pooled_samp_row = {
+                self.faire_sample_name_col: pooled_samp,
+                self.faire_sample_category_col_name: sample_category,
+                self.faire_sample_composed_of_col_name: ' | '.join([samp for samp in pooled_info['samps_that_were_pooled'] if samp in all_valid_sample_samps])
+            }
+            
+            if dict_key:
+                new_pooled_samp_row[dict_key] = pooled_info['cont_type']
+                new_rows.append(new_pooled_samp_row)
+            
             for samp in pooled_info['samps_that_were_pooled']:
                 if samp in all_valid_sample_samps and pooled_samp in all_valid_seq_samps:
-                    sample_category = pooled_info['sample_category']
-                    if sample_category == 'negative control':
-                        dict_key = 'neg_cont_type'
-                    elif sample_category == 'positive control':
-                        dict_key = 'pos_cont_type'
-                    elif sample_category == 'sample':
-                        dict_key = None
-                    else:
-                        raise ValueError(f"Don't have functionality for this sample category {sample_category} - please see code and possibly update")
-                
-                    # Create new row for pooled sample - add neg_cont_type or pos_conty_type
-                    new_pooled_samp_row = {
-                        self.faire_sample_name_col: pooled_samp,
-                        self.faire_sample_category_col_name: sample_category,
-                        self.faire_sample_composed_of_col_name: ' | '.join([samp for samp in pooled_info['samps_that_were_pooled'] if samp in all_valid_sample_samps])
-                    }
-                    if dict_key:
-                        new_pooled_samp_row[dict_key] = pooled_info['cont_type']
-                        new_rows.append(new_pooled_samp_row)
 
-                    # add pooled sample name to subsmaple's rel_cont_id
+                    # add pooled sample name to subsample's rel_cont_id
                     rel_cont_id = sample_df.loc[sample_df[self.faire_sample_name_col] == samp, self.faire_rel_cont_id_col_name].values
                     if ' | ' in rel_cont_id:
                         rel_cont_id = rel_cont_id.split(' | ')
@@ -445,6 +454,7 @@ class ProjectMapper(OmeFaireMapper):
                 matches = exp_run_df[exp_run_df['base_samp_name'] == base_name][self.faire_sample_name_col].tolist()
                 if matches:
                     transform_dict[base_name] = set(matches)
+            exp_run_df = exp_run_df.drop(columns=['base_samp_name'])
        
             # Add to the sample_df data frame
             transformed_rows = []
@@ -454,6 +464,12 @@ class ProjectMapper(OmeFaireMapper):
                     for extended_name in transform_dict[base_name]:
                         new_row = r.copy()
                         new_row[self.faire_sample_name_col] = extended_name
+
+                        # Add sample_derived_from with base sample name and E number sample name for PCR reps
+                        e_num = base_name.split('.')[0]
+                        derived_from_samps = f"{base_name} | {e_num}"
+                        new_row[self.faire_sample_derived_from_col] = derived_from_samps
+                        
                         transformed_rows.append(new_row)
                 else:
                     transformed_rows.append(r)
@@ -464,6 +480,32 @@ class ProjectMapper(OmeFaireMapper):
         else:
             return sample_df
     
+    def add_bio_rep_samp_derived(self, sample_df: pd.DataFrame) -> pd.DataFrame:
+        # Add the E number to sample_derived_from for biological replicates 
+        # Should run after the add_pcr_rows_to_samp_df function
+
+        transformed_rows = []
+        for i, r in sample_df.iterrows():
+            sample_name = r[self.faire_sample_name_col]
+            samp_name_pieces = sample_name.split('.')
+
+            if len(samp_name_pieces) > 1 and 'B' in samp_name_pieces[1]:
+                e_num = samp_name_pieces[0]
+                new_row = r.copy()
+                # If, for some reason a sample_derived_from has already been created and it is not "not applicable" and doesn't already have an e number, add the e number
+                if 'not applicable' not in r[self.faire_sample_derived_from_col] and e_num not in r[self.faire_sample_derived_from_col]:
+                    samp_derived_from = f"{r[self.faire_sample_derived_from_col]} | {e_num}"
+                else:
+                    samp_derived_from = e_num
+                new_row[self.faire_sample_derived_from_col] = samp_derived_from
+                transformed_rows.append(new_row)
+            else:
+                transformed_rows.append(r)
+
+        samp_df_updated_bio_reps_samp_derived = pd.DataFrame(transformed_rows)
+            
+        return samp_df_updated_bio_reps_samp_derived
+
     def add_assay_name_to_samp_df(self, samp_df: pd.DataFrame, exp_run_df: pd.DataFrame) -> pd.DataFrame:
         # Gets a list of assays related to each sample and adds to assay_name in samp_df
 
