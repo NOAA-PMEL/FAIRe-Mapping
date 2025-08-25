@@ -303,7 +303,7 @@ class SampleMetadata(BaseModel):
     date_ext: Optional[str]
     samp_vol_we_dna_ext: Optional[float]
     samp_vol_we_dna_ext_unit: Optional[Literal['mL']]
-    nucl_acid_ext_lysis: Optional[Literal['physical | enzymatic | thermal']]
+    nucl_acid_ext_lysis: Optional[Literal['physical | enzymatic | thermal', 'enzymatic | thermal']]
     nucl_acid_ext_sep: Optional[Literal['column-based', 'magnetic beads', 'centrifugation', 'precipitation', 'phenol chloroform', 'gel electrophoresis']]
     nucl_acid_ext: Optional[str]
     nucl_acid_ext_kit: Optional[str]
@@ -492,10 +492,12 @@ class SampleMetadata(BaseModel):
             return self
         
         # TODO: may need to adjust difference threshold depending on case
-        if self.maximumDepthInMeters > self.tot_depth_water_col and (self.tot_depth_water_col - self.maximumDepthInMeters) > 1:
-            warnings.warn(f"{self.samp_name} (cast:{self.ctd_cast_number}, bottle:{self.ctd_bottle_number}) appears to have a max depth ({self.maximumDepthInMeters}) greater than the total depth ({self.tot_depth_water_col}).")
-        if self.minimumDepthInMeters > self.tot_depth_water_col and (self.tot_depth_water_col - self.maximumDepthInMeters) > 1:
-            warnings.warn(f"{self.samp_name} appears to have a max depth ({self.minimumDepthInMeters}) greater than the total depth ({self.tot_depth_water_col}).")
+        if self.maximumDepthInMeters is not None and self.tot_depth_water_col is not None:
+            if self.maximumDepthInMeters > self.tot_depth_water_col and (self.tot_depth_water_col - self.maximumDepthInMeters) > 1:
+                warnings.warn(f"{self.samp_name} (cast:{self.ctd_cast_number}, bottle:{self.ctd_bottle_number}) appears to have a max depth ({self.maximumDepthInMeters}) greater than the total depth ({self.tot_depth_water_col}).")
+        if self.minimumDepthInMeters is not None and self.tot_depth_water_col is not None:
+            if self.minimumDepthInMeters > self.tot_depth_water_col and (self.tot_depth_water_col - self.maximumDepthInMeters) > 1:
+                warnings.warn(f"{self.samp_name} appears to have a max depth ({self.minimumDepthInMeters}) greater than the total depth ({self.tot_depth_water_col}).")
         return self
 
     @model_validator(mode='after')

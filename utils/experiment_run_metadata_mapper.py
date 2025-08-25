@@ -744,6 +744,10 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         mask = (e_nums >= 1820) & (e_nums <= 1842)
         df.loc[mask, self.run_metadata_sample_name_column] = df.loc[mask, self.run_metadata_sample_name_column].str.replace('.DY23-06', '.M2-PPS-0423')
 
+        # for AquaM sample names
+        mask = (e_nums == 2084) | (e_nums == 2090) | (e_nums == 2097)
+        df.loc[mask, self.run_metadata_sample_name_column] = df.loc[mask, self.run_metadata_sample_name_column].str.replace('.SKQ23-12S', '.CEO-AquaM-0923')  
+
         return df
 
     def _clean_asv_samp_names_by_e_num(self, sample_name: str) -> str:
@@ -754,6 +758,8 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             number = int(e_num.group(1))
             if 1820 <= number <= 1842: # For the M2-PPS-0423 cruise will need to specifically update these E-numbers
                 sample_name = sample_name.replace('DY23-06', 'M2-PPS-0423')
+            if 2084 == number or 2090 == number or 2097 == number: # For AquaM samples
+                sample_name = sample_name.replace('SKQ23-12S', 'CEO-AquaM-0923')
 
         return sample_name
         

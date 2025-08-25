@@ -125,7 +125,10 @@ mismatch_sample_names_metadata_to_raw_data_files_dict = {
     '.DY22-06': '.DY2206',
     '.DY22-09': '.DY2209',
     '.DY23-06': '.DY2306',
-    '.M2-PPS-0423': '.DY2306'
+    '.M2-PPS-0423': '.DY2306',
+    'E2084.CEO-AquaM-0923': 'E2084.SKQ23-12S',
+    'E2090.CEO-AquaM-0923': 'E2090.SKQ23-12S',
+    'E2097.CEO-AquaM-0923': 'E2097.SKQ23-12S'
 }
 
 # Dictionary with assay_name as keys and links to associated pcr library preparation bebops
