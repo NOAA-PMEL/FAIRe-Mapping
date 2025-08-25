@@ -523,7 +523,7 @@ class ProjectMapper(OmeFaireMapper):
         url = f"https://api.github.com/repos/{owner}/{repo}/contents/{file_path}"
 
         headers = {
-            'Authorization': self.gh_token,
+            'Authorization': f"token {self.gh_token}",
             'Accept': 'application/vnd.github.v3+json'
         }
 

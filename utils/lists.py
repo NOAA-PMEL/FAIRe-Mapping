@@ -455,7 +455,9 @@ faire_int_cols = [
                     'd18O_permil_WOCE_flag',
                     'nitrite_WOCE_flag',
                     'pool_dna_num',
-                    'extract_well_number'
+                    'extract_well_number',
+                    'habitat_natural_artificial_0_1',
+                    'dna_cleanup_0_1'
                 ]
 
 # used in the experiment run metadata to update to desired cruise codes. key is old cruise code (in experiment run metadata sheet) and value is desired code
