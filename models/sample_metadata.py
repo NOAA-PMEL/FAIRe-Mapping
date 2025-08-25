@@ -562,14 +562,16 @@ class SampleMetadataDatasetModel(BaseModel):
             if cast_no is not None and expedition_id is not None:
                 unique_values = set(values)
                 if len(unique_values) > 1:
-                    inconsistent_groups.append({
-                        'ctd_cast_number': cast_no,
-                        'expedition_id': expedition_id,
-                        'found_values': list(unique_values)
-                    })
+                    range = max(unique_values) - min(unique_values)
+                    if range > 3:
+                        inconsistent_groups.append({
+                            'ctd_cast_number': cast_no,
+                            'expedition_id': expedition_id,
+                            'found_values': list(unique_values)
+                        })
 
         if inconsistent_groups:
-            raise ValueError(f"Inconsistent tot_depth_water_col values in ctd_cast_number and expedition_id groups: {inconsistent_groups}")
+            raise warnings.warn(f"Inconsistent tot_depth_water_col values in ctd_cast_number and expedition_id groups: {inconsistent_groups}")
         
         return self
     
