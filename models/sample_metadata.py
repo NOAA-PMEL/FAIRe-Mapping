@@ -199,7 +199,7 @@ class SampleMetadata(BaseModel):
     ammonia: Optional[float] = Field(default=None)
     ammonia_unit: Optional[Literal['µM']] = Field(default=None)
     beam_attenuation: Optional[float] = Field(default=None)
-    beam_attenuation_unit: Optional[Literal['/m']] = Field(default=None)
+    beam_attenuation_unit: Optional[Literal['1/m']] = Field(default=None)
     beam_attenuation_standard_deviation: Optional[float] = Field(default=None)
     tot_inorg_nitro_to_phos_ratio: Optional[float] = Field(default=None)
     potential_temperature_C: Optional[float] = Field(default=None)

@@ -9,7 +9,7 @@ vessel_name: Sikuliaq
 
 extractions:
   - extraction_metadata_google_sheet_id: 1HPXc9LFixqyo-pDRfcn71N7OO-OJtWUdIbBdo62cnjA
-    extraction_name: HgCl2Kotzebue # the name of the extraction performed (for the extract_id)
+    extraction_name: HgCl2 # the name of the extraction performed (for the extract_id)
     extraction_cruise_key: .SKQ23-12S #the name in the SampleName column of the extractions sheet to filter for the specific cruise
     extraction_sample_name_col: 'FINAL Sample NAME'
     extraction_conc_col_name: 'Qubit Conc.  (ng/μL)' #to calculate average of extraction concentration
