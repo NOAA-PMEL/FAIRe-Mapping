@@ -287,7 +287,7 @@ class SampleMetadata(BaseModel):
     expedition_id: Optional[str] = Field(default=None)
     expedition_name: Optional[str] = Field(default=None)
     rosette_position: Optional[int] = None 
-    collected_by: Optional[str]
+    recordedBy: Optional[str]
     measurements_from: Optional[str] = None
     nisking_id: Optional[str] = Field(default=None)
     niskin_WOCE_flag: Optional[int] = Field(default=None)

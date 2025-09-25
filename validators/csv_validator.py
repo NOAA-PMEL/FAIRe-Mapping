@@ -1,5 +1,5 @@
 import sys
-# sys.path.append("..") # uncomment when running locally, but comment back out for remote.
+sys.path.append("..") # uncomment when running locally, but comment back out for remote.
 import pandas as pd
 import csv
 import warnings
@@ -89,7 +89,7 @@ class CSVValidator:
                         raise Exception(error_msg)
                     
             # NEW: cross-row validation using dataset model (right now only applicable to SampleMetadata)
-            if self.model_class == SampleMetadata and  validated_rows:
+            if self.model_class == SampleMetadata and validated_rows:
                 try:
                     dataset = SampleMetadataDatasetModel(rows=validated_rows)
                     print("✅ Cross-row validation passed")
