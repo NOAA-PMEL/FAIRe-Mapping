@@ -170,7 +170,7 @@ class SampleMetadata(BaseModel):
     org_nitro: Optional[float]
     org_nitro_unit: Optional[Literal['µM', 'mol/m3', 'mmol/m3', 'µmol/m3 ', 'mol/L', 'mmol/L', 'µmol/L', 'mg/L',  'µg/L', 'µmol/kg', 'mmol/kg ', 'parts per million']]
     ammonium: Optional[float]
-    ammonium_unit: Optional[Literal['µmol/L', 'µmol/kg']]
+    ammonium_unit: Optional[Literal['µmol/L', 'µmol/kg', 'µM']]
     ammonium_WOCE_flag: Optional[int] = Field(default=None)
     carbonate: Optional[float]
     carbonate_unit: Optional[Literal['']]  # need to add cv here when known
