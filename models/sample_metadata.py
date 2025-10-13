@@ -197,8 +197,6 @@ class SampleMetadata(BaseModel):
     tot_alkalinity_WOCE_flag: Optional[int] = Field(default=None)
     transmittance: Optional[float]
     transmittance_unit: Optional[Literal['']] # need to add cv here when known
-    ammonia: Optional[float] = Field(default=None)
-    ammonia_unit: Optional[Literal['µM']] = Field(default=None)
     beam_attenuation: Optional[float] = Field(default=None)
     beam_attenuation_unit: Optional[Literal['1/m']] = Field(default=None)
     beam_attenuation_standard_deviation: Optional[float] = Field(default=None)
