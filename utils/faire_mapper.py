@@ -191,7 +191,7 @@ class OmeFaireMapper:
         # and will need to use data from another column in that case, then return the other columns data
         # only works if mapping is exact for columns
         # Make date = true if use_if_na_col_name needs to be transformed from 
-        
+
         if transform_use_col_to_date_format == False:
             # If desired col name value is not na
             if pd.notna(metadata_row[desired_col_name]) and metadata_row[desired_col_name] != '':
@@ -205,10 +205,13 @@ class OmeFaireMapper:
                     return ''
 
         else:
-            if pd.notna(metadata_row[use_if_na_col_name]) or metadata_row[use_if_na_col_name] != '':
+            if pd.notna(metadata_row[desired_col_name]) and metadata_row[desired_col_name] != '':
+                return self.convert_date_to_iso8601(date=metadata_row[desired_col_name])
+            elif pd.notna(metadata_row[use_if_na_col_name]) and metadata_row[use_if_na_col_name] != '':
                 return self.convert_date_to_iso8601(date=metadata_row[use_if_na_col_name])
-            else:
+            elif pd.notna(metadata_row[use_if_second_col_is_na]) and metadata_row[use_if_second_col_is_na] != '':
                 return self.convert_date_to_iso8601(date=metadata_row[use_if_second_col_is_na])
+            
                   
     def convert_date_to_iso8601(self, date: str) -> datetime:
         # converts strings from 2021/11/08 00:00:00 to iso8601 format  to 2021-11-08T00:00:00Z

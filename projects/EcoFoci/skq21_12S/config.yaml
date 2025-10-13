@@ -1,9 +1,9 @@
 ## SKQ21_12S Sample Metadata config.yaml ##
 # Metadata file related 
-sample_metadata_file: /home/poseidon/zalmanek/OME-EcoFOCI/EcoFOCI/data/1_SampleCollection/2021_SikuliaqDBO_CruiseData/2021_SikuliaqDBO_CruiseData/FinalOME_Merge_SKQ21-12S.csv
+sample_metadata_file: /home/poseidon/zalmanek/OME-EcoFOCI/EcoFOCI/data/1_SampleCollection/2021_SikuliaqDBO_CruiseData/2021_SikuliaqDBO_CruiseData/Fixed_FinalOME_merge_SKQ21-15S.csv
 sample_metadata_sample_name_column: Sample_Name # The name of the column in the metadata spreadsheet that lists the sample names
 sample_metadata_file_neg_control_col_name: 'Negative_control' # Name of the column in the metadata spreadsheet for the boolean Negative Control
-sample_metadata_cast_no_col_name: 'Cast_No.'
+sample_metadata_cast_no_col_name: 'Cast'
 sample_metadata_bottle_no_col_name: 'Rosette_position'
 vessel_name: Sikuliaq
 
@@ -42,7 +42,7 @@ cruise_code_fixes:
 # mapping file related
 google_sheet_mapping_file_id: 13mqrAXO0dpE3vrCfG10Eze-KnYo-rAZmxb0HverQWy8 
 nc_samp_mat_process:  'Water samples were filtered through a 0.22 micron sterivex filter using a peristaltic pump with tubing attached to the outlet end of the sterivex.' # mapping for negative controls for nc_samp_mapt_process
-nc_prepped_samp_store_dur: 'verbatimEventDate | extraction_date' # which columns the NC prepped samp_store_dur map to (will most likely be different than rest of samples because no ctd or bottle dates for NC)
+nc_prepped_samp_store_dur: 'Collection_Date_local | extraction_date' # which columns the NC prepped samp_store_dur map to (will most likely be different than rest of samples because no ctd or bottle dates for NC)
 
 # Station reference file
 station_name_reference_google_sheet_id: 1bJiX5pXpUuk74tbuoiYRc7iNXAVYU2dD8nTnZAFpZg8
