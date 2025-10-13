@@ -849,10 +849,16 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         # Check if verbatim column and use to determin negative or positive sign
         # pandas has a bug where it removes the negative using .apply()
-        if 'S' in metadata_row['verbatimLatitude']:
-            lat = float(-abs(float(lat)))
-        if 'W' in metadata_row['verbatimLongitude']:
-            lon = float(-abs(float(lon)))
+        # TODO: This is old. If any merges were updated with Brynn's merge script,
+        # this should no longer be needed.
+        try:
+            if 'S' in metadata_row['verbatimLatitude']:
+                lat = float(-abs(float(lat)))
+            if 'W' in metadata_row['verbatimLongitude']:
+                lon = float(-abs(float(lon)))
+        except:
+            lat = lat
+            lon = lon
 
         # open the gebco dataset
         ds = xr.open_dataset(self.gebco_file)
