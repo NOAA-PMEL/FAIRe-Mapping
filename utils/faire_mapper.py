@@ -191,7 +191,7 @@ class OmeFaireMapper:
         # and will need to use data from another column in that case, then return the other columns data
         # only works if mapping is exact for columns
         # Make date = true if use_if_na_col_name needs to be transformed from 
-        
+
         if transform_use_col_to_date_format == False:
             # If desired col name value is not na
             if pd.notna(metadata_row[desired_col_name]) and metadata_row[desired_col_name] != '':
@@ -205,10 +205,13 @@ class OmeFaireMapper:
                     return ''
 
         else:
-            if pd.notna(metadata_row[use_if_na_col_name]) or metadata_row[use_if_na_col_name] != '':
+            if pd.notna(metadata_row[desired_col_name]) and metadata_row[desired_col_name] != '':
+                return self.convert_date_to_iso8601(date=metadata_row[desired_col_name])
+            elif pd.notna(metadata_row[use_if_na_col_name]) and metadata_row[use_if_na_col_name] != '':
                 return self.convert_date_to_iso8601(date=metadata_row[use_if_na_col_name])
-            else:
+            elif pd.notna(metadata_row[use_if_second_col_is_na]) and metadata_row[use_if_second_col_is_na] != '':
                 return self.convert_date_to_iso8601(date=metadata_row[use_if_second_col_is_na])
+            
                   
     def convert_date_to_iso8601(self, date: str) -> datetime:
         # converts strings from 2021/11/08 00:00:00 to iso8601 format  to 2021-11-08T00:00:00Z
@@ -218,34 +221,61 @@ class OmeFaireMapper:
     
         has_time_component = False
         
-        if date is not None:
-            if "/" in date and ":" in date: # for dates in the form 2021/11/08 00:00:00
-                dt_obj = datetime.strptime(date, "%Y/%m/%d %H:%M:%S")
-                has_time_component = True
-            elif "/" in date and ":" not in date: # format for dates in 5/1/2024
-                dt_obj = datetime.strptime(date, "%m/%d/%Y")
-            elif "-" in date and len(date.split("-")) == 3: # Format like 2024-04-10
-                if ':' in date:
-                    dt_obj = datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
-                    has_time_component = True
-                else:
-                    dt_obj = datetime.strptime(date, "%Y-%m-%d")
-            else:
-                raise ValueError(f"Unsupported date format: {date}")
-            
-            # Correct years that are clearly wrong (like 0022 -> 2022)
-            if dt_obj.year < 100: # Years like 0022, 0023, etc.
-                corrected_year = 2000 + dt_obj.year
-                dt_obj = dt_obj.replace(year=corrected_year)
-
-            # Only add time component if it was in the original string
-            if has_time_component:
-                return dt_obj.strftime("%Y-%m-%dT%H:%M:%SZ")
-            else:
-                return dt_obj.strftime("%Y-%m-%d")
-            
-        else:
+        if date is None:
             return "missing: not provided"
+
+        # 1. Handle full ISO 8601 format (YYYY-MM-DDTHH:MM:SSZ) and return immediately
+        try: 
+            # Use the correct format including T and Z
+            datetime.strptime(date, "%Y-%m-%dT%H:%M:%SZ")
+            return date
+        except ValueError: 
+            pass # Not that format, continue to check others
+
+        # 2. Check for other supported formats
+        
+        # Format 2021/11/08 00:00:00
+        if "/" in date and ":" in date: 
+            dt_obj = datetime.strptime(date, "%Y/%m/%d %H:%M:%S")
+            has_time_component = True
+            
+        # Format 5/1/2024
+        elif "/" in date and ":" not in date: 
+            dt_obj = datetime.strptime(date, "%m/%d/%Y")
+            
+        # --- FIX APPLIED HERE: Handle all dash-separated formats gracefully ---
+        elif "-" in date:
+            if ':' in date:
+                # 2.1. Try ISO-like T-separated time (e.g., 2023-04-24T08:51:00)
+                try:
+                    dt_obj = datetime.strptime(date, "%Y-%m-%dT%H:%M:%S")
+                    has_time_component = True
+                except ValueError:
+                    # 2.2. Fallback: Try space-separated time (e.g., 2023-04-24 08:51:00)
+                    try:
+                        dt_obj = datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
+                        has_time_component = True
+                    except ValueError:
+                        # Failed both time formats, raise error
+                        raise ValueError(f"Unsupported dash-separated date/time format: {date}")
+            else:
+                # 2.3. Date-only format (e.g., 2024-04-10)
+                dt_obj = datetime.strptime(date, "%Y-%m-%d")
+        # ---------------------------------------------------------------------
+
+        else:
+            raise ValueError(f"Unsupported date format: {date}")
+        
+        # Correct years that are clearly wrong (like 0022 -> 2022)
+        if dt_obj.year < 100:
+            corrected_year = 2000 + dt_obj.year
+            dt_obj = dt_obj.replace(year=corrected_year)
+
+        # Only add time component if it was in the original string
+        if has_time_component:
+            return dt_obj.strftime("%Y-%m-%dT%H:%M:%SZ")
+        else:
+            return dt_obj.strftime("%Y-%m-%d")
 
     def fix_int_cols(self, df:pd.DataFrame) -> pd.DataFrame:
         # converts columns that are int to so will not save as float. May need to update list in .lists

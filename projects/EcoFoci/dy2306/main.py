@@ -180,6 +180,8 @@ def create_dy2306_sample_metadata():
         elif faire_col == 'eventDate' or faire_col == 'prepped_samp_store_dur':
             event_dates = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('eventDate')
             date_cols = event_dates.split(' | ')
+            # Fix utc data times to have Z in it
+            sample_mapper.sample_metadata_df[date_cols[0]] = sample_mapper.sample_metadata_df[date_cols[0]].apply(sample_mapper.convert_date_to_iso8601)
             sample_collection_date = sample_mapper.sample_metadata_df.apply(
                 lambda row: sample_mapper.map_using_two_or_three_cols_if_one_is_na_use_other(metadata_row=row, desired_col_name=date_cols[0], use_if_na_col_name=date_cols[1], transform_use_col_to_date_format=True),
                 axis=1

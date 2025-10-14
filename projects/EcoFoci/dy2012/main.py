@@ -24,7 +24,7 @@ def swap_e27_e28_sample_metadata(df: pd.DataFrame) -> pd.DataFrame:
                        'pressure_unit', 'silicate', 'silicate_unit', 'tot_alkalinity', 'tot_alkalinity_unit', 'transmittance', 'transmittance_unit', 'serial_number', 
                        'line_id', 'station_id', 'ctd_cast_number', 'ctd_bottle_number', 'replicate_number', 'organism', 'samp_collect_notes', 
                        'percent_oxygen_sat', 'density', 'air_temperature', 'par', 'air_pressure_at_sea_level', 'expedition_id', 'expedition_name', 'rosette_position', 
-                       'density_unit', 'air_temperature_unit', 'par_unit', 'air_pressure_at_sea_level_unit', 'measurements_from', 'collected_by']
+                       'density_unit', 'air_temperature_unit', 'par_unit', 'air_pressure_at_sea_level_unit', 'measurements_from', 'recordedBy']
     
     # Create temporary copies of the values
     temp_e27_1b = df.loc[df['samp_name'] == 'E27.1B.DY20-12', columns_to_swap].copy()
@@ -158,7 +158,7 @@ def create_dy2012_sample_metadata():
             
             sample_metadata_results['env_local_scale'] = sample_mapper.sample_metadata_df['finalMaxDepth'].apply(sample_mapper.calculate_env_local_scale)
         
-        elif faire_col =='collected_by':
+        elif faire_col =='recordedBy':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(
                 lambda row: row.replace(', ', ' | ')
             )
