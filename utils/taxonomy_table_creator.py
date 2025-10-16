@@ -2,8 +2,18 @@ from pathlib import Path
 import pandas as pd
 import hashlib
 
-# TODO: Get VerbatimIdentification first because Species column has values like Vexillifera sp_ AKu_2020a, where its an unclassified 
-# species the AKu_2020a is the NCBI identifier. Consider adding the taxonID too. The specificEpithet functionality will drop this info.
+# TODO: Columns left to add :
+    # scientificNameAuthorship
+    # taxonID
+    # taxonID_db (either NCBI, Bold, or PR2, or WORMS, or GBIF)
+    # accession_id
+    # accession_id_ref_df
+    # percent_match
+    # percent_query_cover
+    # confidence_score
+# TODO: Add species and subspecies to taxa rank functionality
+# TODO: THis only works for Revamp - will need to adjust/expand for other taxonomy methods
+
 class TaxonomyTableCreator:
     # FAIRE Taxonomy fields
     SEQ_ID = "seq_id"
@@ -18,26 +28,46 @@ class TaxonomyTableCreator:
     SCIENTIFIC_NAME = "scientificName"
     SCIENTIFIC_NAME_AUTHORSHIP = "scientificNameAuthorship"
     TAXON_RANK = "taxonRank"
+    TAXON_ID_DB = "taxonID_db"
+    VERBATIM_IDENTFICATION = "verbatimIdentification"
+    PERCENT_MATCH = "percent_match"
+    PERCENT_QUERY_COVER = "percent_query_cover"
 
     TAXONOMY_COLS = [KINGDOM, PHYLUM, CLASS, ORDER, FAMILY, GENUS]
-    TAXONOMY_UNKNOWNS = ["Unknown"] # TODO - REvamp uses Unknown, not sure if there will be other ways of saying this for other dbs.
     
-    def __init__(self, taxon_tble_file: str, asv_dna_seq_file: str):
+    # data
+    TAXONOMY_UNKNOWNS = ["Unknown"] # TODO - REvamp uses Unknown, not sure if there will be other ways of saying this for other dbs.
+    SPECIES = "species"
+
+    # REVAMP specific (maybe?)
+    REVAMP_ACCESSION_MATCH_COL = "accession"
+    REVAMP_PERCENT_MATCH_COL = "percent"
+    REVAMP_MATCH_LENGTH_COL = "length"
+    REVAMP_ACCESSION_ID_REF_DB = "NCBI Nucleotide"
+
+    def __init__(self, taxon_tble_file: str, asv_match_db_results_file: str, asv_dna_seq_file: str):
         """
         taxon_table_file: The path to the taxonomy table.txt file
+        asv_match_db_results_file: The path to the accessions database results. E.g. for revamp its the blast results.
         asv_dna_seq_file: The path to the file with the asv/dna sequences
         """
 
         self.taxon_table_path = Path(taxon_tble_file)
+        self.asv_match_db_results_file_path = Path(asv_match_db_results_file)
         self.asv_dna_seq_file = Path(asv_dna_seq_file)
         self.hash_dna_seq_dict = self._create_asv_hash_dict()
+        self.asv_match_db_results_df = self._get_asv_match_db_df()
+        self.seq_accession_ids_dict = self._create_accession_ids_dict()
+        self.seq_percent_match_dict = self._create_percent_match_dict()
+        self.seq_match_length_dict = self._create_percent_query_cov_dict()
         self.taxon_df = self.get_faire_df()
     
     def get_faire_df(self) -> pd.DataFrame:
         """
         Load the taxon_tble_file as a data frame
         """
-        df = pd.read_csv(self.taxon_table_path, sep='\t')
+        # Load taxonomy text file as a data frame.
+        df = self._load_tab_text_file_as_df(file_path=self.taxon_table_path)
 
         # Rename columns to match FAIRE
         df_cols_renamed = self._rename_kpcofgs_columns(df=df)
@@ -45,8 +75,14 @@ class TaxonomyTableCreator:
         # Replace ASVs with hashes
         df_with_hashes = self._switch_asv_for_hashes(df=df_cols_renamed)
 
-        # Fix scientificEpithet column (which is currently just the species column from the original df)
-        df_with_hashes[self.SPECIFIC_EPITHET] = df_with_hashes[self.SPECIFIC_EPITHET].apply(self._get_specific_epithet)
+        # First get VerbatimIdentification (because the Species column will be dropped and replaced 
+        # with scientific epithet which changes the value)
+        df_with_hashes[self.VERBATIM_IDENTFICATION] = df_with_hashes.apply(lambda row: self._get_verabtim_identification(row=row), 
+                                                                           axis=1)
+
+        # More Species column to be Scientific Epithet. Drop the species column after
+        df_with_hashes[self.SPECIFIC_EPITHET] = df_with_hashes[self.SPECIES].apply(self._get_specific_epithet)
+        df_with_hashes.drop(columns=self.SPECIES, inplace=True)
 
         # Get scientific name
         df_with_hashes[self.SCIENTIFIC_NAME] = df_with_hashes.apply(self._get_scientific_name, axis=1)
@@ -54,10 +90,35 @@ class TaxonomyTableCreator:
         # Get taxon_rank
         df_with_hashes[self.TAXON_RANK] = df_with_hashes.apply(self._get_taxon_rank, axis=1)
 
+        # Get percent_match
+        df_with_hashes[self.PERCENT_MATCH] = df_with_hashes[self.SEQ_ID].map(self.seq_percent_match_dict).fillna("not applicable")
+
         return df_with_hashes
     
+    def _get_asv_match_db_df(self) -> pd.DataFrame:
+        """
+        Puts the asv_match_db_results_file into a data frame. Replaces 
+        ASV strings with md5 hashes.
+        """
+        df = self._load_tab_text_file_as_df(file_path=self.asv_match_db_results_file_path)
+
+        df.rename(columns={'ASV': self.SEQ_ID}, inplace=True)
+
+        # Replace ASVs with hashes
+        df_with_hashes = self._switch_asv_for_hashes(df=df)
+
+        return df_with_hashes
+    
+    def _load_tab_text_file_as_df(self, file_path: Path) -> pd.DataFrame:
+        """
+        Loads a text file that is tab delimated as a pandas data frame.
+        """
+        df = pd.read_csv(file_path, sep='\t')
+
+        return df
+    
     def _create_asv_hash_dict(self) -> dict:
-        # creates a dictionary like {'ASV1': 'seq': ACGT, 'hash': 'dafadsf'}
+        # creates a dictionary like {'ASV1': {'seq': ACGT, 'hash': 'dafadsf'}}
         # replace this in experiment_run_mapper if end up using the same dictionary.
         asv_hash_dict = {}
         current_asv = None
@@ -129,8 +190,8 @@ class TaxonomyTableCreator:
                 col_renames[col] = self.FAMILY
             elif col.lower() == self.GENUS:
                 col_renames[col] = self.GENUS
-            elif col.lower() == "species":
-                col_renames[col] = self.SPECIFIC_EPITHET
+            elif col.lower() == self.SPECIES:
+                col_renames[col] = self.SPECIES
 
         df.rename(columns=col_renames, inplace=True)
         return df
@@ -147,6 +208,25 @@ class TaxonomyTableCreator:
         # Replace ASV strings with hashes
         df[self.SEQ_ID] = df[self.SEQ_ID].map(hash_map)
         return df
+
+    def _get_verabtim_identification(self, row: pd.Series) -> str:
+        """
+        Get the verbatim identification by string together values in 
+        taxonomic columns.
+        """
+        kingdom = row[self.KINGDOM]
+        phylum = row[self.PHYLUM]
+        tax_class = row[self.CLASS]
+        order = row[self.ORDER]
+        family = row[self.FAMILY]
+        genus = row[self.GENUS]
+        species = row[self.SPECIES]
+
+        verbatim_list = [kingdom, phylum, tax_class, order, family, genus, species]
+        # Drop na values (but keep any strings the say unkown, or what not)
+        verbatim_list = [val for val in verbatim_list if pd.notna(val)]
+        verbatim_str = ', '.join(verbatim_list)
+        return verbatim_str
 
     def _get_taxon_rank(self, row: pd.Series) -> str:
         """
@@ -192,11 +272,60 @@ class TaxonomyTableCreator:
                 print(f"There appear to be a weird species structure with value {species_value}. Please check this and update code accordingly")
                 return "not applicable" 
                     
-                    
-              
+    def _create_accession_ids_dict(self) -> dict:
+        """
+        Creates a dictionary of seq: accession ids
+        """    
+        accession_dict = self.asv_match_db_results_df.set_index(self.SEQ_ID)[self.REVAMP_ACCESSION_MATCH_COL].to_dict()
+        # update list of accession to use |
+        for accession in accession_dict.values():
+            accession.replace(',', ' |')
 
+        return accession_dict      
+
+    def _create_percent_match_dict(self) -> dict:
+        """
+        Creates the seq_id: percent_match dictionary
+        """
+        percent_match_dict = self.asv_match_db_results_df.set_index(self.SEQ_ID)[self.REVAMP_PERCENT_MATCH_COL].to_dict()
+
+        return percent_match_dict       
+
+    def _create_percent_query_cov_dict(self) -> dict:
+        """
+        Creates a dictionary of seq_id: percent_query_coverage by creating
+        a dictionary of the seq_id: match_length. And then finding the 
+        length of the DNA sequences
+        """
+        length_match_dict = self.asv_match_db_results_df.set_index(self.SEQ_ID)[self.REVAMP_MATCH_LENGTH_COL].to_dict()
+
+        # Create dictionary of {seq_id: seq_length}
+        seq_length_map = {
+            data['hash']: len(data['seq']) for data in self.hash_dna_seq_dict.values()
+        }
+
+        percent_query_cov_dict = {}
+        for seq_hash, length in length_match_dict.items():
+            # Turn lengths from comma separated string into list of integers
+            match_lengths = length.split(',')
+            match_lengths = [int(s) for s in match_lengths]
+
+            # Divide match lengths by sequence lengths (if more than one value only get the first and last value of the list and give a range)
+            percent_query_cov_list = []
+            for match_length in match_lengths:
+                seq_length = seq_length_map.get(seq_hash, None)
+                percent_cov = (match_length/seq_length)*100
+                percent_query_cov_list.append(percent_cov)
+            percent_query_cov_list = sorted(percent_query_cov_list)
+            if len(percent_query_cov_list) > 1:
+                percent_query_cov_str = f"{round(percent_query_cov_list[0], 1)} - {round(percent_query_cov_list[-1], 1)}"
+            elif len(percent_query_cov_list) == 1:
+                percent_query_cov_str = str(round(percent_query_cov_list[0], 1))
+            percent_query_cov_dict[seq_hash] = percent_query_cov_str
+
+        return percent_query_cov_dict
                     
-                    
+             
                     
                     
                     
