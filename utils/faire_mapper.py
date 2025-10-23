@@ -133,6 +133,8 @@ class OmeFaireMapper:
             samp_name =  samp_name.replace('.DY2209', '.DY22-09')
         if '.DY2306' in samp_name:
             samp_name =  samp_name.replace('.DY2306', '.DY23-06')
+        if 'E2030.NC' == samp_name:
+            samp_name = 'E2030.NC.SKQ23-12S'
 
         return samp_name
     
