@@ -23,8 +23,8 @@ def swap_e27_e28_sample_metadata(df: pd.DataFrame) -> pd.DataFrame:
                        'hydrogen_ion', 'nitrate_plus_nitrite', 'nitrate_plus_nitrite_unit', 'omega_arag', 'pco2', 'pco2_unit', 'phosphate', 'phosphate_unit', 'pressure', 
                        'pressure_unit', 'silicate', 'silicate_unit', 'tot_alkalinity', 'tot_alkalinity_unit', 'transmittance', 'transmittance_unit', 'serial_number', 
                        'line_id', 'station_id', 'ctd_cast_number', 'ctd_bottle_number', 'replicate_number', 'organism', 'samp_collect_notes', 
-                       'percent_oxygen_sat', 'density', 'air_temperature', 'par', 'air_pressure_at_sea_level', 'expedition_id', 'expedition_name', 'rosette_position', 
-                       'density_unit', 'air_temperature_unit', 'par_unit', 'air_pressure_at_sea_level_unit', 'measurements_from', 'recordedBy']
+                       'percent_oxygen_sat', 'sigma_theta', 'air_temperature', 'par', 'air_pressure_at_sea_level', 'expedition_id', 'expedition_name', 'rosette_position', 
+                       'sigma_theta_unit', 'air_temperature_unit', 'par_unit', 'air_pressure_at_sea_level_unit', 'measurements_from', 'recordedBy']
     
     # Create temporary copies of the values
     temp_e27_1b = df.loc[df['samp_name'] == 'E27.1B.DY20-12', columns_to_swap].copy()

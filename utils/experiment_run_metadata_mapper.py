@@ -751,7 +751,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         return df
 
     def _clean_asv_samp_names_by_e_num(self, sample_name: str) -> str:
-        # updates sample name cruise codes by eNumber (right now just for M2-PPS-0423 samples)
+        # updates sample name cruise codes by eNumber
         # extract E number
         e_num = re.search(r'E(\d+)', sample_name)
         if e_num:
@@ -760,6 +760,8 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                 sample_name = sample_name.replace('DY23-06', 'M2-PPS-0423')
             if 2084 == number or 2090 == number or 2097 == number: # For AquaM samples
                 sample_name = sample_name.replace('SKQ23-12S', 'CEO-AquaM-0923')
+            if 2030 == number:
+                sample_name = 'E2030.NC.SKQ23-12S'
 
         return sample_name
         
