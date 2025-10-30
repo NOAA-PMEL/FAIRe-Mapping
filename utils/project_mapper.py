@@ -158,6 +158,9 @@ class ProjectMapper(OmeFaireMapper):
         duplicates = sample_df_cleaned[sample_df_cleaned[self.faire_sample_name_col].duplicated(keep=False)][self.faire_sample_name_col].unique()
         if len(duplicates) > 0:
             raise ValueError(f"Duplicate samples in the sample df: {duplicates}. Please check how these differ and fix!")
+        
+        # Update pool_dna_num for extraction_negatives
+        sample_df_cleaned = self.update_pool_dna_num_for_pooled_samps(df=sample_df_cleaned)
 
         return  sample_df_cleaned, exp_df_cleaned
 
@@ -711,6 +714,17 @@ class ProjectMapper(OmeFaireMapper):
         else:
             return sample_df
 
+    def update_pool_dna_num_for_pooled_samps(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Update the pool_dna_num for pooled samples for extraction_negatives if sample_composed_of has more than one item
+        """
+        mask = df['neg_cont_type'] == 'extraction negative'
+
+        # Split samle_composed_of by '| , count elements, update pool_dna_num
+        df.loc[mask, 'pool_dna_num'] = df.loc[mask, 'sample_composed_of'].str.split('|').str.len()
+
+        return df
+    
     def load_project_level_metadata_to_excel_and_save_as_csv(self) -> None:
         # Maps the project level metadata to the projectMetadata excel sheet
         

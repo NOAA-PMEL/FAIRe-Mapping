@@ -657,6 +657,9 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # calculate the dna yield based on the concentration (ng/uL) and the sample_volume (mL)
         concentration = str(metadata_row[self.extract_conc_col])
         sample_vol = str(metadata_row[sample_vol_metadata_col]).replace('~','')
+        
+        if concentration == '' or concentration == None or concentration == 'nan':
+            return 'not applicable'
 
         try:
             concentration = float(concentration)
@@ -666,8 +669,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         except:
             if '.nc' in metadata_row[self.faire_sample_name_col].lower():
                 return 'not applicable: control sample'
-            return None
-    
+            return 'not applicable'
+
     def calculate_altitude(self, metadata_row: pd.Series, depth_col: str, tot_depth_col: str) -> float:
         # Calculates the altitude by subtracting the depth from the tot_depth_col
         depth = metadata_row[depth_col]
@@ -753,6 +756,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             
                 if sea == 'Arctic Ocean':
                     geo_loc = sea
+                elif 'and British Columbia' in sea:
+                    geo_loc = f"USA: {sea.replace('and British Columbia', '')}"
                 else:
                     geo_loc = f"USA: {sea}"
 
@@ -813,14 +818,15 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # takes two dates and calcualtes the difference to find the duration of time in ISO 8601 format
         # Handles both simple date format (2021-04-01) and dattime format (2020-09-05T02:50:00Z)
         # reformat date: # Handles both simple date format (2021-04-01) and dattime format (2020-09-05T02:50:00Z)
-        start_date = metadata_row[start_date_col]
-        end_date = metadata_row[end_date_col]
+        start_date = self.convert_date_to_iso8601(metadata_row[start_date_col])
+        end_date = self.convert_date_to_iso8601(metadata_row[end_date_col])
 
         if pd.notna(start_date) and pd.notna(end_date):
             start_date = self.format_dates_for_duration_calculation(
-                date=metadata_row[start_date_col])
+                date=start_date)
+                
             end_date = self.format_dates_for_duration_calculation(
-                date=metadata_row[end_date_col])
+                date=end_date)
 
             # Calculate the difference
             duration = end_date - start_date
@@ -829,6 +835,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             iso_duration = isodate.duration_isoformat(duration)
 
             return iso_duration
+    
 
         else:
             # if start date or end date is NA will return missing: not collected
