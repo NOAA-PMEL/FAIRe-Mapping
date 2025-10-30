@@ -6,6 +6,7 @@ import base64
 import tempfile
 import re
 import numpy as np
+import yaml
 from .lists import faire_to_ncbi_units, ncbi_faire_to_ncbi_column_mappings_exact, ncbi_faire_sra_column_mappings_exact
 from openpyxl import load_workbook
 from pathlib import Path
@@ -30,6 +31,8 @@ class NCBIMapper:
     ncbi_library_selection = 'PCR'
     ncbi_library_layout = 'Paired-end'
     ncbi_file_type = 'fastq'
+    faire_sample_name_col = "samp_name"
+    faire_sample_compose_of_col = "sample_composed_of"
     ncbi_bioprojec_col_name = 'bioproject_accession'
     faire_missing_values = ["not applicable: control sample",
                             "not applicable: sample group",
@@ -48,28 +51,26 @@ class NCBIMapper:
     faire_associated_seqs_col_name = "associatedSequences"
     ncbi_samp_name_col = "*sample_name"
 
-    def __init__(self, final_faire_sample_metadata_df: pd.DataFrame, 
-                 final_faire_experiment_run_metadata_df: pd.DataFrame,
-                 ncbi_sample_excel_save_path: str,
-                 ncbi_sra_excel_save_path: str, 
-                 library_prep_dict: dict,
-                 assay_type: str):
-        # Initialize with the final faire_sample_metadata_df and final_faire_experiment_run_metadata_df
-        # Can get these by initializing ProjectMapper and running process_sample_run_data method. Be sure to include config file
-        # see run4/ncbi_mapping/ncbi_main.py for example
-
-        self.faire_sample_df = self.clean_samp_df(df=final_faire_sample_metadata_df)
-        self.faire_experiment_run_df = final_faire_experiment_run_metadata_df
+    def __init__(self, config_file: str):
+        
+        self.config_file = self.load_config(config_file)
+        self.assay_type = self.config_file.get('assay_type')
+        self.faire_sample_df, self.faire_experiment_run_df = self.prepare_dfs()
         self.ncbi_sample_template_df = self.load_ncbi_template_as_df(file_path=self.ncbi_sample_excel_template_path, sheet_name=self.ncbi_sample_sheet_name, header=self.ncbi_sample_header)
-        self.ncbi_sample_excel_save_path = Path(ncbi_sample_excel_save_path)
-        self.ncbi_sra_excel_save_path = Path(ncbi_sra_excel_save_path)
-        self.library_prep_bebop = self.retrive_github_bebop(owner=library_prep_dict.get('owner'), repo=library_prep_dict.get('repo'), file_path = library_prep_dict.get('file_path'))
+        self.ncbi_sample_excel_save_path = Path(self.config_file.get('ncbi_sample_excel_save_path'))
+        self.ncbi_sra_excel_save_path = Path(self.config_file.get('ncbi_sra_excel_save_path'))
+        self.library_prep_bebop = self.retrive_github_bebop(owner=self.config_file['library_prep_info'].get('owner'), repo=self.config_file['library_prep_info'].get('repo'), file_path=self.config_file['library_prep_info'].get('file_path'))
         self.ncbi_bioproject_dict = self.create_ncbi_accession_dict_project_and_biosample(id_prefix='PRJNA')
         self.ncbi_biosample_dict = self.create_ncbi_accession_dict_project_and_biosample(id_prefix='SAMN')
         self.ncbi_srr_dict = self.create_ncbi_accession_dict_project_and_biosample(id_prefix='SRR')
         self.geo_loc_dict = self.create_geo_loc_dict()
-        self.assay_type = assay_type # The assay_type (e.g. metabarcoding or qPCR - used in the title column of the SRA template)
-
+       
+    def load_config(self, config_path):
+        # Load configuration yaml file
+    
+        with open(config_path, 'r') as f:
+            return yaml.safe_load(f)
+        
     def create_ncbi_submission(self):
         # Will output two excel files
 
@@ -166,12 +167,91 @@ class NCBIMapper:
         
         return pd.read_excel(file_path, sheet_name=sheet_name, header=header)
     
-    def clean_samp_df(self, df:pd.DataFrame):
-        # removes all FAIRe missing values and returns empty values
+    def concat_csvs(self, list_of_csv_paths: list) -> pd.DataFrame:
+        """
+        Reads a list of csvs and concats them into one data frame.
+        """
+        list_of_dfs = []
+        for csv in list_of_csv_paths:
+            df = pd.read_csv(csv)
+            list_of_dfs.append(df)
+
+        return pd.concat(list_of_dfs, ignore_index=True)
         
-        df_clean = df.replace(self.faire_missing_values, '')
-        return df_clean
+    def prepare_dfs(self) -> pd.DataFrame:
+        # removes all FAIRe missing values and returns empty values
+        # and concatenates the various sample data frames
+        sample_df_concated = self.concat_csvs(list_of_csv_paths=self.config_file.get('sample_metadata_project_csvs'))
+        exp_df_concated = self.concat_csvs(list_of_csv_paths=self.config_file.get('run_metadata_csvs'))
+
+        # Filter out samples from sample_df that are not part of this run/ncbi submission
+        samp_df_filtered, dropped_samples = self._filter_samp_df_by_samp_name(samp_df=sample_df_concated, associated_seq_df=exp_df_concated)
+        
+        # Check that all samples in the run df are present in the sample df - will throw error if not.
+        self.check_all_samps_are_present_in_exp_df(final_sample_df=samp_df_filtered, exp_run_df=exp_df_concated)
+
+        # Clean both sample_df and exp_df to making missing values just empty strings
+        samp_df_clean = samp_df_filtered.replace(self.faire_missing_values, '')
+        run_df_clean = exp_df_concated.replace(self.faire_missing_values, '')
+        
+        return samp_df_clean, run_df_clean
     
+    def _filter_samp_df_by_samp_name(self, samp_df: pd.DataFrame, associated_seq_df: pd.DataFrame) -> pd.DataFrame:
+        # filter sample dataframe to keep only rows where sample names exist in associated seq data frame
+        
+        missing_samples = []
+        # Get unique sample name values from associated Dataframe
+        exp_valid_samps = set(associated_seq_df[self.faire_sample_name_col].unique())
+
+        # Also valid samples are pooled subsamples that won't necessarily exist in the experiment run metadata
+        pooled_samp_dict = self.get_dict_of_pooled_samps(sample_df=samp_df)
+        other_valid_samps = set()
+        for pooled_sample, samps_that_were_pooled in pooled_samp_dict.items():
+            for samp in samps_that_were_pooled:
+                if samp in set(samp_df[self.faire_sample_name_col]):
+                    print(samp)
+                    other_valid_samps.add(samp)
+
+        # combine valid samps
+        valid_samp_names = exp_valid_samps | other_valid_samps
+
+        # Identify missing sample names (those in primary but not in associated seq runs)
+        cruise_sample_samp_names = samp_df['samp_name'].unique()
+        missing_samples = [name for name in cruise_sample_samp_names if name not in valid_samp_names]
+        
+        filtered_df = samp_df[samp_df['samp_name'].isin(valid_samp_names)].copy()
+
+        return filtered_df, missing_samples
+    
+    def check_all_samps_are_present_in_exp_df(self, final_sample_df: pd.DataFrame, exp_run_df: pd.DataFrame) -> pd.DataFrame:
+        # Checks that all samples in the exp_df exist in the samp_df, if not, will throw an error!
+
+        # Get list of reference names
+        reference_names = set(final_sample_df[self.faire_sample_name_col].unique())
+
+        # Create mask of rows to keep
+        mask = exp_run_df[self.faire_sample_name_col].isin(reference_names)
+
+        # Get dropped samples
+        dropped_samples = exp_run_df.loc[~mask, self.faire_sample_name_col].unique()
+
+        if len(dropped_samples) != 0:
+            raise ValueError("\033[31mThere is a sample missing from the sample csvs that are in this run! Please add sample metadata!\033[0m")
+    
+    def get_dict_of_pooled_samps(self, sample_df: pd.DataFrame) -> dict:
+        """
+        Gets a dictionary of the pooled sample name: list of poooled samp names
+        """
+        # Get all rows where there is a list in the sample_compose_of col (pooled samples)
+        mask = sample_df[self.faire_sample_compose_of_col].str.contains('|', regex=False)
+        col_to_split = sample_df.loc[mask, self.faire_sample_compose_of_col]
+        samples_pooled = col_to_split.str.split('|')
+        pooled_samps = sample_df.loc[mask, self.faire_samp_name_col]
+        pooled_dict = dict(zip(pooled_samps, samples_pooled))
+        print(pooled_dict)
+        return pooled_dict
+
+
     def get_ncbi_sample_df(self):
         # TODO: Edit elif_faire_unit col statement to just use the corresponding unit col by removing _unit from main col name. See update_unit_colums_with_no_corresponding_val method in SampleMapper to see how to do..
         
@@ -513,12 +593,12 @@ class NCBIMapper:
         grouped = exp_df.groupby(group_col)[id_prefix]
 
         # Use a dictionary comprehension to find the first non-None value for each group
-        if group_col is self.faire_samp_name_col:
+        if group_col == self.faire_samp_name_col:
             ncbi_accession_dict = {
                 samp_name: group.dropna().iloc[0] if not group.dropna().empty else None
                 for samp_name, group in grouped
             }
-        elif group_col is 'lib_id':
+        elif group_col == 'lib_id':
             ncbi_accession_dict = dict(zip(exp_df[group_col], exp_df[id_prefix]))
         
         return ncbi_accession_dict
@@ -535,6 +615,7 @@ class NCBIMapper:
 
     def create_SRA_title(self, metadata_row: pd.Series) -> str:
         # Create the title for the SRA template. E.g. 16S metabarcoding of sewater samples from the Bering Sea
+        # TODO: update to: "Environmental DNA (eDNA) {self.assay_type} of {type_of_samp} in the {location}: Assay {assay_name} survey of sample {samp_name}"
         samp_name = metadata_row['sample_name'] # matches what is in the SRA template column
         library_id = metadata_row['library_ID'] # matches what is in the SRA template column
         location = self.geo_loc_dict.get(samp_name)
