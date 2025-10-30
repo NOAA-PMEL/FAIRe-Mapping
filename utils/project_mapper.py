@@ -148,11 +148,13 @@ class ProjectMapper(OmeFaireMapper):
 
         # Drop any samples from rel_cont_id or biological_rep_relation that don't exist anymore in the dataframe - may have been dropped because they weren't sequenced.
         final_final_df = self.drop_samps_from_faire_rel_column_that_dropped(df = final_sample_df_with_calc_cols)
-        last_df = self.drop_samp_cols_not_meant_for_submission(sample_df=final_final_df)
+        last_df = self.drop_df_cols_not_meant_for_submission(df=final_final_df)
 
         # drop any duplicates
         sample_df_cleaned = last_df.drop_duplicates()
         exp_df_cleaned = final_exp_df.drop_duplicates()
+        # Drop cols from experiemnt_run_metadata that aren't meant for submission (like base_samp_name)
+        exp_df_final = self.drop_df_cols_not_meant_for_submission(df=exp_df_cleaned)
 
         # If there are still duplicates (can happen when PPS is split apart from cruise, and values are annotated differently), throw an error
         duplicates = sample_df_cleaned[sample_df_cleaned[self.faire_sample_name_col].duplicated(keep=False)][self.faire_sample_name_col].unique()
@@ -162,7 +164,7 @@ class ProjectMapper(OmeFaireMapper):
         # Update pool_dna_num for extraction_negatives
         sample_df_cleaned = self.update_pool_dna_num_for_pooled_samps(df=sample_df_cleaned)
 
-        return  sample_df_cleaned, exp_df_cleaned
+        return  sample_df_cleaned, exp_df_final
 
     def process_analysis_metadata(self, project_id: str, final_exp_run_df: pd.DataFrame): 
         # Process analysis metadata using AnalyisMetadata class
@@ -707,12 +709,14 @@ class ProjectMapper(OmeFaireMapper):
 
         return df
 
-    def drop_samp_cols_not_meant_for_submission(self, sample_df: pd.DataFrame) -> pd.DataFrame:
+    def drop_df_cols_not_meant_for_submission(self, df: pd.DataFrame) -> pd.DataFrame:
         # Drop columns not meant for submission like stations_within_5m
-        if self.faire_stations_in_5km_col in sample_df.columns:
-            return sample_df.drop(columns=[self.faire_stations_in_5km_col])
-        else:
-            return sample_df
+        if self.faire_stations_in_5km_col in df.columns:
+            df = df.drop(columns=[self.faire_stations_in_5km_col])
+        if 'base_samp_name' in df.columns:
+            df = df.drop(columns=['base_samp_name'])
+
+        return df
 
     def update_pool_dna_num_for_pooled_samps(self, df: pd.DataFrame) -> pd.DataFrame:
         """
