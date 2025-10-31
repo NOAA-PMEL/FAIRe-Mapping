@@ -36,29 +36,29 @@ pooled_samps:
   - pooled_samp_name: BlankAlaskaSet_NC_pool
     samps_that_were_pooled:
     - Blank.Alaska.Set7
-    - BlankAlaska.Set9
+    - Blank.Alaska.Set9
     - Blank.Alaska.Set11
     sample_category: negative control
     cont_type: extraction negative
-  - pooled_samp_name: Dyson_NC_pool
-    samps_that_were_pooled:
-    - E1717.NC.DY2306
-    - E1157.NC.DY2206
-    sample_category: negative control
-    cont_type: field negative
-  - pooled_samp_name: SKQ23_NC_pool
-    samps_that_were_pooled:
-    - E2028.NC.SKQ23-12S
-    - E2030.NC.SKQ23-12S
-    sample_category: negative control
-    cont_type: field negative
-  - pooled_samp_name: SKQ_NC_pool
-    samps_that_were_pooled:
-    - NC2
-    - NC3
-    - NC5
-    sample_category: negative control
-    cont_type: extraction negative
+  # - pooled_samp_name: Dyson_NC_pool
+  #   samps_that_were_pooled:
+  #   - E1717.NC.DY2306
+  #   - E1157.NC.DY2206
+  #   sample_category: negative control
+  #   cont_type: field negative
+  # - pooled_samp_name: SKQ23_NC_pool
+  #   samps_that_were_pooled:
+  #   - E2028.NC.SKQ23-12S
+  #   - E2030.NC.SKQ23-12S
+  #   sample_category: negative control
+  #   cont_type: field negative
+  # - pooled_samp_name: SKQ_NC_pool
+  #   samps_that_were_pooled:
+  #   - NC2
+  #   - NC3
+  #   - NC5
+  #   sample_category: negative control
+  #   cont_type: extraction negative
 
 # AnalysisMetadata
 bioinformatics_bebop_path: /home/poseidon/zalmanek/BeBOPs/BioinformticsBeBops/NOAA-PMEL-OME-Bioinformatics-Metabarcoding-Protocol-BeBOP/NOAA-PMEL-OME-Bioinformatics-Metabarcoding-Protocol-BEBOP.md

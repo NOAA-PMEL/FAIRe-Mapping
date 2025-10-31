@@ -1,72 +1,18 @@
-# Use same config file as projectMapper
-# TODO: RC0083 and M2-PPS-0523 sampleMetadata mapping needs to be complete before this mapping is accurate - uncomment RC0083 when ready.
-logging_directory: /home/poseidon/zalmanek/FAIRe-Mapping/runs/run4/ncbi_mapping/ncbi_submission_data/logging/
-datasets: # a list of sample_metadata.csvs and their associated experimentRun csvs
-  sample_metadata_csvs:
-    - cruise_name: dy2206
-      sample_metadata_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2206/data/dy2206_faire.csv
-    - cruise_name: dy2209
-      sample_metadata_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2209/data/dy2209_faire.csv
-    - cruise_name: dy2306
-      sample_metadata_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2306/data/dy2306_faire.csv
-    - cruise_name: m2_pps_0423
-      sample_metadata_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/m2_pps_0423/data/m2_pps_0423_faire.csv
-    - cruise_name: skq23_12S
-      sample_metadata_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/skq23_12S/data/skq23_12S_faire.csv
-    - cruise_name: RC0083
-      sample_metadata_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/AK_Carbon/rc0083/data/rc0083_faire.csv
-  associated_sequencing_csvs:
-    - sequencing_run_name: run4
-      sequence_run_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/run4/data/run4_faire.csv
-    
-# Add samples that have mismatching names between the Sample Metadata and the Experiment Run Metadata
-# Add sample metadata name as key, and experiment run metadata name as value
-mismatch_sample_names: 
-  Larson NC1: NC1
-  Larson NC2: NC2
-  Larson NC3: NC3
-  Larson NC4: NC4 # this one is really the only once that matters being changed, because the rest get pooled, but I still wanted them to match
-  Larson NC5: NC5
-  E2030.NC.SKQ23-12S: E2030.NC
+run_metadata_csvs: # The path to the run(s) that will be submitted to NCBI (for one submission)
+  - /home/poseidon/zalmanek/FAIRe-Mapping/runs/run4/data/run4_faire.csv
 
-#pooled samples dict - all pooled samples applicable to this project and the subsamples they make up
-# if sample names are in the mismatch - add the updated sample name as the value here.
-pooled_samps:
-  - pooled_samp_name: RC0083_NC_pool
-    samps_that_were_pooled:
-    - E1573.NC.RC0083
-    - E1451.NC.RC0083
-    - E1500.NC.RC0083
-    sample_category: negative control
-    cont_type: field negative
-  - pooled_samp_name: BlankAlaskaSet_NC_pool
-    samps_that_were_pooled:
-    - Blank.Alaska.Set7
-    - BlankAlaska.Set9
-    - Blank.Alaska.Set11
-    sample_category: negative control
-    cont_type: extraction negative
-  - pooled_samp_name: Dyson_NC_pool
-    samps_that_were_pooled:
-    - E1717.NC.DY2306
-    - E1157.NC.DY2206
-    sample_category: negative control
-    cont_type: field negative
-  - pooled_samp_name: SKQ23_NC_pool
-    samps_that_were_pooled:
-    - E2028.NC.SKQ23-12S
-    - E2030.NC.SKQ23-12S
-    sample_category: negative control
-    cont_type: field negative
-  - pooled_samp_name: SKQ_NC_pool
-    samps_that_were_pooled:
-    - NC2
-    - NC3
-    - NC5
-    sample_category: negative control
-    cont_type: extraction negative
+sample_metadata_project_csvs: # The path to the final sample metadata for all projects captured by the run. MUST BE THE FINAL PROJECT SAMPLE METADATA CSV! Not the intermittent one per cruise (this will be missing assay_name, rel_cont_id, etc.)
+  - /home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/data/sampleMetadata_OME_eDNA_EcoFOCI_2020-2023.csv
+  - /home/poseidon/zalmanek/FAIRe-Mapping/projects/AK_Carbon/data/sampleMetadata_OME_eDNA_PMELCarbon_RachelCarson_2022.csv
 
-faire_template_file: /home/poseidon/zalmanek/FAIRe-Mapping/faire_template.xlsx
-final_faire_template_path: # nothing here because final_faire_template_path is not needed for ncbi
+assay_type: metabarcoding # e.g. metabarcoding or qPCR
+bioproject_accession: ADD!!!!!! # NCBI bioproject acccession number
 
-json_creds: /home/poseidon/zalmanek/FAIRe-Mapping/credentials.json
+library_prep_info: # info that points to the github repo with the library prep BeBOP. Will get via API
+  owner: marinednadude
+  repo: Jonah-Ventures-Library-Preparation
+  file_path: Jonah-Ventures-Library-NovaSeq-Preparation-BeBOP.md
+
+ncbi_sample_excel_save_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/run4/ncbi_mapping/ncbi_submission_data/run4_MIMARKS.survey.water.6.0.xlsx
+ncbi_sra_excel_save_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/run4/ncbi_mapping/ncbi_submission_data/run4_SRA_metadata.xlsx
+

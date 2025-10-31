@@ -1,14 +1,33 @@
-# Use same config file as projectMapper
-logging_directory: /home/poseidon/zalmanek/FAIRe-Mapping/runs/osu1037/ncbi_mapping/ncbi_submission_data/logging/
-datasets: # a list of sample_metadata.csvs and their associated experimentRun csvs
-  sample_metadata_csvs:
-    - cruise_name: no201
-      sample_metadata_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/no201/data/no201_faire.csv
-  associated_sequencing_csvs:
-    - sequencing_run_name: osu1089
-      sequence_run_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/osu1089/data/osu1089_faire.csv
+# # Use same config file as projectMapper
+# logging_directory: /home/poseidon/zalmanek/FAIRe-Mapping/runs/osu1037/ncbi_mapping/ncbi_submission_data/logging/
+# datasets: # a list of sample_metadata.csvs and their associated experimentRun csvs
+#   sample_metadata_csvs:
+#     - cruise_name: no201
+#       sample_metadata_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/no201/data/no201_faire.csv
+#   associated_sequencing_csvs:
+#     - sequencing_run_name: osu1089
+#       sequence_run_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/osu1089/data/osu1089_faire.csv
 
-faire_template_file: /home/poseidon/zalmanek/FAIRe-Mapping/faire_template.xlsx
-final_faire_template_path: # nothing here because final_faire_template_path is not needed for ncbi
+# faire_template_file: /home/poseidon/zalmanek/FAIRe-Mapping/faire_template.xlsx
+# final_faire_template_path: # nothing here because final_faire_template_path is not needed for ncbi
 
-json_creds: /home/poseidon/zalmanek/FAIRe-Mapping/credentials.json
+# json_creds: /home/poseidon/zalmanek/FAIRe-Mapping/credentials.json
+
+
+run_metadata_csvs: # The path to the run(s) that will be submitted to NCBI (for one submission)
+  - /home/poseidon/zalmanek/FAIRe-Mapping/runs/osu1089/data/osu1089_faire.csv
+
+sample_metadata_project_csvs: # The path to the final sample metadata for all projects captured by the run. MUST BE THE FINAL PROJECT SAMPLE METADATA CSV! Not the intermittent one per cruise (this will be missing assay_name, rel_cont_id, etc.)
+  - /home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/data/sampleMetadata_OME_eDNA_EcoFOCI_2020-2023.csv
+
+assay_type: metabarcoding # e.g. metabarcoding or qPCR
+bioproject_accession: ADD!!!!!! # NCBI bioproject acccession number
+
+library_prep_info: # info that points to the github repo with the library prep BeBOP. Will get via API
+  owner: marinednadude
+  repo: OSU-Library-Preparation-Sequencing
+  file_path: OSU-Library-Preparation-Sequencing-BeBOP.md
+
+ncbi_sample_excel_save_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/osu1089/ncbi_mapping/ncbi_submission_data/updated_pipeline/osu1089_MIMARKS.survey.water.6.0.xlsx
+ncbi_sra_excel_save_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/osu1089/ncbi_mapping/ncbi_submission_data/updated_pipeline/osu1089_SRA_metadata.xlsx
+
