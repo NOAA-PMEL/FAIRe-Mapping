@@ -9,6 +9,7 @@ import pandas as pd
 import warnings
 import yaml
 import re
+import numpy as np
 from .custom_exception import ControlledVocabDoesNotExistError
 from .lists import faire_int_cols
 import gspread #library that makes it easy for us to interact with the sheet
@@ -220,10 +221,11 @@ class OmeFaireMapper:
         # also converts strings from 5/1/2024 to 2024-01-05T00:00:00Z
         # And coverts 2024-05-01 to 2024-01-05T00:00:00Z
         # Also handles years like 0022 and corrects them to 2022
-    
         has_time_component = False
+
+        date = str(date)
         
-        if date is None:
+        if date in  ['None', 'nan', 'missing: not collected', '', 'missing: not provided']:
             return "missing: not provided"
 
         # 1. Handle full ISO 8601 format (YYYY-MM-DDTHH:MM:SSZ) and return immediately
@@ -241,10 +243,16 @@ class OmeFaireMapper:
             dt_obj = datetime.strptime(date, "%Y/%m/%d %H:%M:%S")
             has_time_component = True
             
-        # Format 5/1/2024
+        # Format 5/1/2024 or 5/1/24
         elif "/" in date and ":" not in date: 
-            dt_obj = datetime.strptime(date, "%m/%d/%Y")
-            
+            try: # 5/1/2024 format
+                dt_obj = datetime.strptime(date, "%m/%d/%Y")
+            except ValueError:
+                try: # foramt 5/1/24
+                    dt_obj = datetime.strptime(date, "%m/%d/%y")
+                except ValueError:
+                    raise ValueError(f"Unsupported slash-separated dae format: {date}")
+        
         # --- FIX APPLIED HERE: Handle all dash-separated formats gracefully ---
         elif "-" in date:
             if ':' in date:

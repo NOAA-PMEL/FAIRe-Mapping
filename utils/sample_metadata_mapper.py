@@ -787,6 +787,9 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         return env_local_scale
 
     def format_dates_for_duration_calculation(self, date: str) -> datetime:
+        if date in  [None, 'nan', 'missing: not collected', '', 'missing: not provided']:
+            return "missing: not provided"
+        
         # Handle different date formats and timezone indicators (used with calculate_date_duration function)
         if 'T' in date:
             if 'Z' in date:
@@ -821,7 +824,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         start_date = self.convert_date_to_iso8601(metadata_row[start_date_col])
         end_date = self.convert_date_to_iso8601(metadata_row[end_date_col])
 
-        if pd.notna(start_date) and pd.notna(end_date):
+        empty_dates = ['None', 'nan', 'missing: not collected', '', 'missing: not provided']
+        if pd.notna(start_date) and pd.notna(end_date) and start_date not in empty_dates and end_date not in empty_dates:
             start_date = self.format_dates_for_duration_calculation(
                 date=start_date)
                 
