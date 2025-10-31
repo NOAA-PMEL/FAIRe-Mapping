@@ -11,6 +11,8 @@ from .lists import faire_to_ncbi_units, ncbi_faire_to_ncbi_column_mappings_exact
 from openpyxl import load_workbook
 from pathlib import Path
 
+pd.set_option('future.no_silent_downcasting', True)
+
 # TODO: add title to get_sra_df method once hear back from Sean
 # TODO: Figure out what is going on when submitting PCR samples - added a custom column to differentiate them and the submitter isn't recognizing it.
 # TODO: check on pos_cont_type and neg_cont_type, and sample_Title in ncbi sample mappings stuff?
@@ -54,11 +56,11 @@ class NCBIMapper:
     def __init__(self, config_file: str):
         
         self.config_file = self.load_config(config_file)
+        self.ncbi_sample_excel_save_path = Path(self.config_file.get('ncbi_sample_excel_save_path'))
+        self.ncbi_sra_excel_save_path = Path(self.config_file.get('ncbi_sra_excel_save_path'))
         self.assay_type = self.config_file.get('assay_type')
         self.faire_sample_df, self.faire_experiment_run_df = self.prepare_dfs()
         self.ncbi_sample_template_df = self.load_ncbi_template_as_df(file_path=self.ncbi_sample_excel_template_path, sheet_name=self.ncbi_sample_sheet_name, header=self.ncbi_sample_header)
-        self.ncbi_sample_excel_save_path = Path(self.config_file.get('ncbi_sample_excel_save_path'))
-        self.ncbi_sra_excel_save_path = Path(self.config_file.get('ncbi_sra_excel_save_path'))
         self.library_prep_bebop = self.retrive_github_bebop(owner=self.config_file['library_prep_info'].get('owner'), repo=self.config_file['library_prep_info'].get('repo'), file_path=self.config_file['library_prep_info'].get('file_path'))
         self.ncbi_bioproject_dict = self.create_ncbi_accession_dict_project_and_biosample(id_prefix='PRJNA')
         self.ncbi_biosample_dict = self.create_ncbi_accession_dict_project_and_biosample(id_prefix='SAMN')
@@ -180,19 +182,19 @@ class NCBIMapper:
         
     def prepare_dfs(self) -> pd.DataFrame:
         # removes all FAIRe missing values and returns empty values
-        # and concatenates the various sample data frames
+        # and concatenates the various sample data frames, and drops any samples from sample_df that aren't part of run to submit.
         sample_df_concated = self.concat_csvs(list_of_csv_paths=self.config_file.get('sample_metadata_project_csvs'))
         exp_df_concated = self.concat_csvs(list_of_csv_paths=self.config_file.get('run_metadata_csvs'))
 
         # Filter out samples from sample_df that are not part of this run/ncbi submission
-        samp_df_filtered, dropped_samples = self._filter_samp_df_by_samp_name(samp_df=sample_df_concated, associated_seq_df=exp_df_concated)
+        samp_df_filtered = self._filter_samp_df_by_samp_name(samp_df=sample_df_concated, associated_seq_df=exp_df_concated)
         
         # Check that all samples in the run df are present in the sample df - will throw error if not.
         self.check_all_samps_are_present_in_exp_df(final_sample_df=samp_df_filtered, exp_run_df=exp_df_concated)
 
         # Clean both sample_df and exp_df to making missing values just empty strings
-        samp_df_clean = samp_df_filtered.replace(self.faire_missing_values, '')
-        run_df_clean = exp_df_concated.replace(self.faire_missing_values, '')
+        samp_df_clean = samp_df_filtered.fillna('').replace(self.faire_missing_values, '')
+        run_df_clean = exp_df_concated.fillna('').replace(self.faire_missing_values, '')
         
         return samp_df_clean, run_df_clean
     
@@ -208,8 +210,7 @@ class NCBIMapper:
         other_valid_samps = set()
         for pooled_sample, samps_that_were_pooled in pooled_samp_dict.items():
             for samp in samps_that_were_pooled:
-                if samp in set(samp_df[self.faire_sample_name_col]):
-                    print(samp)
+                if samp.strip() in set(samp_df[self.faire_sample_name_col]):
                     other_valid_samps.add(samp)
 
         # combine valid samps
@@ -218,10 +219,14 @@ class NCBIMapper:
         # Identify missing sample names (those in primary but not in associated seq runs)
         cruise_sample_samp_names = samp_df['samp_name'].unique()
         missing_samples = [name for name in cruise_sample_samp_names if name not in valid_samp_names]
+
+        # Save missing samples to logging dir
+        if len(missing_samples) > 1:
+            self.save_samples_dropped_to_logging(dropped_samples=missing_samples)
         
         filtered_df = samp_df[samp_df['samp_name'].isin(valid_samp_names)].copy()
 
-        return filtered_df, missing_samples
+        return filtered_df
     
     def check_all_samps_are_present_in_exp_df(self, final_sample_df: pd.DataFrame, exp_run_df: pd.DataFrame) -> pd.DataFrame:
         # Checks that all samples in the exp_df exist in the samp_df, if not, will throw an error!
@@ -245,17 +250,37 @@ class NCBIMapper:
         # Get all rows where there is a list in the sample_compose_of col (pooled samples)
         mask = sample_df[self.faire_sample_compose_of_col].str.contains('|', regex=False)
         col_to_split = sample_df.loc[mask, self.faire_sample_compose_of_col]
-        samples_pooled = col_to_split.str.split('|')
+        samples_pooled = col_to_split.str.split(' | ')
         pooled_samps = sample_df.loc[mask, self.faire_samp_name_col]
         pooled_dict = dict(zip(pooled_samps, samples_pooled))
-        print(pooled_dict)
         return pooled_dict
 
+    def save_samples_dropped_to_logging(self, dropped_samples: list):
+        """
+        Takes a list of the dropped samples from the sample df (because they
+        weren't part of the run - theoretically, unless there is a mismatch error
+        with the sample names) and adds them to a csv in the associated logging
+        folder called samples_not_part_of_run.csv
+        """
+        # Gets the directory where we are saving the data to (in the config file)
+        main_save_dir = self.ncbi_sample_excel_save_path.parent 
+        logging_dir = main_save_dir / 'logging'
+
+        # Check if looging directory exists and create it if it doesn't.
+        # parents = True ensures any missing parent directories are also created
+        # exist_ok = True prevents an error if the directory already exists
+        logging_dir.mkdir(parents=True, exist_ok=True)
+        new_file_name = "dropped_samples_not_part_of_run.csv"
+        logging_results_path = logging_dir / new_file_name
+
+        # Create df and save 
+        df = pd.DataFrame(dropped_samples)
+        df.to_csv(logging_results_path, index=False, header=False)
 
     def get_ncbi_sample_df(self):
-        # TODO: Edit elif_faire_unit col statement to just use the corresponding unit col by removing _unit from main col name. See update_unit_colums_with_no_corresponding_val method in SampleMapper to see how to do..
-        
-        updated_df = pd.DataFrame()
+
+        # updated_df = pd.DataFrame()
+        data_for_df = {}
 
         # First handle unit transormations
         for ncbi_col_name, faire_mapping in faire_to_ncbi_units.items():
@@ -268,37 +293,47 @@ class NCBIMapper:
                 # Check if we have a constant unit or a unit column
                 if 'constant_unit_val' in faire_mapping:
                     unit_val = faire_mapping['constant_unit_val']
-                    updated_df[ncbi_col_name] = (self.faire_sample_df[faire_col].astype(str) + ' ' + unit_val).where(self.faire_sample_df[faire_col].astype(str).str.strip() != '', '')
+                    new_col_data = (self.faire_sample_df[faire_col].astype(str) + ' ' + unit_val).where(self.faire_sample_df[faire_col].astype(str).str.strip() != '', '')
                 elif 'faire_unit_col' in faire_mapping:
                     unit_col = faire_mapping['faire_unit_col']
-                    updated_df[ncbi_col_name] = self.faire_sample_df[faire_col].astype(str) + ' ' + self.faire_sample_df[unit_col].astype(str).where(self.faire_sample_df[faire_col].astype(str).str.strip() != '', '')
+                    new_col_data = self.faire_sample_df[faire_col].astype(str) + ' ' + self.faire_sample_df[unit_col].astype(str).where(self.faire_sample_df[faire_col].astype(str).str.strip() != '', '')
                 else:
-                    updated_df[ncbi_col_name] = self.faire_sample_df[faire_col]
+                    new_col_data = self.faire_sample_df[faire_col]
+                # Store the resulting sereis in the dictionary
+                data_for_df[ncbi_col_name] = new_col_data
 
         # Second handle direct column mappings
         for old_col_name, new_col_name in ncbi_faire_to_ncbi_column_mappings_exact.items():
             if old_col_name in self.faire_sample_df:
-                updated_df[new_col_name] = self.faire_sample_df[old_col_name]
+                data_for_df[new_col_name] = self.faire_sample_df[old_col_name]
 
         # Third handle logic cases (depth and lat/lon)
-        updated_df['*depth'] = self.faire_sample_df.apply(
+        data_for_df['*depth'] = self.faire_sample_df.apply(
                 lambda row: self.get_ncbi_depth(metadata_row=row),
                 axis=1
             )
-        updated_df['*lat_lon'] = self.faire_sample_df.apply(
+        data_for_df['*lat_lon'] = self.faire_sample_df.apply(
             lambda row: self.get_ncbi_lat_lon(metadata_row=row),
             axis=1
         )
 
         # Fourth add organism
-        updated_df['*organism'] = self.ncbi_organism
+        data_for_df['*organism'] = self.ncbi_organism
 
         # Fifth add description for PCR technical replicates and additional column - needed to differentiate their metadata for submission to be accepted
-        updated_df['description'] = self.faire_sample_df['samp_name'].apply(self.add_description_for_pcr_reps)
-        updated_df['technical_rep_id'] = self.faire_sample_df['samp_name'].apply(self.add_pcr_technical_rep)
+        data_for_df['description'] = self.faire_sample_df['samp_name'].apply(self.add_description_for_pcr_reps)
+        data_for_df['technical_rep_id'] = self.faire_sample_df['samp_name'].apply(self.add_pcr_technical_rep)
 
-        # Get Bioproject accession from exp run df and biosample acession
-        updated_df[self.ncbi_bioprojec_col_name] = updated_df[self.ncbi_samp_name_col].map(self.ncbi_bioproject_dict)
+        # Get Bioproject accession from exp run df and biosample acession (important for OSU runs). If value is left blank, add
+        # new bioaccession number from the config.yaml file
+        data_for_df[self.ncbi_bioprojec_col_name] = data_for_df[self.ncbi_samp_name_col].map(self.ncbi_bioproject_dict)
+        data_for_df[self.ncbi_bioprojec_col_name] = data_for_df[self.ncbi_bioprojec_col_name].fillna(self.config_file.get('bioproject_accession'))
+
+        # Add the sample_title
+        data_for_df['sample_title'] = self.faire_sample_df.apply(lambda row: self.create_sample_title(metadata_row=row), axis=1)
+
+        # --- Create the initial DataFrame from the collected data ---
+        updated_df = pd.DataFrame(data_for_df)
      
         # drop technical_rep_id if its empty
         if 'technical_rep_id' in updated_df.columns and updated_df['technical_rep_id'].isnull().all():
@@ -307,14 +342,11 @@ class NCBIMapper:
         # 6th add additional column in FAIRe sample df that do not exist in ncbi template
         final_ncbi_df = self.add_additional_faire_cols(faire_samp_df=self.faire_sample_df, updated_ncbi_df=updated_df)
 
-        # 7th drop fields that should not be included in NCBI submission (like within_5km and rel_cont_id)
-        last_final_ncbi_df = self.drop_samp_cols_not_meant_for_submission(final_ncbi_df)
-
         # Add biosample_accession - did not like it when I added it before this.
-        last_final_ncbi_df['biosample_accession'] = last_final_ncbi_df[self.ncbi_samp_name_col].map(self.ncbi_biosample_dict)
-        # drop biosample_accession if its empty (for non-osu runs)
-        if 'biosample_accession' in updated_df.columns and updated_df['biosample_accession'].isnull().all():
-            updated_df = updated_df.drop(columns=['biosample_accession'])
+        final_ncbi_df['biosample_accession'] = final_ncbi_df[self.ncbi_samp_name_col].map(self.ncbi_biosample_dict)
+
+        # Drop empty columns
+        last_final_ncbi_df = self.drop_empty_cols(final_ncbi_df)
         
         return last_final_ncbi_df
 
@@ -431,21 +463,32 @@ class NCBIMapper:
         additional_cols_units_dict = cols[0]
         additional_reg_faire_cols = cols[1]
 
+        new_col_data = {}
         # Add unit cols first
         for key, value in additional_cols_units_dict.items():
-            updated_ncbi_df[key] = faire_samp_df[key].astype(str) + ' ' + faire_samp_df[value].astype(str)
+            new_col_data[key] = faire_samp_df[key].astype(str) + ' ' + faire_samp_df[value].astype(str)
 
         # Then add regular columns (those with no corresponding units)
         for faire_col in additional_reg_faire_cols:
-            updated_ncbi_df[faire_col] = faire_samp_df[faire_col]
+            new_col_data[faire_col] = faire_samp_df[faire_col]
+
+        # Create the data frame of new columns and concat once
+        if new_col_data:
+            new_cols_df = pd.DataFrame(new_col_data, index=updated_ncbi_df.index)
+            # Concat the new columns to the existing DatFrame in one go (axis=1 fo columns)
+            final_ncbi_df = pd.concat([updated_ncbi_df, new_cols_df], axis=1)
+        else:
+            final_ncbi_df = updated_ncbi_df
 
         # Drop columns that are empty for all rows that were additional faire columns
         columns_to_drop = []
         for col in additional_faire_cols:
-            if col in updated_ncbi_df.columns:
-                if updated_ncbi_df[col].isna().all() or updated_ncbi_df[col].astype(str).str.strip().eq('').all():
+            if col in final_ncbi_df.columns:
+                if final_ncbi_df[col].isna().all() or final_ncbi_df[col].astype(str).str.strip().eq('').all():
                     columns_to_drop.append(col)
-        final_ncbi_df = updated_ncbi_df.drop(columns=columns_to_drop)
+
+        if columns_to_drop:
+            final_ncbi_df = final_ncbi_df.drop(columns=columns_to_drop)
 
         return final_ncbi_df
 
@@ -552,12 +595,10 @@ class NCBIMapper:
 
         print(f'NCBI sample saved to {ncbi_excel_save_path}')
 
-    def drop_samp_cols_not_meant_for_submission(self, sample_df: pd.DataFrame) -> pd.DataFrame:
-        # Drop columns not meant for submission like stations_within_5m
-        if self.faire_stations_in_5km_col in sample_df.columns:
-            return sample_df.drop(columns=[self.faire_stations_in_5km_col])
-        else:
-            return sample_df
+    def drop_empty_cols(self, sample_df: pd.DataFrame) -> pd.DataFrame:
+        # Drop empty columns. Regex pattern matches any cell containing zero or more whitespace characters (\s*) between the start (^) and end ($) of the string. This ensures truly empty or blank-space-only cells are replaced.
+        df_cleaned = sample_df.replace(r'^\s*$', np.nan, regex=True)
+        return df_cleaned
 
     def get_ncbi_bioproject_if_exists(self, metadata_row: pd.Series, id_prefix: str) -> str:
         # Uses the associatedSequences column in the FAIRe df to get the NCBI accession number 
@@ -615,7 +656,6 @@ class NCBIMapper:
 
     def create_SRA_title(self, metadata_row: pd.Series) -> str:
         # Create the title for the SRA template. E.g. 16S metabarcoding of sewater samples from the Bering Sea
-        # TODO: update to: "Environmental DNA (eDNA) {self.assay_type} of {type_of_samp} in the {location}: Assay {assay_name} survey of sample {samp_name}"
         samp_name = metadata_row['sample_name'] # matches what is in the SRA template column
         library_id = metadata_row['library_ID'] # matches what is in the SRA template column
         location = self.geo_loc_dict.get(samp_name)
@@ -634,3 +674,28 @@ class NCBIMapper:
 
             return f"Environmental DNA (eDNA) {self.assay_type} of {type_of_samp} in the {location}: {run}"
 
+    def create_sample_title(self, metadata_row: pd.Series) -> str:
+        """
+        Create the sample_title for the sample rows, using the faire_df metdata rows
+        """
+        samp_name = metadata_row[self.faire_samp_name_col] # matches faire field
+        location = metadata_row['geo_loc_name'].replace('USA: ', '') # maches faire_field
+        assay_name = metadata_row['assay_name'] # matches faire field
+        samp_category = metadata_row['samp_category']
+        if samp_category == 'sample': # may need to add additional functionality here
+            if 'PPS' in samp_name:
+                type_of_samp = 'PPS-collected seawater'
+            else:
+                type_of_samp = 'CTD-collected seawater'
+     
+            sample_title = f"Environmental DNA (eDNA) {self.assay_type} of {type_of_samp} in the {location}: Assay(s) {assay_name} survey of sample {samp_name}"
+
+        elif samp_category == 'negative control':
+            neg_cont_type = metadata_row['neg_cont_type']
+            sample_title = f"Sample {samp_name} {neg_cont_type} "
+        
+        elif samp_category == 'positive control':
+            pos_cont_type = metadata_row['pos_cont_type']
+            sample_title = f"Sample {samp_name} {pos_cont_type}"
+        
+        return sample_title
