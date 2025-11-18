@@ -1,4 +1,5 @@
 from pathlib import Path
+from abc import ABC, abstractmethod
 import pandas as pd
 import hashlib
 import openpyxl
@@ -11,11 +12,14 @@ from openpyxl.utils import get_column_letter
 # TODO: Add assay name to sheet name when saving to the FAIRe excel file???
 # TODO: THis only works for Revamp - will need to adjust/expand for other taxonomy methods
 
-class TaxonomyTableCreator:
-    # FAIRE Taxonomy fields
+class TaxonomyTableCreator(ABC):
+    # FAIRE Taxonomy fields (Includes ones we are adding as User Defined fields like Supergroup)
     SEQ_ID = "seq_id"
     DNA_SEQUENCE = "dna_sequence"
     KINGDOM = "kingdom"
+    SUPERGROUP = "supergroup"
+    DIVISION = "division"
+    SUBDIVISION = "subdivision"
     PHYLUM = "phylum"
     CLASS = "class"
     ORDER = "order"
@@ -34,85 +38,43 @@ class TaxonomyTableCreator:
     PERCENT_QUERY_COVER = "percent_query_cover"
     CONFIDENCE_SCORE = "confidence_score"
 
-    TAXONOMY_COLS = [KINGDOM, PHYLUM, CLASS, ORDER, FAMILY, GENUS, SPECIES]
-
     # Other
     TAXA_FAIRE_TEMPLATE_PATH = "/home/poseidon/zalmanek/FAIRe-Mapping/taxonomy/taxa_faire_template.xlsx"
 
     def __init__(self, taxon_tble_file: str, asv_dna_seq_file: str, final_faire_template_path: str):
         """
         taxon_table_file: The path to the taxonomy table.txt file
-        asv_match_db_results_file: The path to the accessions database results. E.g. for revamp its the blast results.
         asv_dna_seq_file: The path to the file with the asv/dna sequences
         """
-
         self.taxon_table_path = Path(taxon_tble_file)
-        # self.asv_match_db_results_file_path = Path(asv_match_db_results_file)
         self.asv_dna_seq_file = Path(asv_dna_seq_file)
-        self.final_faire_template_path = final_faire_template_path
+        self.final_faire_excel_path = final_faire_template_path
         self.hash_dna_seq_dict = self._create_asv_hash_dict()
-        # self.asv_match_db_results_df = self._get_asv_match_db_df()
-        # self.seq_accession_ids_dict = self._create_accession_ids_dict()
-        # self.seq_percent_match_dict = self._create_percent_match_dict()
-        # self.seq_query_cover_dict = self._create_percent_query_cov_dict()
-        self.taxon_df = self.get_faire_df()
-
-        self.add_final_df_to_FAIRe_excel(final_faire_df=self.taxon_df)
     
-    # def get_faire_df(self) -> pd.DataFrame:
-    #     """
-    #     Load the taxon_tble_file as a data frame
-    #     """
-    #     # Load taxonomy text file as a data frame.
-    #     df = self._load_tab_text_file_as_df(file_path=self.taxon_table_path)
+    @property
+    @abstractmethod
+    def taxonomy_cols(self):
+        """
+        Sublasses must define their taxonomy columns
+        """
+        pass
 
-    #     # Rename columns to match FAIRE
-    #     df_cols_renamed = self._rename_kpcofgs_columns(df=df)
+    @property
+    @abstractmethod
+    def taxonomy_unknowns(self):
+        """
+        Subclasses must define their taxonomy unknowns
+        """
+        pass
 
-    #     # Replace ASVs with hashes
-    #     df_with_hashes = self._switch_asv_for_hashes(df=df_cols_renamed)
-
-    #     # First get VerbatimIdentification (because the Species column will be dropped and replaced 
-    #     # with scientific epithet which changes the value)
-    #     df_with_hashes[self.VERBATIM_IDENTFICATION] = df_with_hashes.apply(lambda row: self._get_verabtim_identification(row=row), 
-    #                                                                        axis=1)
-
-    #     # More Species column to be Scientific Epithet. Drop the species column after
-    #     df_with_hashes[self.SPECIFIC_EPITHET] = df_with_hashes[self.SPECIES].apply(self._get_specific_epithet)
-
-    #     # Get scientific name
-    #     df_with_hashes[self.SCIENTIFIC_NAME] = df_with_hashes.apply(self._get_scientific_name, axis=1)
-        
-    #     # Get taxon_rank
-    #     df_with_hashes[self.TAXON_RANK] = df_with_hashes.apply(self._get_taxon_rank, axis=1)
-
-    #     # Get accession ids and accession_id_ref_db
-    #     df_with_hashes[self.ACCESSION_ID] = df_with_hashes[self.SEQ_ID].map(self.seq_accession_ids_dict).fillna("not applicable")
-    #     df_with_hashes[self.ACCESSION_ID_REF_DB] = self._get_accession_ref_db()
-
-    #     # Get percent_match
-    #     df_with_hashes[self.PERCENT_MATCH] = df_with_hashes[self.SEQ_ID].map(self.seq_percent_match_dict).fillna("not applicable")
-
-    #     # Get percent_query_cover
-    #     df_with_hashes[self.PERCENT_QUERY_COVER] = df_with_hashes[self.SEQ_ID].map(self.seq_query_cover_dict).fillna("not applicable")
-
-    #     # Get confidence score
-    #     df_with_hashes[self.CONFIDENCE_SCORE] = self._get_confidence_score()
-    #     return df_with_hashes
-    
-    # def _get_asv_match_db_df(self) -> pd.DataFrame:
-    #     """
-    #     Puts the asv_match_db_results_file into a data frame. Replaces 
-    #     ASV strings with md5 hashes.
-    #     """
-    #     df = self._load_tab_text_file_as_df(file_path=self.asv_match_db_results_file_path)
-
-    #     df.rename(columns={'ASV': self.SEQ_ID}, inplace=True)
-
-    #     # Replace ASVs with hashes
-    #     df_with_hashes = self._switch_asv_for_hashes(df=df)
-
-    #     return df_with_hashes
+    @abstractmethod
+    def build_faire_df(self) -> pd.DataFrame:
+        """
+        Create the final FAIRe Taxonomy data frame. An abstract method
+        because child classes based on bioinformatics methods should have
+        this defined differently.
+        """
+        pass
     
     def _load_tab_text_file_as_df(self, file_path: Path) -> pd.DataFrame:
         """
@@ -173,34 +135,6 @@ class TaxonomyTableCreator:
 
         return asv_hash_dict
 
-    # def _rename_kpcofgs_columns(self, df: pd.DataFrame) -> pd.DataFrame:   
-    #     """
-    #     Renames the columns from the original loaded taxonomy file to match
-    #     FAIRe's colums for Kingdom, Phylum, Class, Order, Family, Genus, Species
-    #     """
-    #     col_renames = {}
-    #     for col in df.columns:
-    #         col = col.strip()
-    #         if col.lower() == 'asv':
-    #             col_renames[col] = self.SEQ_ID
-    #         elif col.lower() == self.KINGDOM:
-    #             col_renames[col] = self.KINGDOM
-    #         elif col.lower() == self.PHYLUM:
-    #             col_renames[col] = self.PHYLUM
-    #         elif col.lower() == self.CLASS:
-    #             col_renames[col] = self.CLASS
-    #         elif col.lower() == self.ORDER:
-    #             col_renames[col] = self.ORDER
-    #         elif col.lower() == self.FAMILY:
-    #             col_renames[col] = self.FAMILY
-    #         elif col.lower() == self.GENUS:
-    #             col_renames[col] = self.GENUS
-    #         elif col.lower() == self.SPECIES:
-    #             col_renames[col] = self.SPECIES
-
-    #     df.rename(columns=col_renames, inplace=True)
-    #     return df
-
     def _switch_asv_for_hashes(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Switches the ASV names in column one of the taxonomy df for the 
@@ -213,25 +147,19 @@ class TaxonomyTableCreator:
         # Replace ASV strings with hashes
         df[self.SEQ_ID] = df[self.SEQ_ID].map(hash_map)
         return df
-
-    def _get_verabtim_identification(self, row: pd.Series) -> str:
+    
+    def _create_dna_sequence_col(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Get the verbatim identification by string together values in 
-        taxonomic columns.
+        Creates a column called dna_sequence that adds the corresponding
+        DNA sequence to based on the ASV. Needs to come abefore the ASVs have
+        been switched to hashes.
         """
-        kingdom = row[self.KINGDOM]
-        phylum = row[self.PHYLUM]
-        tax_class = row[self.CLASS]
-        order = row[self.ORDER]
-        family = row[self.FAMILY]
-        genus = row[self.GENUS]
-        species = row[self.SPECIES]
+        hash_map = {
+            seq_id: data['seq'] for seq_id, data in self.hash_dna_seq_dict.items()
+        }
+        df[self.DNA_SEQUENCE] = df[self.SEQ_ID].map(hash_map)
 
-        verbatim_list = [kingdom, phylum, tax_class, order, family, genus, species]
-        # Drop na values (but keep any strings the say unkown, or what not)
-        verbatim_list = [val for val in verbatim_list if pd.notna(val)]
-        verbatim_str = ', '.join(verbatim_list)
-        return verbatim_str
+        return df
 
     def _get_taxon_rank(self, row: pd.Series) -> str:
         """
@@ -239,8 +167,8 @@ class TaxonomyTableCreator:
         name in the Scientific name.
         """
         # Iterate through the taxonomic cols in reverse order (most specific first)
-        for col in reversed(self.TAXONOMY_COLS):
-            if pd.notna(row[col]) and row[col] not in self.TAXONOMY_UNKNOWNS:
+        for col in reversed(self.taxonomy_cols):
+            if pd.notna(row[col]) and row[col] not in self.taxonomy_unknowns:
                 if col == self.SPECIFIC_EPITHET:
                     return "species"
                 else:
@@ -253,108 +181,11 @@ class TaxonomyTableCreator:
         Gets the most scientific name for the most specific 
         value in the taxonomies.
         """
-        for col in reversed(self.TAXONOMY_COLS):
-            if pd.notna(row[col]) and row[col] not in self.TAXONOMY_UNKNOWNS:
+        for col in reversed(self.taxonomy_cols):
+            if pd.notna(row[col]) and row[col] not in self.taxonomy_unknowns:
                 return row[col]
         
         return "not applicable"
-
-    def _get_specific_epithet(self, species_value: str) -> str:
-        """
-        The specific epithet column is currently just mapped to the species
-        column in the origina taxonomy.txt file, need to edit to fit 
-        the speicicEpithet which is the lower case value of the species, 
-        everything else that is NA will become 'not applicable'
-        """
-        
-        if pd.isna(species_value) or species_value in self.TAXONOMY_UNKNOWNS:
-            return "not applicable"
-        else:
-            species_words = str(species_value).split()
-            if len(species_words) ==2:
-                return species_words[1]
-            elif len(species_words) > 2 and ('sp_' in species_words or 'cf_' in species_words or 'aff_' in species_words):
-                return f"Unclassified {' '. join(species_words[1:])}"
-            elif len(species_words) == 3: # Has subspecies
-                return species_words[1]
-            elif "endosymbiont":
-                return "endosymbiont"
-            else:
-                print(f"\033[35mThere appear to be a weird species structure with value {species_value}.\033[0m")
-                return "not applicable" 
-                    
-    # def _create_accession_ids_dict(self) -> dict:
-    #     """
-    #     Creates a dictionary of seq: accession ids
-    #     """    
-    #     accession_dict = self.asv_match_db_results_df.set_index(self.SEQ_ID)[self.REVAMP_ACCESSION_MATCH_COL].to_dict()
-    #     # update list of accession to use |
-    #     for accession in accession_dict.values():
-    #         accession.replace(',', ' |')
-
-    #     return accession_dict      
-
-    def _get_accession_ref_db(self) -> str:
-        """
-        Get the accession ref db based on the file names
-        """
-        if "revamp" in str(self.taxon_table_path).lower():
-            accession_ref_db = self.REVAMP_ACCESSION_ID_REF_DB
-        else:
-            raise ValueError("Have not added functionality for your reference database!")
-
-        return accession_ref_db
-
-    # def _create_percent_match_dict(self) -> dict:
-    #     """
-    #     Creates the seq_id: percent_match dictionary
-    #     """
-    #     percent_match_dict = self.asv_match_db_results_df.set_index(self.SEQ_ID)[self.REVAMP_PERCENT_MATCH_COL].to_dict()
-
-    #     return percent_match_dict       
-
-    # def _create_percent_query_cov_dict(self) -> dict:
-    #     """
-    #     Creates a dictionary of seq_id: percent_query_coverage by creating
-    #     a dictionary of the seq_id: match_length. And then finding the 
-    #     length of the DNA sequences
-    #     """
-    #     length_match_dict = self.asv_match_db_results_df.set_index(self.SEQ_ID)[self.REVAMP_MATCH_LENGTH_COL].to_dict()
-
-    #     # Create dictionary of {seq_id: seq_length}
-    #     seq_length_map = {
-    #         data['hash']: len(data['seq']) for data in self.hash_dna_seq_dict.values()
-    #     }
-
-    #     percent_query_cov_dict = {}
-    #     for seq_hash, length in length_match_dict.items():
-    #         # Turn lengths from comma separated string into list of integers
-    #         match_lengths = length.split(',')
-    #         match_lengths = [int(s) for s in match_lengths]
-
-    #         # Divide match lengths by sequence lengths (if more than one value only get the first and last value of the list and give a range)
-    #         percent_query_cov_list = []
-    #         for match_length in match_lengths:
-    #             seq_length = seq_length_map.get(seq_hash, None)
-    #             percent_cov = (match_length/seq_length)*100
-    #             percent_query_cov_list.append(percent_cov)
-    #         percent_query_cov_list = sorted(percent_query_cov_list)
-    #         if len(percent_query_cov_list) > 1:
-    #             percent_query_cov_str = f"{round(percent_query_cov_list[0], 1)} - {round(percent_query_cov_list[-1], 1)}"
-    #         elif len(percent_query_cov_list) == 1:
-    #             percent_query_cov_str = str(round(percent_query_cov_list[0], 1))
-    #         percent_query_cov_dict[seq_hash] = percent_query_cov_str
-
-    #     return percent_query_cov_dict
-                    
-    def _get_confidence_score(self):
-        """
-        Get the confidence score, for REVAMP, just NA
-        """   
-        if "revamp" in str(self.taxon_table_path).lower():
-            return "not applicable"  
-        else: 
-            raise ValueError("Do not know how to get confidence score for this method! Add functionlity!")
 
     def add_final_df_to_FAIRe_excel(self, final_faire_df: pd.DataFrame, sheet_name: str = "taxaFinal"):
         # Step 1 load the workbook to preserve formatting
@@ -400,8 +231,8 @@ class TaxonomyTableCreator:
                 sheet.cell(row=row_idx, column=col_idx).value = value
 
         # Step 7: Save the workbook
-        workbook.save(self.final_faire_template_path)
-        print(f"sheet {sheet_name} saved to {self.final_faire_template_path}!")
+        workbook.save(self.final_faire_excel_path)
+        print(f"sheet {sheet_name} saved to {self.final_faire_excel_path}!")
                     
                     
                    
