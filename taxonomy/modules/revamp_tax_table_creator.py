@@ -142,7 +142,7 @@ class RevampTaxTableCreator(TaxonomyTableCreator):
     def _get_specific_epithet(self, species_value: str) -> str:
         """
         The specific epithet column is currently just mapped to the species
-        column in the origina taxonomy.txt file, need to edit to fit 
+        column in the original taxonomy.txt file, need to edit to fit 
         the speicicEpithet which is the lower case value of the species, 
         everything else that is NA will become 'not applicable'
         """
@@ -151,12 +151,14 @@ class RevampTaxTableCreator(TaxonomyTableCreator):
             return "not applicable"
         else:
             species_words = str(species_value).split()
-            if len(species_words) ==2:
+            if len(species_words) == 2:
                 return species_words[1]
             elif len(species_words) > 2 and ('sp_' in species_words or 'cf_' in species_words or 'aff_' in species_words):
                 return f"Unclassified {' '. join(species_words[1:])}"
             elif len(species_words) == 3: # Has subspecies
                 return species_words[1]
+            elif len(species_words) == 2 and species_words[1] == 'sp_':
+                return "Unclassified" # For example "Aequorea sp_"
             elif "endosymbiont":
                 return "endosymbiont"
             else:

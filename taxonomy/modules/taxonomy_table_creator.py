@@ -4,6 +4,7 @@ import pandas as pd
 import hashlib
 import openpyxl
 from openpyxl.utils import get_column_letter
+from openpyxl import load_workbook
 
 # TODO: Columns left to add :
     # scientificNameAuthorship
@@ -17,9 +18,9 @@ class TaxonomyTableCreator(ABC):
     SEQ_ID = "seq_id"
     DNA_SEQUENCE = "dna_sequence"
     KINGDOM = "kingdom"
-    SUPERGROUP = "supergroup"
-    DIVISION = "division"
-    SUBDIVISION = "subdivision"
+    SUPERGROUP = "supergroup" # pr2 sckit
+    DIVISION = "division" # pr2 sckit
+    SUBDIVISION = "subdivision" # pr2 scikit
     PHYLUM = "phylum"
     CLASS = "class"
     ORDER = "order"
@@ -151,11 +152,11 @@ class TaxonomyTableCreator(ABC):
     def _create_dna_sequence_col(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Creates a column called dna_sequence that adds the corresponding
-        DNA sequence to based on the ASV. Needs to come abefore the ASVs have
+        DNA sequence to based on the hash. Needs to come after the ASVs have
         been switched to hashes.
         """
         hash_map = {
-            seq_id: data['seq'] for seq_id, data in self.hash_dna_seq_dict.items()
+            data['hash']: data['seq'] for data in self.hash_dna_seq_dict.values()
         }
         df[self.DNA_SEQUENCE] = df[self.SEQ_ID].map(hash_map)
 
@@ -187,52 +188,97 @@ class TaxonomyTableCreator(ABC):
         
         return "not applicable"
 
-    def add_final_df_to_FAIRe_excel(self, final_faire_df: pd.DataFrame, sheet_name: str = "taxaFinal"):
-        # Step 1 load the workbook to preserve formatting
-        workbook = openpyxl.load_workbook(self.TAXA_FAIRE_TEMPLATE_PATH)
-        sheet = workbook[sheet_name]
-
-        # Step 2: Store original row 2 headers and original row 3 columns
-        # This is done before any modifications to identify what was originally in the template.
-        original_row2_headers = {}
-        original_columns_in_sheet = []
-        for col_idx in range(1, sheet.max_column + 1):
-            col_name = sheet.cell(row=3, column=col_idx).value
-            if col_name:
-                original_columns_in_sheet.append(col_name)
-                # Store the row 2 value for this column name
-                original_row2_headers[col_name] = sheet.cell(row=2, column=col_idx).value
+    def add_final_df_to_FAIRe_excel(self, 
+                                    data_df: pd.DataFrame,
+                                    template_path: str,
+                                    output_path: str,
+                                    sheet_name: str = "taxaRaw",
+                                    header_row: int = 3):
         
-        # Step 4: Clear existing headers (rows 2 and 3) and all data from row 4 onwards
-        # This ensures a clean slate before writing new, reordered headers and data.
-        for row in range(1, sheet.max_row + 1): # Clear starting from row 1 to be safe
-            for col in range(1, sheet.max_column + 1):
-                sheet.cell(row=row, column=col).value = None
+        # Step 1: Read template column names (preserve order)
+        template_df = pd.read_excel(
+            template_path,
+            sheet_name=sheet_name,
+            header=header_row - 1, # Convert to 0-indexed
+            nrows=0 # Just to get headers
+        )
+        template_columns = list(template_df.columns)
 
-        # Step 5: Write the new headers (row 2 and row 3) based on the reordered DataFrame
-        for col_idx, col_name in enumerate(final_faire_df.columns, 1):
-            col_letter = get_column_letter(col_idx)
-            
-            # Write column name to row 3 (the main header row)
-            sheet[f'{col_letter}3'] = col_name
+        # Step 2. Get data columns
+        data_columns = set(data_df.columns)
 
-            # Determine and write row 2 header
-            if col_name in original_columns_in_sheet:
-                # If the column existed in the original template, use its original row 2 header
-                sheet[f'{col_letter}2'] = original_row2_headers.get(col_name)
-            else:
-                # If it's a new column, set row 2 to "User defined"
-                sheet[f'{col_letter}2'] = 'User defined'
+        # Step 3. Find matching columns
+        matching_cols = [col for col in template_columns if col in data_columns]
+        missing_in_data = [col for col in template_columns if col not in data_columns]
+        extra_in_data = [col for col in data_columns if col not in template_columns]
 
-        # Step 6: Write the data frame data to the sheet (starting at row 4)
-        # Iterate through the reordered DataFrame and write its values to the Excel sheet.
-        for row_idx, row_data in enumerate(final_faire_df.values, 4):
-            for col_idx, value in enumerate(row_data, 1):
-                sheet.cell(row=row_idx, column=col_idx).value = value
+        print(f"Template columns: {len(template_columns)}")
+        print(f"Data columns: {len(data_columns)}")
+        print(f"Matching columns: {len(matching_cols)}")
 
-        # Step 7: Save the workbook
-        workbook.save(self.final_faire_excel_path)
-        print(f"sheet {sheet_name} saved to {self.final_faire_excel_path}!")
+        if missing_in_data:
+            print(f"\nColumns in template but not in data (will be empty):")
+            for col in missing_in_data:
+                print(f"    - {col}")
+
+        if extra_in_data:
+            print(f"Columns in data but not in template (will be added as User defined fields):")
+            for col in extra_in_data:
+                print(f"    - {col}")
+
+        # Step 4: Load template workbook (preserve formatting)
+        wb = load_workbook(template_path)
+        ws = wb[sheet_name]
+
+        # Step 5: Build column index mapping (template column name -> Excel column index)
+        col_mapping = {}
+        for col_idx, col_name in enumerate(template_columns, start=1):
+            if col_name in data_columns:
+                col_mapping[col_name] = col_idx
+
+        # Step 6: Add new columns from data that aren't in template
+        next_col_idx = len(template_columns) + 1
+        new_col_mapping = {}
+
+        if extra_in_data:
+            print(f"\nAdding {len(extra_in_data)} new columns to template:")
+            for col_name in extra_in_data:
+                # Add column header (row 3)
+                ws.cell(row=header_row, column=next_col_idx, value=col_name)
+                # Add "User defined" in row 2
+                ws.cell(row=header_row-1, column=next_col_idx, value="User defined")
+                new_col_mapping[col_name] = next_col_idx
+                print(f"    - {col_name} (column {next_col_idx})")
+                next_col_idx += 1
+
+        # Combine all column mappings
+        all_col_ampping = {**col_mapping, **new_col_mapping}
+
+        # Step 7: Write data efficiently
+        data_start_row = header_row + 1 # Data starts after header
+
+        print(f"\nWriting {len(data_df)} rows to template . . .")
+
+        # For large datasets, iterate row by row for memory efficiecy
+        for row_idx, (_, row) in enumerate(data_df.iterrows()):
+            excel_row = data_start_row + row_idx
+
+            for col_name, col_idx in all_col_ampping.items():
+                value = row[col_name]
+
+                # Handle NaN/None values
+                if pd.isna(value):
+                    continue
+                ws.cell(row=excel_row, column=col_idx, value=value)
+
+            # Progess indicator for large files
+            if (row_idx + 1) % 10000 == 0:
+                print(f"    Proceed {row_idx + 1:,} rows . . .")
+
+        # Step 8: save output
+        wb.save(output_path)
+        print(f"\nSave to: {output_path}")
+        print(f"Total rows written: {len(data_df):,}")
                     
                     
                    

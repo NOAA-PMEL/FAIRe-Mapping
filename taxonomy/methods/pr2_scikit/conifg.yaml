@@ -1,0 +1,22 @@
+
+runs:
+  
+  pmel_ome_run1: # match standardize seq_run_id from experimentRunMetadata
+    ssu18sv4_stoeck: # match standardized assay name
+      taxon_tble_file: /home/poseidon/mcallister/eDNA_bioinformatics/Run1/03_pr2_v5.1_scikit/18Sv4/Run1_18Sv4_tax_pr2_sklearn.tsv
+      asv_dna_seq_file: /home/poseidon/mcallister/eDNA_bioinformatics/Run1/01_REVAMP/18Sv4/dada2/ASVs.fa
+      final_faire_excel_path: /home/poseidon/zalmanek/FAIRe-Mapping/taxonomy/methods/pr2_scikit/data/taxaRaw_ssu18sv4_stoeck_pmel_ome_run1.xlsx # Add fucntionality to create output file by marker above to get assay name and run name
+    ssu18sv9_amaralzettler: # match standardized assay name
+      taxon_tble_file: /home/poseidon/mcallister/eDNA_bioinformatics/Run1/03_pr2_v5.1_scikit/18Sv9/Run1_18Sv9_tax_pr2_sklearn.tsv
+      asv_dna_seq_file: /home/poseidon/mcallister/eDNA_bioinformatics/Run1/01_REVAMP/18Sv9/dada2/ASVs.fa
+      final_faire_excel_path: /home/poseidon/zalmanek/FAIRe-Mapping/taxonomy/methods/pr2_scikit/data/taxaRaw_ssu18sv9_amaralzettler_pmel_ome_run1.xlsx
+
+  pmel_ome_run2:
+    ssu18sv4_stoeck:
+      taxon_tble_file: /home/poseidon/mcallister/eDNA_bioinformatics/Run2/03_pr2_v5.1_scikit/18Sv4/Run2_18Sv4_tax_pr2_sklearn.tsv
+      asv_dna_seq_file: /home/poseidon/mcallister/eDNA_bioinformatics/Run2/01_REVAMP/18Sv4/dada2/ASVs.fa 
+      final_faire_excel_path: /home/poseidon/zalmanek/FAIRe-Mapping/taxonomy/methods/pr2_scikit/data/taxaRaw_ssu18sv4_stoeck_pmel_ome_run2.xlsx
+    ssu18sv9_amaralzettler:
+      taxon_tble_file: /home/poseidon/mcallister/eDNA_bioinformatics/Run2/03_pr2_v5.1_scikit/18Sv9/Run2_18Sv9_tax_pr2_sklearn.tsv
+      asv_dna_seq_file: /home/poseidon/mcallister/eDNA_bioinformatics/Run2/01_REVAMP/18Sv9/dada2/ASVs.fa
+      final_faire_excel_path: /home/poseidon/zalmanek/FAIRe-Mapping/taxonomy/methods/pr2_scikit/data/taxaRaw_ssu18sv9_amaralzettler_pmel_ome_run2.xlsx
