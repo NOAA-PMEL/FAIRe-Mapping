@@ -1,0 +1,102 @@
+
+runs:
+  
+  pmel_ome_run1: # match standardize seq_run_id from experimentRunMetadata
+    ssu18sv4_stoeck: #182v4 # match standardized assay name
+      taxon_tble_file: /home/poseidon/mcallister/eDNA_bioinformatics/Run1/01_REVAMP/18Sv4/ASV2Taxonomy/18Sv4_asvTaxonomyTable.txt
+      asv_dna_seq_file: /home/poseidon/mcallister/eDNA_bioinformatics/Run1/01_REVAMP/18Sv4/dada2/ASVs.fa
+      final_faire_excel_path: /home/poseidon/zalmanek/FAIRe-Mapping/taxonomy/methods/revamp/data/taxaRaw_ssu18sv4_stoeck_pmel_ome_run1.xlsx
+    ssu18sv9_amaralzettler: # 18sv9 # match standardized assay name
+      taxon_tble_file: /home/poseidon/mcallister/eDNA_bioinformatics/Run1/01_REVAMP/18Sv9/ASV2Taxonomy/18Sv9_asvTaxonomyTable.txt
+      asv_dna_seq_file: /home/poseidon/mcallister/eDNA_bioinformatics/Run1/01_REVAMP/18Sv9/dada2/ASVs.fa
+      final_faire_excel_path: /home/poseidon/zalmanek/FAIRe-Mapping/taxonomy/methods/revamp/data/taxaRaw_ssu18sv9_amaralzettler_pmel_ome_run1.xlsx
+    COI_1835-2198_lerayfolmer:
+      taxon_tble_file: /home/poseidon/mcallister/eDNA_bioinformatics/Run1/01_REVAMP/COI/ASV2Taxonomy/COI_asvTaxonomyTable.txt
+      asv_dna_seq_file: /home/poseidon/mcallister/eDNA_bioinformatics/Run1/01_REVAMP/COI/dada2/ASVs.fa
+      final_faire_excel_path: /home/poseidon/zalmanek/FAIRe-Mapping/taxonomy/methods/revamp/data/taxaRaw_COI_1835-2198_lerayfolmer_pmel_ome_run1.xlsx
+    lsu16s_2434-2571_kelly:
+      taxon_tble_file: /home/poseidon/mcallister/eDNA_bioinformatics/Run1/01_REVAMP/Kelly16S/ASV2Taxonomy/Kelly16S_asvTaxonomyTable.txt
+      asv_dna_seq_file: /home/poseidon/mcallister/eDNA_bioinformatics/Run1/01_REVAMP/Kelly16S/dada2/ASVs.fa 
+      final_faire_excel_path: /home/poseidon/zalmanek/FAIRe-Mapping/taxonomy/methods/revamp/data/taxaRaw_lsu16s_2434-2571_kelly_pmel_ome_run1.xlsx
+    ssu12sv5v6_mifish_u_sales:
+      taxon_tble_file: /home/poseidon/mcallister/eDNA_bioinformatics/Run1/01_REVAMP/MiFish/ASV2Taxonomy/MiFish_asvTaxonomyTable.txt
+      asv_dna_seq_file: /home/poseidon/mcallister/eDNA_bioinformatics/Run1/01_REVAMP/MiFish/dada2/ASVs.fa
+      final_faire_excel_path: /home/poseidon/zalmanek/FAIRe-Mapping/taxonomy/methods/revamp/data/taxaRaw_ssu12sv5v6_mifish_u_sales_pmel_ome_run1.xlsx
+    ssu16sv4v5_parada:
+      taxon_tble_file: /home/poseidon/mcallister/eDNA_bioinformatics/Run1/01_REVAMP/Parada16S/ASV2Taxonomy/Parada16S_asvTaxonomyTable.txt
+      asv_dna_seq_file: /home/poseidon/mcallister/eDNA_bioinformatics/Run1/01_REVAMP/Parada16S/dada2/ASVs.fa
+      final_faire_excel_path: /home/poseidon/zalmanek/FAIRe-Mapping/taxonomy/methods/revamp/data/taxaRaw_ssu16sv4v5_parada_pmel_ome_run1.xlsx
+  
+  pmel_ome_run2: # match standardize seq_run_id from experimentRunMetadata
+    ssu18sv4_stoeck: #182v4 # match standardized assay name
+      taxon_tble_file: /home/poseidon/mcallister/eDNA_bioinformatics/Run2/01_REVAMP/18Sv4/ASV2Taxonomy/18Sv4_asvTaxonomyTable.txt
+      asv_dna_seq_file: /home/poseidon/mcallister/eDNA_bioinformatics/Run2/01_REVAMP/18Sv4/dada2/ASVs.fa
+      final_faire_excel_path: /home/poseidon/zalmanek/FAIRe-Mapping/taxonomy/methods/revamp/data/taxaRaw_ssu18sv4_stoeck_pmel_ome_run2.xlsx
+    ssu18sv9_amaralzettler: # 18sv9 # match standardized assay name
+      taxon_tble_file: /home/poseidon/mcallister/eDNA_bioinformatics/Run2/01_REVAMP/18Sv9/ASV2Taxonomy/18Sv9_asvTaxonomyTable.txt
+      asv_dna_seq_file: /home/poseidon/mcallister/eDNA_bioinformatics/Run2/01_REVAMP/18Sv9/dada2/ASVs.fa
+      final_faire_excel_path: /home/poseidon/zalmanek/FAIRe-Mapping/taxonomy/methods/revamp/data/taxaRaw_ssu18sv9_amaralzettler_pmel_ome_run2.xlsx
+    COI_1835-2198_lerayfolmer:
+      taxon_tble_file: /home/poseidon/mcallister/eDNA_bioinformatics/Run2/01_REVAMP/COI/ASV2Taxonomy/COI_asvTaxonomyTable.txt
+      asv_dna_seq_file: /home/poseidon/mcallister/eDNA_bioinformatics/Run2/01_REVAMP/COI/dada2/ASVs.fa
+      final_faire_excel_path: /home/poseidon/zalmanek/FAIRe-Mapping/taxonomy/methods/revamp/data/taxaRaw_COI_1835-2198_lerayfolmer_pmel_ome_run2.xlsx
+    lsu16s_2434-2571_kelly:
+      taxon_tble_file: /home/poseidon/mcallister/eDNA_bioinformatics/Run2/01_REVAMP/Kelly16S/ASV2Taxonomy/Kelly16S_asvTaxonomyTable.txt
+      asv_dna_seq_file: /home/poseidon/mcallister/eDNA_bioinformatics/Run2/01_REVAMP/Kelly16S/dada2/ASVs.fa 
+      final_faire_excel_path: /home/poseidon/zalmanek/FAIRe-Mapping/taxonomy/methods/revamp/data/taxaRaw_lsu16s_2434-2571_kelly_pmel_ome_run2.xlsx
+    ssu12sv5v6_mifish_u_sales:
+      taxon_tble_file: /home/poseidon/mcallister/eDNA_bioinformatics/Run1/01_REVAMP/MiFish/ASV2Taxonomy/MiFish_asvTaxonomyTable.txt
+      asv_dna_seq_file: /home/poseidon/mcallister/eDNA_bioinformatics/Run1/01_REVAMP/MiFish/dada2/ASVs.fa
+      final_faire_excel_path: /home/poseidon/zalmanek/FAIRe-Mapping/taxonomy/methods/revamp/data/taxaRaw_ssu12sv5v6_mifish_u_sales_pmel_ome_run2.xlsx
+    ssu16sv4v5_parada:
+      taxon_tble_file: /home/poseidon/mcallister/eDNA_bioinformatics/Run2/01_REVAMP/Parada16S/ASV2Taxonomy/Parada16S_asvTaxonomyTable.txt
+      asv_dna_seq_file: /home/poseidon/mcallister/eDNA_bioinformatics/Run2/01_REVAMP/Parada16S/dada2/ASVs.fa
+      final_faire_excel_path: /home/poseidon/zalmanek/FAIRe-Mapping/taxonomy/methods/revamp/data/taxaRaw_ssu16sv4v5_parada_pmel_ome_run2.xlsx
+    ITS1_sterling:
+      taxon_tble_file: /home/poseidon/mcallister/eDNA_bioinformatics/Run2/01_REVAMP/ITS1/ASV2Taxonomy/ITS1_asvTaxonomyTable.txt
+      asv_dna_seq_file: /home/poseidon/mcallister/eDNA_bioinformatics/Run2/01_REVAMP/ITS1/dada2/ASVs.fa
+      final_faire_excel_path: /home/poseidon/zalmanek/FAIRe-Mapping/taxonomy/methods/revamp/data/taxaRaw_ITS1_sterling_pmel_ome_run2.xlsx
+    ssu18sv8_machida:
+      taxon_tble_file: /home/poseidon/mcallister/eDNA_bioinformatics/Run2/01_REVAMP/Machida18S/ASV2Taxonomy/Machida18S_asvTaxonomyTable.txt
+      asv_dna_seq_file: /home/poseidon/mcallister/eDNA_bioinformatics/Run2/01_REVAMP/Machida18S/dada2/ASVs.fa
+      final_faire_excel_path: /home/poseidon/zalmanek/FAIRe-Mapping/taxonomy/methods/revamp/data/taxaRaw_ssu18sv8_machida_pmel_ome_run2.xlsx 
+  
+  pmel_ome_run2:
+    ssu18sv4_stoeck:
+      taxon_tble_file: 
+      asv_dna_seq_file: 
+      final_faire_excel_path: 
+    ssu18sv9_amaralzettler:
+      taxon_tble_file: 
+      asv_dna_seq_file: 
+      final_faire_excel_path: 
+    COI_1835-2198_lerayfolmer:
+      taxon_tble_file: 
+      asv_dna_seq_file: 
+      final_faire_excel_path:
+    lsu16s_2434-2571_kelly:
+      taxon_tble_file: 
+      asv_dna_seq_file: 
+      final_faire_excel_path: 
+    ssu12sv5v6_mifish_u_sales:
+      taxon_tble_file: 
+      asv_dna_seq_file: 
+      final_faire_excel_path: 
+
+  pmel_ome_run3:
+    ssu18sv4_stoeck:
+      taxon_tble_file:
+      asv_dna_seq_file:
+      final_faire_excel_path:
+    ssu18sv9_amaralzettler:
+      taxon_tble_file:
+      asv_dna_seq_file:
+      final_faire_excel_path:
+    COI_1835-2198_lerayfolmer:
+
+  pmel_ome_run4:
+    ssu18sv4_stoeck:
+      taxon_tble_file: 
+      asv_dna_seq_file: 
+      final_faire_excel_path: 
+   
