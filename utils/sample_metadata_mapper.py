@@ -72,7 +72,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.vessel_name = self.config_file['vessel_name']
         self.faire_template_file = self.config_file['faire_template_file']
         self.google_sheet_mapping_file_id = self.config_file['google_sheet_mapping_file_id']
-        self.unwanted_cruise_code = self.config_file['cruise_code_fixes']['unwanted_cruise_code'] if 'cruise_code_fixes' in self.config_file else None
+        self.unwanted_cruise_code = self.config_file['cruise_code_fixes'].get('unwanted_cruise_code', None) if 'cruise_code_fixes' in self.config_file else None
         self.desired_cruise_code = self.config_file['cruise_code_fixes']['desired_cruise_code'] if 'cruise_code_fixes' in self.config_file else None
 
         self.samp_dur_info = self.config_file['samp_store_dur_sheet_info'] if 'samp_store_dur_sheet_info' in self.config_file else None
@@ -648,6 +648,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                 self.unwanted_cruise_code, 
                 self.desired_cruise_code
             )
+        elif not self.unwanted_cruise_code: # If just need to append the cruise code onto the sample name, and sample name does not have wrong cruise code.
+            df[sample_name_col] = df[sample_name_col] + self.desired_cruise_code
         else: # everything else just replaces with the desired cruise code
             df[sample_name_col] = df[sample_name_col].str.replace(self.unwanted_cruise_code, self.desired_cruise_code)
 
@@ -671,13 +673,25 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                 return 'not applicable: control sample'
             return 'not applicable'
 
-    def calculate_altitude(self, metadata_row: pd.Series, depth_col: str, tot_depth_col: str) -> float:
-        # Calculates the altitude by subtracting the depth from the tot_depth_col
+    def calculate_altitude(self, metadata_row: pd.Series, depth_col: str, tot_depth_col: str, altitude_col: str = None) -> float:
+        # Calculates the altitude by subtracting the depth from the tot_depth_col if altitude is None. Otherwise returns the altitude
+        # If altitude is over 95 then use depth to calculate. Not sure why we need this, but Sean mentioned it.
         depth = metadata_row[depth_col]
         tot_depth_water_col = metadata_row[tot_depth_col]
+        altitude = metadata_row.get(altitude_col, None) if altitude_col else None
 
-        return round((tot_depth_water_col - depth), 2)
+        # Checks if the existing altitude is missing or a zero/falsy value
+        is_missing = (not altitude or pd.isna(altitude)) 
 
+        # If there is not value for the altitude of the altitude is greater than 95, then calcualte using the depth and total_depth
+        if not is_missing:
+            if float(altitude) > 95:
+                return round((tot_depth_water_col - depth), 2)
+            else:
+                return altitude
+        else:
+            return round((tot_depth_water_col - depth), 2)
+        
     def get_line_id(self, station) -> str:
         # Get the line id by the referance station (must be standardized station name)
         if station in self.station_line_dict:
