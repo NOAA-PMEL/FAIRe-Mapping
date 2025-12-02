@@ -235,33 +235,53 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # converts from m/d/y to iso8061
         date_string = str(date_string).strip()
 
+        if not date_string:
+            print("Input date string is empty or only whitespace. Returning missing: not collected")
+            return "missing: not collected"
+
         # Handle both single and double digit formats
         try:
             parts = date_string.split('/')
+
+            month = parts[0]
             if len(parts) == 3:
-                month, day, year = parts
-
-                formatted_date = f"{int(month):02d}/{int(day):02}/{year}"
-
-                # parse date string
-                date_obj = datetime.strptime(formatted_date, "%m/%d/%Y")
-
-                # convert to iso 8601 format
-                return date_obj.strftime('%Y-%m-%d')
+                # Full m/d/y or m/dd/yyyy format
+                day = parts[1]
+                year = parts[2]
+                
+                # Determine the correct year format code based on the year length
+                if len(year) == 4:
+                    DATE_FORMAT = "%m/%d/%Y" # Four-digit year
+                elif len(year) == 2:
+                    DATE_FORMAT = "%m/%d/%y" # Two-digit year
+                else:
+                    raise ValueError(f"Year part '{year}' is not 2 or 4 digits.")
+            
+                # Pad month and day to ensure two digits for strptime
+                formatted_date = f"{int(month):02d}/{int(day):02d}/{year}"
 
             elif len(parts) == 2:
-                # hande month/year format by assuming day=1
-                month, year = parts
+                # m/y or m/yyyy format (assuming day=1)
+                year = parts[1]
+                
+                # Determine the correct year format code based on the year length
+                if len(year) == 4:
+                    DATE_FORMAT = "%m/%d/%Y" # Four-digit year
+                elif len(year) == 2:
+                    DATE_FORMAT = "%m/%d/%y" # Two-digit year
+                else:
+                    raise ValueError(f"Year part '{year}' is not 2 or 4 digits.")
+                
+                # Assume day = 1 and pad month
                 formatted_date = f"{int(month):02d}/01/{year}"
-
-                # parse date string
-                date_obj = datetime.strptime(formatted_date, "%m/%d/%Y")
-
-                # convert to iso 8601 format
-                return date_obj.strftime('%Y-%m-%d')
             else:
                 raise ValueError(
                     f"Date doesn't have two or three parts: {date_string}")
+            
+            # Parse date string
+            date_obj = datetime.strptime(formatted_date, DATE_FORMAT)
+            # convert to iso 8601 format
+            return date_obj.strftime('%Y-%m-%d')
 
         except Exception as e:
             print(f"Error converting {date_string}: {str(e)}")
@@ -430,7 +450,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         samp_metadata_df[self.sample_metadata_cast_no_col_name] = samp_metadata_df[self.sample_metadata_cast_no_col_name].apply(
             self.remove_extraneous_cast_no_chars)
         
-        if self.unwanted_cruise_code and self.desired_cruise_code:
+        if self.desired_cruise_code:
             samp_metadata_df = self.fix_cruise_code_in_samp_names(df=samp_metadata_df)
 
         return samp_metadata_df
@@ -441,13 +461,13 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         extract_df = self.filter_cruise_avg_extraction_conc()
 
         samp_df = self.transform_metadata_df()
-
+        
         metadata_df = pd.merge(
             left=extract_df,
             right=samp_df,
             left_on=self.extract_samp_name_col,
             right_on=self.sample_metadata_sample_name_column,
-            how='left'
+            how='right'
         )
 
         # Drop rows where the sample name column value is NA. This is for cruises where samples were split up
@@ -649,7 +669,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                 self.desired_cruise_code
             )
         elif not self.unwanted_cruise_code: # If just need to append the cruise code onto the sample name, and sample name does not have wrong cruise code.
-            df[sample_name_col] = df[sample_name_col] + self.desired_cruise_code
+            df[sample_name_col] = df[sample_name_col].apply(lambda x: x if str(x).endswith(self.desired_cruise_code) else str(x) + self.desired_cruise_code)
         else: # everything else just replaces with the desired cruise code
             df[sample_name_col] = df[sample_name_col].str.replace(self.unwanted_cruise_code, self.desired_cruise_code)
 
@@ -792,13 +812,15 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         aphotic = "marine aphotic zone [ENVO:00000210]"
         photic = "marine photic zone [ENVO:00000209]"
 
-       
-        if float(depth) <= 200:
-            env_local_scale = photic
-        elif float(depth) > 200:
-            env_local_scale = aphotic
+        try:
+            depth = float(depth)
 
-        return env_local_scale
+            if float(depth) <= 200:
+                return photic
+            elif float(depth) > 200:
+                return aphotic
+        except (ValueError, TypeError, UnboundLocalError):
+            return "missing: not collected"
 
     def format_dates_for_duration_calculation(self, date: str) -> datetime:
         if date in  [None, 'nan', 'missing: not collected', '', 'missing: not provided']:
@@ -948,8 +970,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
     def get_station_id_from_unstandardized_station_name(self, metadata_row: pd.Series, unstandardized_station_name_col: str) -> str:
         # Gets the standardized station name from the unstandardized station name
-        station_name = metadata_row[unstandardized_station_name_col]
-        sample_name = metadata_row[self.sample_metadata_sample_name_column]
+        station_name = metadata_row[unstandardized_station_name_col].strip()
+        sample_name = metadata_row[self.sample_metadata_sample_name_column].strip()
 
         if 'NC' not in sample_name or 'blank' not in sample_name.lower():
             # Standardizes station ids to be from the reference station sheet
@@ -965,7 +987,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
     def calculate_distance_btwn_lat_lon_points(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
             # Calculates the surface distance between two points in lat/lon using the great_circle package of GeoPy
-            return geodesic((lat1, lon1), (lat2, lon2)).kilometers   
+            try:
+                return geodesic((lat1, lon1), (lat2, lon2)).kilometers   
+            except ValueError:
+                return "can't calculate distance"
     
     def get_stations_within_5km(self, metadata_row: pd.Series, station_name_col: str, lat_col: str, lon_col: str) -> str:
         # Get alternate station names based on lat/lon coords and grabs all stations within 5 km as alternate stations - need to use standardized station names for station_name_col to be able to look 
@@ -987,6 +1012,9 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
                 # calculate distance
                 distance = self.calculate_distance_btwn_lat_lon_points(lat1=lat, lon1=lon, lat2=station_lat, lon2=station_lon)
+
+                if type(distance) == str:
+                    return "can't find"
 
                 # Account for DBO1.9 which moved but coordinates haven't been updated yet - see email from Shaun
                 # Also make exception for DBO4.1 (took this out since changing from 1 km to 3 km)

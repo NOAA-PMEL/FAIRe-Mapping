@@ -214,8 +214,7 @@ class OmeFaireMapper:
                 return self.convert_date_to_iso8601(date=metadata_row[use_if_na_col_name])
             elif pd.notna(metadata_row[use_if_second_col_is_na]) and metadata_row[use_if_second_col_is_na] != '':
                 return self.convert_date_to_iso8601(date=metadata_row[use_if_second_col_is_na])
-            
-                  
+                            
     def convert_date_to_iso8601(self, date: str) -> datetime:
         # converts strings from 2021/11/08 00:00:00 to iso8601 format  to 2021-11-08T00:00:00Z
         # also converts strings from 5/1/2024 to 2024-01-05T00:00:00Z
@@ -299,7 +298,7 @@ class OmeFaireMapper:
 
         for col in cols_to_convert:
             if col in df.columns:
-                df[col] = df[col].apply(lambda x: x if pd.isna(x) or x in self.faire_missing_values else int(float(x))) 
+                df[col] = df[col].apply(lambda x: x if pd.isna(x) or x in self.faire_missing_values or '.' not in str(x) else int(float(x))) # allow strings if . not in (e.g. rosette_position for wcoa had strings)
 
         return df
     
