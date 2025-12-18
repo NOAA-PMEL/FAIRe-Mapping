@@ -6,6 +6,17 @@ from utils.sample_metadata_mapper import FaireSampleMetadataMapper
 
 # QC85 station check will throw warnings - ignore errors.
 
+def fix_string_rosette_positions(df: pd.DataFrame):
+    """
+    if rosette position has a non numeric value like Bucket or Surface Underway, 
+    will move to the Material Sample Id and make rosette position not applicable
+    """
+    mask = df['rosette_position'].isin(['Bucket1', 'Bucket2', 'Underway System', 'Bucket3'])
+    df.loc[mask, 'materialSampleID'] = 'WCOA21_' + df.loc[mask, 'rosette_position']
+    df.loc[mask, 'rosette_position'] = 'not applicable'
+
+    return df
+
 def create_33R020210613_sample_metadata():
 
     # initiate mapper
@@ -40,6 +51,14 @@ def create_33R020210613_sample_metadata():
                 lambda row: sample_mapper.add_biological_replicates(metadata_row=row, faire_missing_val='not applicable'),
                 axis=1
             )
+
+        elif faire_col == 'decimalLatitude' or faire_col == "decimalLongitude" or faire_col == "verbatimLongitude" or faire_col == "verbatimLatitude" :
+            metadata_cols = metadata_col.split(' | ')
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+                lambda row: sample_mapper.map_using_two_or_three_cols_if_one_is_na_use_other(metadata_row=row,
+                                                                                             desired_col_name=metadata_cols[0],
+                                                                                             use_if_na_col_name=metadata_cols[1]),
+                axis=1)
 
         elif faire_col == 'geo_loc_name':
             lat = metadata_col.split(' | ')[0]
@@ -94,17 +113,23 @@ def create_33R020210613_sample_metadata():
 
         elif faire_col == 'altitude':
             metadata_cols = metadata_col.split(' | ')
-            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+            sample_metadata_results[faire_col] = np.where(
+                sample_mapper.sample_metadata_df[metadata_cols[0]] <= 95,
+                 sample_mapper.sample_metadata_df[metadata_cols[0]], # use altimeter column if less than 95
+                 sample_mapper.sample_metadata_df.apply(
                     lambda row: sample_mapper.calculate_altitude(metadata_row=row, depth_col=metadata_cols[1], tot_depth_col=metadata_cols[2], altitude_col=metadata_cols[0]),
                     axis=1
-                )
+            ))
             
+             
         elif faire_col == "altitude_method":
             metadata_cols = metadata_col.split(' | ')
-            sample_metadata_results[faire_col] = pd.Categorical(
-                np.where(sample_mapper.sample_metadata_df[metadata_cols[0]] > 95, metadata_cols[1], pd.NA),
-                categories=[metadata_cols[1], "missing: not collected"]
+            sample_metadata_results[faire_col] = np.where(
+                sample_mapper.sample_metadata_df[metadata_cols[0]] <= 95,
+                "not applicable", #  if altimeter columns was used directly
+                 metadata_cols[1] #  method description used if over 95
             )
+    
 
         elif faire_col == 'dna_yield':
             metadata_cols = metadata_col.split(' | ')
@@ -113,6 +138,9 @@ def create_33R020210613_sample_metadata():
                 lambda row: sample_mapper.calculate_dna_yield(metadata_row=row, sample_vol_metadata_col=sample_vol_col),
                 axis = 1
             )
+
+        elif faire_col == 'date_ext':
+            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(sample_mapper.convert_date_to_iso8601)
             
     
     # Step 4: fill in NA with missing not collected or not applicable because they are samples and adds NC to rel_cont_id
@@ -127,9 +155,11 @@ def create_33R020210613_sample_metadata():
     # Add rel_cont_id
     faire_sample_df_updated = sample_mapper.add_extraction_blanks_to_rel_cont_id(final_sample_df=faire_sample_df)
 
-    print(faire_sample_df_updated)
+    # Make unique fixes for wcoa
+    final_faire_df = fix_string_rosette_positions(df=faire_sample_df_updated)
+
     # # step 7: save as csv:
-    sample_mapper.save_final_df_as_csv(final_df=faire_sample_df_updated, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/WCOA/wcoa21/data/wcoa21_faire.csv')
+    sample_mapper.save_final_df_as_csv(final_df=final_faire_df, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/WCOA/wcoa21/data/wcoa21_faire.csv')
    
     # # # step 8: save to excel file
     # # sample_mapper.add_final_df_to_FAIRe_excel(excel_file_to_read_from=sample_mapper.faire_template_file,

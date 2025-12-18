@@ -116,7 +116,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # Create nested dictionary {exact_mapping: {faire_col: metadata_col}, narrow_mapping: {faire_col: metadta_col}, etc.}
         mapping_dict = {}
         for mapping_value, group in group_by_mapping:
-            column_map_dict = {k: v for k, v in zip(
+            column_map_dict = {k.strip(): v.strip() for k, v in zip(
                 group[self.mapping_file_FAIRe_column], group[self.mapping_file_metadata_column]) if pd.notna(v)}
             mapping_dict[mapping_value] = column_map_dict
 
@@ -128,7 +128,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         for mapping_type, col_dict in self.mapping_dict.items():
             if isinstance(col_dict, dict):
                 filtered_nested = {
-                    k: v for k, v in col_dict.items() if k in nc_faire_field_cols}
+                    k.strip(): v.strip() for k, v in col_dict.items() if k in nc_faire_field_cols}
                 nc_mapping_dict[mapping_type] = filtered_nested
 
         # change values that will be differenct for NC's
@@ -152,7 +152,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # Create nested dictionary {exact_mapping: {faire_col: metadata_col}, narrow_mapping: {faire_col: metadta_col}, etc.}
         mapping_dict = {}
         for mapping_value, group in group_by_mapping:
-            column_map_dict = {k: v for k, v in zip(
+            column_map_dict = {k.strip(): v.strip() for k, v in zip(
                 group[self.mapping_file_FAIRe_column], group[self.mapping_file_metadata_column]) if pd.notna(v)}
             mapping_dict[mapping_value] = column_map_dict
 
@@ -1065,37 +1065,54 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         method_cols = [col for col in df.columns if col.endswith('method') and col != 'samp_collect_method']
         method_str = '_method'
 
-        updated_df_for_unit = self.update_companion_cols(df=df, companion_col_list=unit_cols, str_to_remove_for_main_col=unit_str)
+        # verbatimCoorinateSystem
+        vertatim_coord_sys_cols = ['verbatimCoordinateSystem', 'verbatimSRS']
+        updated_df_for_coords = self.update_companion_cols(df=df, companion_col_list=vertatim_coord_sys_cols)
+
+        updated_df_for_unit = self.update_companion_cols(df=updated_df_for_coords, companion_col_list=unit_cols, str_to_remove_for_main_col=unit_str)
         updated_df_for_woce = self.update_companion_cols(df=updated_df_for_unit, companion_col_list=woce_cols, str_to_remove_for_main_col=woce_str)
         updated_df_for_method = self.update_companion_cols(df=updated_df_for_woce, companion_col_list=method_cols, str_to_remove_for_main_col=method_str)
 
         return updated_df_for_method
     
-    def update_companion_cols(self, df: pd.DataFrame, companion_col_list: list, str_to_remove_for_main_col: str) -> pd.DataFrame:
+    def update_companion_cols(self, df: pd.DataFrame, companion_col_list: list, str_to_remove_for_main_col: str = None) -> pd.DataFrame:
             # iterates through a list of unit columns or WOCE flag columns and updates df
             for companion_col in companion_col_list:
                 if companion_col == 'DepthInMeters_method':
                     main_col = 'maximumDepthInMeters'
+                elif companion_col in ['verbatimCoordinateSystem', 'verbatimSRS']:
+                    main_col = ['verbatimLongitude', 'verbatimLatitude']
                 else:
                     main_col = companion_col.replace(str_to_remove_for_main_col, '') # Remove the 'unit' or 'WOCE_flag' from the column name
 
-                if main_col in df.columns:
-                    for idx in df.index:
-                        val = df.at[idx, main_col]
-                        # Check if we should update the unit
-                        try:
-                            should_update = False
-                            if pd.isna(val) or val == None:
-                                should_update = True
-                            elif isinstance(val, str):
-                                val_lower = val.lower()
-                                if 'missing' in val_lower or 'not applicable' in val_lower:
-                                    should_update = True
-                            
-                            if should_update:
+
+                if isinstance(main_col, list): # for the veratimCoord system or verbatimSRS
+                    if len(main_col) == 2:
+                        for idx in df.index:
+                            val1 = df.at[idx, main_col[0]]
+                            val2 = df.at[idx, main_col[1]]
+                            if (pd.isna(val1) or val1 == None or 'missing' in str(val1).lower() or 'not applicable' in str(val1).lower()) and (pd.isna(val1) or val2 == None or 'missing' in str(val2).lower() or 'not applicable' in str(val2).lower()):
                                 df.at[idx, companion_col] = 'not applicable'
-                        except:
-                            print("updating companion col is not working!")
+
+
+                elif isinstance(main_col, str):
+                    if main_col in df.columns:
+                        for idx in df.index:
+                            val = df.at[idx, main_col]
+                            # Check if we should update the unit
+                            try:
+                                should_update = False
+                                if pd.isna(val) or val == None:
+                                    should_update = True
+                                elif isinstance(val, str):
+                                    val_lower = val.lower()
+                                    if 'missing' in val_lower or 'not applicable' in val_lower:
+                                        should_update = True
+                                
+                                if should_update:
+                                    df.at[idx, companion_col] = 'not applicable'
+                            except:
+                                print("updating companion col is not working!")
 
             return df
     
