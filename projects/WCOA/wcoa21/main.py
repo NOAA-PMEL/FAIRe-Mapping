@@ -17,6 +17,114 @@ def fix_string_rosette_positions(df: pd.DataFrame):
 
     return df
 
+def replace_not_ctd_in_rep_chem_bottle(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Replace all the 'NOT CTD' intances in the rep_chem_bottle field with
+    'not applicable.
+    """
+    df['rep_chem_bottle'] = df['rep_chem_bottle'].replace('NOT CTD', 'not applicable')
+    return df
+
+def fix_not_ctd_material_sample_id_vales(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Fixes the materialSampleID values for the not CTD samples to what is specified
+    in email from Sean on 12/18 titled 'WCOA NOT CTD problem' 
+    """
+    mat_samp_updates = {
+        "E869.WCOA21": "WCOA21_Bucket1",
+        "E870.WCOA21": "WCOA21_Bucket2",
+        "E871.WCOA21": "WCOA21_UnderwaySystem",
+        "E913.WCOA21": "WCOA21_methaneOxidationRate_E913",
+        "E914.WCOA21": "WCOA21_methaneOxidationRate_E914",
+        "E915.WCOA21": "WCOA21_methaneOxidationRate_E915",
+        "E916.WCOA21": "WCOA21_methaneOxidationRate_E916",
+        "E917.WCOA21": "WCOA21_methaneOxidationRate_E917",
+        "E918.WCOA21": "WCOA21_methaneOxidationRate_E918",
+        "E919.WCOA21": "WCOA21_methaneOxidationRate_E919",
+        "E920.WCOA21": "WCOA21_methaneOxidationRate_E920",
+        "E921.WCOA21": "WCOA21_methaneOxidationRate_E921"
+    }
+
+    for samp_name, mat_samp_id in mat_samp_updates.items():
+        df.loc[df['samp_name'] == samp_name, 'materialSampleID'] = mat_samp_id
+
+    return df
+
+def update_missing_data_for_E869_to_E971(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Updates the missing data for E869-E871 as specified in the email
+    with Sean on 12/18 titled 'WCOA NOT CTD problem'
+    """
+    
+    E869_updates = {
+        "samp_collect_device": "sterilized 5 gallon bucket",
+        "env_local_scale": "marine photic zone [ENVO:00000209]",
+        "minimumDepthInMeters": 0,
+        "maximumDepthInMeters": 1,
+        "tot_depth_water_col": 60.46,
+        "altitude": 59.46,
+        "altitude_unit": 'm',
+        "ph": 8,
+        "methane": 3216.58,
+        "methane_unit": "nmol/L"
+    }
+
+    E870_updates = {
+        "samp_collect_device": "sterilized 5 gallon bucket",
+        "env_local_scale": "marine photic zone [ENVO:00000209]",
+        "minimumDepthInMeters": 0,
+        "maximumDepthInMeters": 1,
+        "tot_depth_water_col": 60.46,
+        "altitude": 59.46,
+        "altitude_unit": "m",
+        "methane": 3216.58,
+        "methane_unit": "nmol/L"
+    }
+
+    E871_updates = {
+        "samp_collect_device": "underway system",
+        "env_local_scale": "marine photic zone [ENVO:00000209]",
+        "minimumDepthInMeters": 5.2,
+        "maximumDepthInMeters": 5.2,
+        "tot_depth_water_col": 60.46,
+        "altitude": 55.26,
+        "altitude_unit": "m",
+        "temp": 16.07,
+        "salinity": 33.45,
+        "methane": 492.68,
+        "methane_unit": "nmol/L"
+    }
+
+    E913_E921_updates = {
+        "env_broad_scale":  "microcosm [ENVO_01000621]",
+        "env_local_scale": "microcosm [ENVO_01000621]",
+        "samp_size": 250,
+        "samp_size_unit": "mL",
+        "samp_store_method_additional": "Stored in a 250 mL crimped serum bottle",
+        "samp_vol_we_dna_ext": 250,
+        "samp_vol_we_dna_ext_unit": "mL"
+    }
+
+    update_mapping =  {"E869.WCOA21": E869_updates,
+                       "E870.WCOA21": E870_updates,
+                       "E871.WCOA21": E871_updates,
+                       "E913.WCOA21": E913_E921_updates,
+                        "E914.WCOA21": E913_E921_updates, 
+                        "E915.WCOA21": E913_E921_updates,
+                        "E916.WCOA21": E913_E921_updates,
+                        "E917.WCOA21": E913_E921_updates,
+                        "E918.WCOA21": E913_E921_updates, 
+                        "E919.WCOA21": E913_E921_updates, 
+                        "E920.WCOA21": E913_E921_updates, 
+                        "E921.WCOA21": E913_E921_updates}
+
+    for samp, mapping_dict in update_mapping.items():
+        for col, val in mapping_dict.items():
+            df.loc[df['samp_name'] == samp, col] = val
+
+    return df
+
+    
 def create_33R020210613_sample_metadata():
 
     # initiate mapper
@@ -158,8 +266,13 @@ def create_33R020210613_sample_metadata():
     # Make unique fixes for wcoa
     final_faire_df = fix_string_rosette_positions(df=faire_sample_df_updated)
 
+    # Make updates specific to WCOA
+    final_final_faire_df = replace_not_ctd_in_rep_chem_bottle(df=final_faire_df)
+    final_final_final_faire_df = fix_not_ctd_material_sample_id_vales(df=final_final_faire_df)
+    last_df = update_missing_data_for_E869_to_E971(df=final_final_final_faire_df)
+
     # # step 7: save as csv:
-    sample_mapper.save_final_df_as_csv(final_df=final_faire_df, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/WCOA/wcoa21/data/wcoa21_faire.csv')
+    sample_mapper.save_final_df_as_csv(final_df=last_df, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/WCOA/wcoa21/data/wcoa21_faire.csv')
    
     # # # step 8: save to excel file
     # # sample_mapper.add_final_df_to_FAIRe_excel(excel_file_to_read_from=sample_mapper.faire_template_file,
