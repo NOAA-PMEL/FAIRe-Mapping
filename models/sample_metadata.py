@@ -411,12 +411,21 @@ class SampleMetadata(BaseModel):
         
     @model_validator(mode='after')
     def validate_required_fields_for_samples(self):
-        # Ensure sample records have required fields that are not required for controls
-        required = [self.decimalLatitude, self.decimalLongitude, self.geo_loc_name, self.env_broad_scale, self.env_local_scale, self.env_medium, self.eventDate]
+        # Use strings (in quotes) for the attribute names
+        required = [
+            "decimalLatitude", "decimalLongitude", "geo_loc_name", 
+            "env_broad_scale", "env_local_scale", "env_medium", "eventDate"
+        ]
+        
         if self.samp_category == 'sample':
-            for attribute in required:
-                if attribute is None:
-                    warnings.warn(f"Sample {self.samp_name} must have {attribute}")
+            for attribute_name in required:
+                # Check the value of the attribute by its name
+                value = getattr(self, attribute_name)
+                
+                if value is None:
+                    # This will now print the actual name, e.g., "decimalLatitude"
+                    warnings.warn(f"Sample {self.samp_name} must have {attribute_name}")
+                    
         return self
 
     @field_validator('decimalLatitude')
