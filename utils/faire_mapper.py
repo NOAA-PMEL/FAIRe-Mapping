@@ -78,23 +78,23 @@ class OmeFaireMapper:
 
         return pd.read_csv(file_path, header=header, sep=sep)
     
-    def load_google_sheet_as_df(self, google_sheet_id: str, sheet_name: str, header: int) -> pd.DataFrame:
+    # def load_google_sheet_as_df(self, google_sheet_id: str, sheet_name: str, header: int) -> pd.DataFrame:
 
-        scopes = ['https://www.googleapis.com/auth/spreadsheets.readonly']
+    #     scopes = ['https://www.googleapis.com/auth/spreadsheets.readonly']
 
-        creds = Credentials.from_service_account_file(self.google_sheet_json_cred, scopes=scopes)
-        client = gspread.authorize(creds)
+    #     creds = Credentials.from_service_account_file(self.google_sheet_json_cred, scopes=scopes)
+    #     client = gspread.authorize(creds)
 
-        sheet = client.open_by_key(google_sheet_id)
-        worksheet = sheet.worksheet(sheet_name)
+    #     sheet = client.open_by_key(google_sheet_id)
+    #     worksheet = sheet.worksheet(sheet_name)
         
-        # Get all values
-        values = worksheet.get_all_values()
-        headers = values[header]
-        data_rows = values[header+1:]
-        df = pd.DataFrame(data_rows, columns=headers)
+    #     # Get all values
+    #     values = worksheet.get_all_values()
+    #     headers = values[header]
+    #     data_rows = values[header+1:]
+    #     df = pd.DataFrame(data_rows, columns=headers)
         
-        return df
+    #     return df
     
     def load_beBop_yaml_terms(self, path_to_bebop: str):
         # read BeBOP yaml terms
