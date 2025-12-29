@@ -72,7 +72,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.vessel_name = self.config_file['vessel_name']
         self.faire_template_file = self.config_file['faire_template_file']
         self.google_sheet_mapping_file_id = self.config_file['google_sheet_mapping_file_id']
-        self.unwanted_cruise_code = self.config_file['cruise_code_fixes']['unwanted_cruise_code'] if 'cruise_code_fixes' in self.config_file else None
+        self.unwanted_cruise_code = self.config_file['cruise_code_fixes'].get('unwanted_cruise_code', None) if 'cruise_code_fixes' in self.config_file else None
         self.desired_cruise_code = self.config_file['cruise_code_fixes']['desired_cruise_code'] if 'cruise_code_fixes' in self.config_file else None
 
         self.samp_dur_info = self.config_file['samp_store_dur_sheet_info'] if 'samp_store_dur_sheet_info' in self.config_file else None
@@ -116,7 +116,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # Create nested dictionary {exact_mapping: {faire_col: metadata_col}, narrow_mapping: {faire_col: metadta_col}, etc.}
         mapping_dict = {}
         for mapping_value, group in group_by_mapping:
-            column_map_dict = {k: v for k, v in zip(
+            column_map_dict = {k.strip(): v.strip() for k, v in zip(
                 group[self.mapping_file_FAIRe_column], group[self.mapping_file_metadata_column]) if pd.notna(v)}
             mapping_dict[mapping_value] = column_map_dict
 
@@ -128,7 +128,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         for mapping_type, col_dict in self.mapping_dict.items():
             if isinstance(col_dict, dict):
                 filtered_nested = {
-                    k: v for k, v in col_dict.items() if k in nc_faire_field_cols}
+                    k.strip(): v.strip() for k, v in col_dict.items() if k in nc_faire_field_cols}
                 nc_mapping_dict[mapping_type] = filtered_nested
 
         # change values that will be differenct for NC's
@@ -152,7 +152,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # Create nested dictionary {exact_mapping: {faire_col: metadata_col}, narrow_mapping: {faire_col: metadta_col}, etc.}
         mapping_dict = {}
         for mapping_value, group in group_by_mapping:
-            column_map_dict = {k: v for k, v in zip(
+            column_map_dict = {k.strip(): v.strip() for k, v in zip(
                 group[self.mapping_file_FAIRe_column], group[self.mapping_file_metadata_column]) if pd.notna(v)}
             mapping_dict[mapping_value] = column_map_dict
 
@@ -235,33 +235,53 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # converts from m/d/y to iso8061
         date_string = str(date_string).strip()
 
+        if not date_string:
+            print("Input date string is empty or only whitespace. Returning missing: not collected")
+            return "missing: not collected"
+
         # Handle both single and double digit formats
         try:
             parts = date_string.split('/')
+
+            month = parts[0]
             if len(parts) == 3:
-                month, day, year = parts
-
-                formatted_date = f"{int(month):02d}/{int(day):02}/{year}"
-
-                # parse date string
-                date_obj = datetime.strptime(formatted_date, "%m/%d/%Y")
-
-                # convert to iso 8601 format
-                return date_obj.strftime('%Y-%m-%d')
+                # Full m/d/y or m/dd/yyyy format
+                day = parts[1]
+                year = parts[2]
+                
+                # Determine the correct year format code based on the year length
+                if len(year) == 4:
+                    DATE_FORMAT = "%m/%d/%Y" # Four-digit year
+                elif len(year) == 2:
+                    DATE_FORMAT = "%m/%d/%y" # Two-digit year
+                else:
+                    raise ValueError(f"Year part '{year}' is not 2 or 4 digits.")
+            
+                # Pad month and day to ensure two digits for strptime
+                formatted_date = f"{int(month):02d}/{int(day):02d}/{year}"
 
             elif len(parts) == 2:
-                # hande month/year format by assuming day=1
-                month, year = parts
+                # m/y or m/yyyy format (assuming day=1)
+                year = parts[1]
+                
+                # Determine the correct year format code based on the year length
+                if len(year) == 4:
+                    DATE_FORMAT = "%m/%d/%Y" # Four-digit year
+                elif len(year) == 2:
+                    DATE_FORMAT = "%m/%d/%y" # Two-digit year
+                else:
+                    raise ValueError(f"Year part '{year}' is not 2 or 4 digits.")
+                
+                # Assume day = 1 and pad month
                 formatted_date = f"{int(month):02d}/01/{year}"
-
-                # parse date string
-                date_obj = datetime.strptime(formatted_date, "%m/%d/%Y")
-
-                # convert to iso 8601 format
-                return date_obj.strftime('%Y-%m-%d')
             else:
                 raise ValueError(
                     f"Date doesn't have two or three parts: {date_string}")
+            
+            # Parse date string
+            date_obj = datetime.strptime(formatted_date, DATE_FORMAT)
+            # convert to iso 8601 format
+            return date_obj.strftime('%Y-%m-%d')
 
         except Exception as e:
             print(f"Error converting {date_string}: {str(e)}")
@@ -430,7 +450,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         samp_metadata_df[self.sample_metadata_cast_no_col_name] = samp_metadata_df[self.sample_metadata_cast_no_col_name].apply(
             self.remove_extraneous_cast_no_chars)
         
-        if self.unwanted_cruise_code and self.desired_cruise_code:
+        if self.desired_cruise_code:
             samp_metadata_df = self.fix_cruise_code_in_samp_names(df=samp_metadata_df)
 
         return samp_metadata_df
@@ -441,13 +461,13 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         extract_df = self.filter_cruise_avg_extraction_conc()
 
         samp_df = self.transform_metadata_df()
-
+        
         metadata_df = pd.merge(
             left=extract_df,
             right=samp_df,
             left_on=self.extract_samp_name_col,
             right_on=self.sample_metadata_sample_name_column,
-            how='left'
+            how='right'
         )
 
         # Drop rows where the sample name column value is NA. This is for cruises where samples were split up
@@ -648,6 +668,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                 self.unwanted_cruise_code, 
                 self.desired_cruise_code
             )
+        elif not self.unwanted_cruise_code: # If just need to append the cruise code onto the sample name, and sample name does not have wrong cruise code.
+            df[sample_name_col] = df[sample_name_col].apply(lambda x: x if str(x).endswith(self.desired_cruise_code) else str(x) + self.desired_cruise_code)
         else: # everything else just replaces with the desired cruise code
             df[sample_name_col] = df[sample_name_col].str.replace(self.unwanted_cruise_code, self.desired_cruise_code)
 
@@ -671,13 +693,25 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                 return 'not applicable: control sample'
             return 'not applicable'
 
-    def calculate_altitude(self, metadata_row: pd.Series, depth_col: str, tot_depth_col: str) -> float:
-        # Calculates the altitude by subtracting the depth from the tot_depth_col
+    def calculate_altitude(self, metadata_row: pd.Series, depth_col: str, tot_depth_col: str, altitude_col: str = None) -> float:
+        # Calculates the altitude by subtracting the depth from the tot_depth_col if altitude is None. Otherwise returns the altitude
+        # If altitude is over 95 then use depth to calculate. Not sure why we need this, but Sean mentioned it.
         depth = metadata_row[depth_col]
         tot_depth_water_col = metadata_row[tot_depth_col]
+        altitude = metadata_row.get(altitude_col, None) if altitude_col else None
 
-        return round((tot_depth_water_col - depth), 2)
+        # Checks if the existing altitude is missing or a zero/falsy value
+        is_missing = (not altitude or pd.isna(altitude)) 
 
+        # If there is not value for the altitude of the altitude is greater than 95, then calcualte using the depth and total_depth
+        if not is_missing:
+            if float(altitude) > 95:
+                return round((tot_depth_water_col - depth), 2)
+            else:
+                return altitude
+        else:
+            return round((tot_depth_water_col - depth), 2)
+        
     def get_line_id(self, station) -> str:
         # Get the line id by the referance station (must be standardized station name)
         if station in self.station_line_dict:
@@ -778,13 +812,15 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         aphotic = "marine aphotic zone [ENVO:00000210]"
         photic = "marine photic zone [ENVO:00000209]"
 
-       
-        if float(depth) <= 200:
-            env_local_scale = photic
-        elif float(depth) > 200:
-            env_local_scale = aphotic
+        try:
+            depth = float(depth)
 
-        return env_local_scale
+            if float(depth) <= 200:
+                return photic
+            elif float(depth) > 200:
+                return aphotic
+        except (ValueError, TypeError, UnboundLocalError):
+            return "missing: not collected"
 
     def format_dates_for_duration_calculation(self, date: str) -> datetime:
         if date in  [None, 'nan', 'missing: not collected', '', 'missing: not provided']:
@@ -934,8 +970,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
     def get_station_id_from_unstandardized_station_name(self, metadata_row: pd.Series, unstandardized_station_name_col: str) -> str:
         # Gets the standardized station name from the unstandardized station name
-        station_name = metadata_row[unstandardized_station_name_col]
-        sample_name = metadata_row[self.sample_metadata_sample_name_column]
+        station_name = metadata_row[unstandardized_station_name_col].strip()
+        sample_name = metadata_row[self.sample_metadata_sample_name_column].strip()
 
         if 'NC' not in sample_name or 'blank' not in sample_name.lower():
             # Standardizes station ids to be from the reference station sheet
@@ -951,7 +987,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
     def calculate_distance_btwn_lat_lon_points(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
             # Calculates the surface distance between two points in lat/lon using the great_circle package of GeoPy
-            return geodesic((lat1, lon1), (lat2, lon2)).kilometers   
+            try:
+                return geodesic((lat1, lon1), (lat2, lon2)).kilometers   
+            except ValueError:
+                return "can't calculate distance"
     
     def get_stations_within_5km(self, metadata_row: pd.Series, station_name_col: str, lat_col: str, lon_col: str) -> str:
         # Get alternate station names based on lat/lon coords and grabs all stations within 5 km as alternate stations - need to use standardized station names for station_name_col to be able to look 
@@ -973,6 +1012,9 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
                 # calculate distance
                 distance = self.calculate_distance_btwn_lat_lon_points(lat1=lat, lon1=lon, lat2=station_lat, lon2=station_lon)
+
+                if type(distance) == str:
+                    return "can't find"
 
                 # Account for DBO1.9 which moved but coordinates haven't been updated yet - see email from Shaun
                 # Also make exception for DBO4.1 (took this out since changing from 1 km to 3 km)
@@ -1023,37 +1065,54 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         method_cols = [col for col in df.columns if col.endswith('method') and col != 'samp_collect_method']
         method_str = '_method'
 
-        updated_df_for_unit = self.update_companion_cols(df=df, companion_col_list=unit_cols, str_to_remove_for_main_col=unit_str)
+        # verbatimCoorinateSystem
+        vertatim_coord_sys_cols = ['verbatimCoordinateSystem', 'verbatimSRS']
+        updated_df_for_coords = self.update_companion_cols(df=df, companion_col_list=vertatim_coord_sys_cols)
+
+        updated_df_for_unit = self.update_companion_cols(df=updated_df_for_coords, companion_col_list=unit_cols, str_to_remove_for_main_col=unit_str)
         updated_df_for_woce = self.update_companion_cols(df=updated_df_for_unit, companion_col_list=woce_cols, str_to_remove_for_main_col=woce_str)
         updated_df_for_method = self.update_companion_cols(df=updated_df_for_woce, companion_col_list=method_cols, str_to_remove_for_main_col=method_str)
 
         return updated_df_for_method
     
-    def update_companion_cols(self, df: pd.DataFrame, companion_col_list: list, str_to_remove_for_main_col: str) -> pd.DataFrame:
+    def update_companion_cols(self, df: pd.DataFrame, companion_col_list: list, str_to_remove_for_main_col: str = None) -> pd.DataFrame:
             # iterates through a list of unit columns or WOCE flag columns and updates df
             for companion_col in companion_col_list:
                 if companion_col == 'DepthInMeters_method':
                     main_col = 'maximumDepthInMeters'
+                elif companion_col in ['verbatimCoordinateSystem', 'verbatimSRS']:
+                    main_col = ['verbatimLongitude', 'verbatimLatitude']
                 else:
                     main_col = companion_col.replace(str_to_remove_for_main_col, '') # Remove the 'unit' or 'WOCE_flag' from the column name
 
-                if main_col in df.columns:
-                    for idx in df.index:
-                        val = df.at[idx, main_col]
-                        # Check if we should update the unit
-                        try:
-                            should_update = False
-                            if pd.isna(val) or val == None:
-                                should_update = True
-                            elif isinstance(val, str):
-                                val_lower = val.lower()
-                                if 'missing' in val_lower or 'not applicable' in val_lower:
-                                    should_update = True
-                            
-                            if should_update:
+
+                if isinstance(main_col, list): # for the veratimCoord system or verbatimSRS
+                    if len(main_col) == 2:
+                        for idx in df.index:
+                            val1 = df.at[idx, main_col[0]]
+                            val2 = df.at[idx, main_col[1]]
+                            if (pd.isna(val1) or val1 == None or 'missing' in str(val1).lower() or 'not applicable' in str(val1).lower()) and (pd.isna(val1) or val2 == None or 'missing' in str(val2).lower() or 'not applicable' in str(val2).lower()):
                                 df.at[idx, companion_col] = 'not applicable'
-                        except:
-                            print("updating companion col is not working!")
+
+
+                elif isinstance(main_col, str):
+                    if main_col in df.columns:
+                        for idx in df.index:
+                            val = df.at[idx, main_col]
+                            # Check if we should update the unit
+                            try:
+                                should_update = False
+                                if pd.isna(val) or val == None:
+                                    should_update = True
+                                elif isinstance(val, str):
+                                    val_lower = val.lower()
+                                    if 'missing' in val_lower or 'not applicable' in val_lower:
+                                        should_update = True
+                                
+                                if should_update:
+                                    df.at[idx, companion_col] = 'not applicable'
+                            except:
+                                print("updating companion col is not working!")
 
             return df
     
