@@ -108,6 +108,7 @@ class SampleMetadata(BaseModel):
     temp_WOCE_flag: Optional[int] = Field(default=None)
     temp_standard_deviation: Optional[float] = Field(default=None)
     chlorophyll: Optional[float] = Field(description = 'in mg/m3')
+    chlorophyll_WOCE_flag: Optional[int] = Field(default=None)
     light_intensity: Optional[float] = Field(description = 'in lux')
     ph: Optional[float]
     ph_meth: Optional[str]
@@ -156,7 +157,7 @@ class SampleMetadata(BaseModel):
     part_org_nitro: Optional[float]
     part_org_nitro_unit: Optional[Literal['µM', 'mol/m3', 'mmol/m3', 'µmol/m3 ', 'mol/L', 'mmol/L', 'µmol/L', 'mg/L',  'µg/L', 'µmol/kg', 'mmol/kg ', 'parts per million']]
     nitrate: Optional[float]
-    nitrate_unit: Optional[Literal['µM', 'mol/m3', 'mmol/m3', 'µmol/m3 ', 'mol/L', 'mmol/L', 'µmol/L', 'mg/L',  'µg/L', 'µmol/kg', 'mmol/kg ', 'parts per million']]
+    nitrate_unit: Optional[Literal['µM', 'mol/m3', 'mmol/m3', 'µmol/m3 ', 'mol/L', 'mmol/L', 'µmol/L', 'mg/L',  'µg/L', 'µmol/kg', 'mmol/kg ', 'parts per million', 'other: µmol/kg']]
     nitrate_WOCE_flag: Optional[str] = Field(default=None)
     nitrite: Optional[float]
     nitrite_unit: Optional[Literal['µM', 'mol/m3', 'mmol/m3', 'µmol/m3 ', 'mol/L', 'mmol/L', 'µmol/L', 'mg/L',  'µg/L', 'µmol/kg', 'mmol/kg ', 'parts per million']]
@@ -173,14 +174,16 @@ class SampleMetadata(BaseModel):
     ammonium_unit: Optional[Literal['µmol/L', 'µmol/kg', 'µM']]
     ammonium_WOCE_flag: Optional[int] = Field(default=None)
     carbonate: Optional[float]
-    carbonate_unit: Optional[Literal['']]  # need to add cv here when known
+    carbonate_unit: Optional[Literal['µmol/kg']]  # need to add cv here when known
     carbonate_WOCE_flag: Optional[int] = Field(default=None)
     hydrogen_ion: Optional[float] = Field(default=None)
     hydrogen_ion_unit: Optional[Literal['nmol/kg']] = Field(default=None)
     nitrate_plus_nitrite: Optional[float]
     nitrate_plus_nitrite_unit: Optional[Literal['µM']]  # need to add cv here when known
     omega_arag: Optional[float]
+    omega_arag_method: Optional[str]
     omega_calc: Optional[float] = Field(default=None)
+    omega_calc_method: Optional[str]
     pco2: Optional[float]
     pco2_unit: Optional[Literal['uatm']]
     phosphate: Optional[float]
@@ -238,7 +241,54 @@ class SampleMetadata(BaseModel):
                                 'JH1', 'LC2', 'JH3', 'LC1', 'UCC', 'UCA', 'ISA', 'ISD', 'XS1', 'XS2', 
                                 'XS4', 'SEM30', 'SEM10', 'SEM2.5', 'SEM-2.5', 'GB24', 'GB12', 'GB07', 
                                 'GB13', 'GB16', 'GB20', 'GB04', 'GB01', 'LFC', 'SPC', 'SPA', 'MCS1', 
-                                'MSC3B', 'MCS5B']]
+                                'MSC3B', 'MCS5B', 'QC2', 'QC18', 'QC43', 'QC62', 'QC74', 'QC85', 'QC115', 
+                                'QC145', 'QC175', 'WCOA2016_131', 'WCOA2016_132', 'WCOA2016_133', 
+                                'WCOA2016_134', 'WCOA2016_135', 'NS3', 'NS8', 'NS14', 'NS21', 'NS49', 
+                                'NS75', 'NS105', 'NS135', 'BS2', 'BS4', 'BS6', 'BS9', 'BS14', 'BS20', 
+                                'BS26', 'BS32', 'BS37', 'BS43', 'BS48', 'BS53', 'BS64', 'JF2.5', 'JF9', 
+                                'JF20', 'JF23', 'JF27', 'JF33', 'JF35', 'JF46', 'JF54', 'JF63', 'ChaBa', 
+                                'Sokul', 'Kalaloch', 'TC8', 'TC17', 'TC23', 'TC35', 'C2.5', 'C7', 'C8', 
+                                'C19', 'C23', 'C26', 'C32', 'C35', 'C41', 'C77', 'QR11', 'QR29', 'QR39', 
+                                'QR69', 'QR98', 'QR129', 'QR159', 'WCOA2012_20', 'WCOA2012_19', 'CR-2', 
+                                'CR-1', 'CR0', 'CR3', 'CR6', 'CR13', 'CR24', 'CR26', 'CR30', 'CR32', 
+                                'CR37', 'CR40', 'CR50', 'CR56', 'CR74', 'WCOA2012_28', 'Ecola', 'TB3', 
+                                'TB7', 'TB17', 'TB33', 'TB36', 'TB54', 'SR1', 'SR5', 'SR14', 'SR29', 
+                                'SR41', 'NH1', 'WCOA2011_27', 'NH3', 'NH5', 'NH10', 'NH12', 'NH14', 
+                                'NH21', 'NH22', 'NH25', 'NH30', 'NH33', 'NH35', 'NH38', 'NH40', 'NH42', 
+                                'NH43', 'NH44', 'NH45', 'NH47', 'NH50', 'NH51', 'NH52', 'NH55', 'NH61', 
+                                'NH66', 'NH92', 'NH101', 'NH122', 'NH149', 'CP1', 'CP2', 'CP5', 'CP6', 
+                                'CP9', 'CP13', 'CP20', 'CP25', 'CP37', 'HH3', 'HH10', 'HH20', 'HH29', 
+                                'HH37', 'HH42', 'CB06', 'CB3', 'CB5', 'CB15', 'CB23', 'CB42', 'B2.5', 
+                                'B5', 'B6', 'B9', 'WCOA2011_47', 'B12', 'B15', 'B16', 'B17', 'B19', 
+                                'B26', 'B30', 'B38', 'B40', 'B50', 'B66', 'B80', 'B114', 'B137', 'FK', 
+                                'CE4', 'E7', 'E9', 'E14', 'E27', 'E33', 'CM0.5', 'CM1', 'CM3', 
+                                'WCOA2012_76', 'CM3.5', 'WCOA2007_42.5', 'CM5', 'CM7', 'CM11', 'CM20', 
+                                'CM21', 'CM30', 'CM40', 'CM45', 'CM48', 'CM68', 'CM108', 'PA3', 'PA9', 
+                                'PA19', 'PA30', 'PA40', 'PA49', 'JH2', 'JH11', 'JH18', 'JH26', 'JH35', 
+                                'JH42', 'JH62', 'JH102', 'WCOA2011_64', 'PR1', 'PR4', 'PR8', 'PR9', 'PR10', 
+                                'PR15', 'PR16', 'PR20', 'PR25', 'PR28', 'PR37', 'PR83', 'PR157', 
+                                'WCOA2016_55', 'RTC Map', 'CO2 Buoy', 'USCS Station 18 Point Blunt', 
+                                'WPGGTX6', 'GGTX7', 'GGTX5', 'GGTX4', 'GGTX3', 'GGTX2', 'GGTX1', 'ML1', 
+                                'WCOA2007_65', 'ML3', 'WCOA2011_79', 'ML5', 'ML8', 'ML11', 'WCOA2007_64', 
+                                'WCOA2011_76', 'WCOA2013_128', 'WCOA2011_75', 'WCOA2007_63', 'ML38', 
+                                'WCOA2007_62', 'WCOA2007_61', 'ML60', 'WCOA2016_50', 'WCOA2007_60', 'ML82', 
+                                'WCOA2007_59', 'ML126', 'WCOA2007_58', 'CC73.3-50', 'CC73.3-55', 'CC73.3-60', 
+                                'CC73.3-70', 'CC73.3-80', 'SLOB4', 'SLOB6', 'SLOB11', 'SLOB18', 'SLOB26', 
+                                'SLOB42', 'SLOB50', 'SLOB70', 'SLOB110', 'CC80-50.5', 'CC80-51', 'CC80-52', 
+                                'WCOA2011_85', 'CC80-54', 'CCE2', 'CC80-57', 'CC80-60', 'CC80-70', 'CCE1', 
+                                'WCOA2016_41', 'WCOA2016_40', 'WCOA2011_87', 'WCOA2011_88', 'SB1', 'SB2', 
+                                'SB3', 'SB4', 'SB5', 'SCORPAnacapa', 'WCOA2007_84', 'WCOA2007_85', 'SM3', 
+                                'SM10', 'SM27', 'SM51', 'SM79', 'SM91', 'SM111', 'SM130', 'SM150', 
+                                'CC90-27.7', 'CC90-28', 'CC90-30', 'WCOA2011_93', 'CC90-35', 'CC90-37', 
+                                'WCOA2016_30', 'CC90-45', 'CC90-49', 'WCOA2016_31', 'CC90-53', 'CC90-60', 
+                                'WCOA2011_90', 'CC90-70', 'WCOA2011_89', 'P02-12', 'P02-13', 'P02-14', 
+                                'P02-15', 'BGC WPP02-16', 'P02-17', 'P02-18', 'BGC2 Primary', 'P02-139', 
+                                '10th Ave Pier', 'F27', 'I20', 'WCOA2016_22', 'ASB1', 'ASB3', 'ASB11', 
+                                'ASB23', 'ASB43', 'ASB63', 'ASB83', 'ASB103', 'ASB123', 'ASB163', 
+                                'BGC3 Primary', 'MIL5', 'MIL10', 'MIL31', 'MIL51', 'MIL75', 'MIL82', 
+                                'MIL91', 'MIL111', 'MIL130', 'MIL151', 'SJ7', 'SJ18', 'SJ38', 'SJ58', 
+                                'SJ78', 'SJ97', 'SJ117', 'SJ137', 'SJ158', 'La Goleta', 'FKC', 'RTC Map CO2 Buoy',
+                                'GGTX6', 'SCORP', 'Anacapa']]
     ctd_cast_number: Optional[int]
     ctd_bottle_number: Optional[int]
     replicate_number: Optional[int]
@@ -288,7 +338,7 @@ class SampleMetadata(BaseModel):
     rosette_position: Optional[int] = None 
     recordedBy: Optional[str]
     measurements_from: Optional[str] = None
-    nisking_id: Optional[str] = Field(default=None)
+    niskin_id: Optional[str] = Field(default=None)
     niskin_WOCE_flag: Optional[int] = Field(default=None)
     station_ids_within_5km_of_lat_lon: Optional[str] = Field(default=None, description="Stations within 5 km of the lat/lon coordinates given for a sample - if references stations are given. For internal QC purposes only.")
     sunrise_time_utc: Optional[str] = Field(default=None)
@@ -321,7 +371,12 @@ class SampleMetadata(BaseModel):
     dna_yield: Optional[float] = None
     dna_yield_unit: Optional[Literal['ng DNA/mL seawater']] = None
     dna_cleanup_method: Optional[str]
-    
+    rep_chem_bottle: Optional[int]
+    fluor: Optional[float] = None
+    fluor_unit: Optional[Literal['volts']] = None
+    redox_potential: Optional[float] = None
+    redox_potential_unit: Optional[Literal['mV']] = None
+
     # class variables loaded once and shared across all datasets
     # list of arctic region keywods
     _artic_region_keywords: ClassVar[List[str]] = ['bering', 'chukchi', 'arctic', 'north pacific', 'alaska', 'british columbia']
@@ -356,12 +411,21 @@ class SampleMetadata(BaseModel):
         
     @model_validator(mode='after')
     def validate_required_fields_for_samples(self):
-        # Ensure sample records have required fields that are not required for controls
-        required = [self.decimalLatitude, self.decimalLongitude, self.geo_loc_name, self.env_broad_scale, self.env_local_scale, self.env_medium, self.eventDate]
+        # Use strings (in quotes) for the attribute names
+        required = [
+            "decimalLatitude", "decimalLongitude", "geo_loc_name", 
+            "env_broad_scale", "env_local_scale", "env_medium", "eventDate"
+        ]
+        
         if self.samp_category == 'sample':
-            for attribute in required:
-                if attribute is None:
-                    raise ValueError(f"Sample {self.samp_name} must have {attribute}")
+            for attribute_name in required:
+                # Check the value of the attribute by its name
+                value = getattr(self, attribute_name)
+                
+                if value is None:
+                    # This will now print the actual name, e.g., "decimalLatitude"
+                    warnings.warn(f"Sample {self.samp_name} must have {attribute_name}")
+                    
         return self
 
     @field_validator('decimalLatitude')
@@ -369,6 +433,8 @@ class SampleMetadata(BaseModel):
     def validate_latitude(cls, v, info):
         # only apply to sample records, not controls
         if info.data.get('samp_category') != 'sample':
+            return v
+        if v is None:
             return v
         if not(-90 <= v <= 90):
             raise ValueError(f"Latitude {v} is outside valid latitude range (-90 to 90)")
@@ -379,6 +445,8 @@ class SampleMetadata(BaseModel):
     def validate_longitude(cls, v, info):
         # only apply to sample records, not controls
         if info.data.get('samp_category') != 'sample':
+            return v
+        if v is None:
             return v
         if not(-180 <= v <= 180):
             raise ValueError(f"Longitude {v} is outside valid latitude range (-180 to 180)")
@@ -407,10 +475,10 @@ class SampleMetadata(BaseModel):
     @field_validator('maximumDepthInMeters')
     @classmethod
     def validate_max_depth_less_than_3_m(cls, v, info):
-        if info.data.get('samp_category') != 'sample':
+        if v is None or info.data.get('samp_category') != 'sample':
             return v
         if float(v) < 3:
-             raise ValueError(f"MaximumDepthInMeters has value {v} which is less than 3.")
+             warnings.warn(f"MaximumDepthInMeters has value {v} which is less than 3.")
         return v
 
     @model_validator(mode='after')
@@ -455,6 +523,9 @@ class SampleMetadata(BaseModel):
         if self.samp_category != 'sample':
             return self
         
+        if not self.decimalLongitude or not self.decimalLatitude or not self.geo_loc_name:
+            return self
+        
         point = Point(self.decimalLongitude, self.decimalLatitude)
         try:
             geo_loc_sea_area = self.geo_loc_name.split(':')[1]
@@ -490,13 +561,19 @@ class SampleMetadata(BaseModel):
         if self.samp_category != 'sample':
             return self
         
+        # Ensure BOTH values exist before comparing them
+        max_d = self.maximumDepthInMeters
+        tot_d = self.tot_depth_water_col
+        
         # TODO: may need to adjust difference threshold depending on case
-        if self.maximumDepthInMeters is not None and self.tot_depth_water_col is not None:
-            if self.maximumDepthInMeters > self.tot_depth_water_col and (self.tot_depth_water_col - self.maximumDepthInMeters) > 1:
-                warnings.warn(f"{self.samp_name} (cast:{self.ctd_cast_number}, bottle:{self.ctd_bottle_number}) appears to have a max depth ({self.maximumDepthInMeters}) greater than the total depth ({self.tot_depth_water_col}).")
-        if self.minimumDepthInMeters is not None and self.tot_depth_water_col is not None:
-            if self.minimumDepthInMeters > self.tot_depth_water_col and (self.tot_depth_water_col - self.maximumDepthInMeters) > 1:
-                warnings.warn(f"{self.samp_name} appears to have a max depth ({self.minimumDepthInMeters}) greater than the total depth ({self.tot_depth_water_col}).")
+        if max_d  is not None and tot_d is not None:
+            if max_d > tot_d and (tot_d - max_d) > 1:
+                warnings.warn(f"{self.samp_name} (cast:{self.ctd_cast_number}, bottle:{self.ctd_bottle_number}) appears to have a max depth ({max_d}) greater than the total depth ({tot_d}).")
+        
+        min_d = self.minimumDepthInMeters
+        if min_d is not None and tot_d is not None:
+            if min_d > tot_d and (self.tot_depth_water_col - min_d) > 1:
+                warnings.warn(f"{self.samp_name} appears to have a max depth ({min_d}) greater than the total depth ({tot_d}).")
         return self
 
     @model_validator(mode='after')
@@ -534,7 +611,7 @@ class SampleMetadata(BaseModel):
         if self.samp_category != 'sample':
             return self
         if self.rosette_position != self.ctd_bottle_number:
-            raise ValueError('rosette_position must match the ctd_bottle_number ')
+            raise ValueError(f'rosette_position must match the ctd_bottle_number: rosette_pos = {self.rosette_position}, ctd_bottle_number = {self.ctd_bottle_number}')
         return self
 
 # a wrapper model for the entire SampleMetadata dataset - allows for validation across the whole dataset
@@ -543,32 +620,33 @@ class SampleMetadataDatasetModel(BaseModel):
 
     @model_validator(mode='after')
     def validate_tot_water_depth_across_casts(self):
-        # ensures that all data entries with the same ctd_cast_number and expedition_id also have the exact same value for tot_depth_water_col.
+        # ensures that all data entries with the same ctd_cast_number, station_id, and expedition_id also have the exact same value for tot_depth_water_col.
         # Convert to dict for easier processing
         rows_data = [row.model_dump() for row in self.rows]
 
         # group by ctd_cast_number
         groups = defaultdict(list)
         for row in rows_data:
-            group_key = (row.get('ctd_cast_number'), row.get('expedition_id'))
+            group_key = (row.get('ctd_cast_number'), row.get('station_id'), row.get('expedition_id'))
             groups[group_key].append(row.get('tot_depth_water_col'))
 
         # Check for inconsistencies
         inconsistent_groups = []
         for cast_expedition_tuple, values in groups.items():
             # Unpack the tuple for clarity
-            cast_no, expedition_id = cast_expedition_tuple
+            cast_no, station_id, expedition_id = cast_expedition_tuple
             
             # Now your check is based on whether both fields exist
-            if cast_no is not None and expedition_id is not None:
-                unique_values = set(values)
-                if len(unique_values) > 1:
-                    range = max(unique_values) - min(unique_values)
+            if cast_no is not None and station_id is not None and expedition_id is not None:
+                numeric_values = [v for v in values if v is not None] # remove any values that aren't numeric
+                if len(set(numeric_values)) > 1:
+                    range = max(numeric_values) - min(numeric_values)
                     if range > 3:
                         inconsistent_groups.append({
                             'ctd_cast_number': cast_no,
+                            'station_id': station_id,
                             'expedition_id': expedition_id,
-                            'found_values': list(unique_values)
+                            'found_values': list(set(numeric_values))
                         })
 
         if inconsistent_groups:
