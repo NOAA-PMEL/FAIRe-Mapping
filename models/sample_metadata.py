@@ -288,7 +288,7 @@ class SampleMetadata(BaseModel):
                                 'BGC3 Primary', 'MIL5', 'MIL10', 'MIL31', 'MIL51', 'MIL75', 'MIL82', 
                                 'MIL91', 'MIL111', 'MIL130', 'MIL151', 'SJ7', 'SJ18', 'SJ38', 'SJ58', 
                                 'SJ78', 'SJ97', 'SJ117', 'SJ137', 'SJ158', 'La Goleta', 'FKC', 'RTC Map CO2 Buoy',
-                                'GGTX6', 'SCORP']]
+                                'GGTX6', 'SCORP', 'Anacapa']]
     ctd_cast_number: Optional[int]
     ctd_bottle_number: Optional[int]
     replicate_number: Optional[int]
@@ -416,7 +416,7 @@ class SampleMetadata(BaseModel):
         if self.samp_category == 'sample':
             for attribute in required:
                 if attribute is None:
-                    raise ValueError(f"Sample {self.samp_name} must have {attribute}")
+                    warnings.warn(f"Sample {self.samp_name} must have {attribute}")
         return self
 
     @field_validator('decimalLatitude')
@@ -424,6 +424,8 @@ class SampleMetadata(BaseModel):
     def validate_latitude(cls, v, info):
         # only apply to sample records, not controls
         if info.data.get('samp_category') != 'sample':
+            return v
+        if v is None:
             return v
         if not(-90 <= v <= 90):
             raise ValueError(f"Latitude {v} is outside valid latitude range (-90 to 90)")
@@ -434,6 +436,8 @@ class SampleMetadata(BaseModel):
     def validate_longitude(cls, v, info):
         # only apply to sample records, not controls
         if info.data.get('samp_category') != 'sample':
+            return v
+        if v is None:
             return v
         if not(-180 <= v <= 180):
             raise ValueError(f"Longitude {v} is outside valid latitude range (-180 to 180)")
@@ -510,6 +514,9 @@ class SampleMetadata(BaseModel):
         if self.samp_category != 'sample':
             return self
         
+        if not self.decimalLongitude or not self.decimalLatitude or not self.geo_loc_name:
+            return self
+        
         point = Point(self.decimalLongitude, self.decimalLatitude)
         try:
             geo_loc_sea_area = self.geo_loc_name.split(':')[1]
@@ -545,13 +552,19 @@ class SampleMetadata(BaseModel):
         if self.samp_category != 'sample':
             return self
         
+        # Ensure BOTH values exist before comparing them
+        max_d = self.maximumDepthInMeters
+        tot_d = self.tot_depth_water_col
+        
         # TODO: may need to adjust difference threshold depending on case
-        if self.maximumDepthInMeters is not None and self.tot_depth_water_col is not None:
-            if self.maximumDepthInMeters > self.tot_depth_water_col and (self.tot_depth_water_col - self.maximumDepthInMeters) > 1:
-                warnings.warn(f"{self.samp_name} (cast:{self.ctd_cast_number}, bottle:{self.ctd_bottle_number}) appears to have a max depth ({self.maximumDepthInMeters}) greater than the total depth ({self.tot_depth_water_col}).")
-        if self.minimumDepthInMeters is not None and self.tot_depth_water_col is not None:
-            if self.minimumDepthInMeters > self.tot_depth_water_col and (self.tot_depth_water_col - self.maximumDepthInMeters) > 1:
-                warnings.warn(f"{self.samp_name} appears to have a max depth ({self.minimumDepthInMeters}) greater than the total depth ({self.tot_depth_water_col}).")
+        if max_d  is not None and tot_d is not None:
+            if max_d > tot_d and (tot_d - max_d) > 1:
+                warnings.warn(f"{self.samp_name} (cast:{self.ctd_cast_number}, bottle:{self.ctd_bottle_number}) appears to have a max depth ({max_d}) greater than the total depth ({tot_d}).")
+        
+        min_d = self.minimumDepthInMeters
+        if min_d is not None and tot_d is not None:
+            if min_d > tot_d and (self.tot_depth_water_col - min_d) > 1:
+                warnings.warn(f"{self.samp_name} appears to have a max depth ({min_d}) greater than the total depth ({tot_d}).")
         return self
 
     @model_validator(mode='after')
@@ -589,7 +602,7 @@ class SampleMetadata(BaseModel):
         if self.samp_category != 'sample':
             return self
         if self.rosette_position != self.ctd_bottle_number:
-            raise ValueError('rosette_position must match the ctd_bottle_number ')
+            raise ValueError(f'rosette_position must match the ctd_bottle_number: rosette_pos = {self.rosette_position}, ctd_bottle_number = {self.ctd_bottle_number}')
         return self
 
 # a wrapper model for the entire SampleMetadata dataset - allows for validation across the whole dataset

@@ -272,6 +272,7 @@ faire_int_cols = [
                     'ctd_bottle_number',
                     'replicate_number',
                     'rosette_position',
+                    'niskin_id'
                     'niskin_WOCE_flag',
                     'd18O_permil_WOCE_flag',
                     'nitrite_WOCE_flag',

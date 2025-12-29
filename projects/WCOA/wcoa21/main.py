@@ -9,11 +9,13 @@ from utils.sample_metadata_mapper import FaireSampleMetadataMapper
 def fix_string_rosette_positions(df: pd.DataFrame):
     """
     if rosette position has a non numeric value like Bucket or Surface Underway, 
-    will move to the Material Sample Id and make rosette position not applicable
+    will move to the Material Sample Id and make rosette position and ctd_bottle_number as
+    not applicable
     """
     mask = df['rosette_position'].isin(['Bucket1', 'Bucket2', 'Underway System', 'Bucket3'])
     df.loc[mask, 'materialSampleID'] = 'WCOA21_' + df.loc[mask, 'rosette_position']
     df.loc[mask, 'rosette_position'] = 'not applicable'
+    df.loc[mask, 'ctd_bottle_number'] = 'not applicable'
 
     return df
 
@@ -124,6 +126,16 @@ def update_missing_data_for_E869_to_E971(df: pd.DataFrame) -> pd.DataFrame:
 
     return df
 
+def fix_E913_to_E921_missing_vals(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    The ctd_number is missing for these samples, but the rosette position is not. So if
+    the rosette_position is missing: not collected, will fill in the value from the
+    rosette_position.
+    """
+    df = df.reset_index(drop=True)
+    df.loc[df['ctd_bottle_number'] == 'missing: not collected', 'ctd_bottle_number'] = df['rosette_position']
+
+    return df
     
 def create_33R020210613_sample_metadata():
 
@@ -270,9 +282,10 @@ def create_33R020210613_sample_metadata():
     final_final_faire_df = replace_not_ctd_in_rep_chem_bottle(df=final_faire_df)
     final_final_final_faire_df = fix_not_ctd_material_sample_id_vales(df=final_final_faire_df)
     last_df = update_missing_data_for_E869_to_E971(df=final_final_final_faire_df)
+    last_last_df = fix_E913_to_E921_missing_vals(df=last_df)
 
     # # step 7: save as csv:
-    sample_mapper.save_final_df_as_csv(final_df=last_df, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/WCOA/wcoa21/data/wcoa21_faire.csv')
+    sample_mapper.save_final_df_as_csv(final_df=last_last_df, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/WCOA/wcoa21/data/wcoa21_faire.csv')
    
     # # # step 8: save to excel file
     # # sample_mapper.add_final_df_to_FAIRe_excel(excel_file_to_read_from=sample_mapper.faire_template_file,
