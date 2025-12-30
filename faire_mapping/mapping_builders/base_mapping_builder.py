@@ -6,3 +6,7 @@ class BaseMappingBuilder:
     EXACT_MAPPING = 'exact'
     RELATED_MAPPING = 'related'
     CONSTANT_MAPPING = 'constant'
+    EXTRACT_MAPPING_SHEET_NAME = "extractionMetadata" # Name of the extraction mapping google sheet in the mapping google sheet # Used in both extraction_blank_builder and sample_builder
+
+    def __init__(self, google_sheet_mapping_file_id: str):
+        self.google_sheet_mapping_file_id = google_sheet_mapping_file_id

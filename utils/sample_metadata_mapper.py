@@ -18,6 +18,7 @@ from geopy.distance import geodesic
 from faire_mapping.utils import fix_cruise_code_in_samp_names, load_google_sheet_as_df
 from faire_mapping.sample_mapper.extraction_standardizer import ExtractionStandardizer
 from faire_mapping.mapping_builders.extraction_blank_mapping_dict_builder import ExtractionBlankMappingDictBuilder
+from faire_mapping.mapping_builders.sample_extract_mapping_dict_builder import SampleExtractionMappingDictBuilder
 
 
 # TODO: Turn nucl_acid_ext for DY20/12 into a BeBOP and change in extraction spreadsheet. Link to spreadsheet: https://docs.google.com/spreadsheets/d/1iY7Z8pNsKXHqsp6CsfjvKn2evXUPDYM2U3CVRGKUtX8/edit?gid=0#gid=0
@@ -81,7 +82,9 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.samp_dur_info = self.config_file['samp_store_dur_sheet_info'] if 'samp_store_dur_sheet_info' in self.config_file else None
         self.samp_stor_dur_dict = self.create_samp_stor_dict() if 'samp_store_dur_sheet_info' in self.config_file else None
         
-        self.mapping_dict = self.create_sample_mapping_dict()
+        #Instantiate mapping dict builder
+        self.sample_extract_mapping_builder = SampleExtractionMappingDictBuilder(google_sheet_mapping_file_id=self.google_sheet_mapping_file_id)
+
         # self.extractions_info = self.config_file['extractions']
         # self.extractions_df = self.create_concat_extraction_df()
         # self.extraction_blank_rel_cont_dict = {}
@@ -107,34 +110,34 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.standardized_station_dict = station_dicts[1] if 'station_name_reference_google_sheet_id' in self.config_file else None # Some projects won't have reference stations (RC0083)
         self.station_line_dict = station_dicts[2] if 'station_name_reference_google_sheet_id' in self.config_file else None # Some projects won't have reference stations (RC0083)
 
-    def create_sample_mapping_dict(self) -> dict:
-        # creates a mapping dictionary and saves as self.mapping_dict
+    # def create_sample_mapping_dict(self) -> dict:
+    #     # creates a mapping dictionary and saves as self.mapping_dict
 
-        # First concat sample_mapping_df with extractions_mapping_df
-        sample_mapping_df = load_google_sheet_as_df(
-            google_sheet_id=self.google_sheet_mapping_file_id, sheet_name=self.sample_mapping_sheet_name, header=0)
-        extractions_mapping_df = load_google_sheet_as_df(
-            google_sheet_id=self.google_sheet_mapping_file_id, sheet_name=self.extraction_mapping_sheet_name, header=1)
+    #     # First concat sample_mapping_df with extractions_mapping_df
+    #     sample_mapping_df = load_google_sheet_as_df(
+    #         google_sheet_id=self.google_sheet_mapping_file_id, sheet_name=self.sample_mapping_sheet_name, header=0)
+    #     extractions_mapping_df = load_google_sheet_as_df(
+    #         google_sheet_id=self.google_sheet_mapping_file_id, sheet_name=self.extraction_mapping_sheet_name, header=1)
  
-        mapping_df = pd.concat([sample_mapping_df, extractions_mapping_df])
+    #     mapping_df = pd.concat([sample_mapping_df, extractions_mapping_df])
 
-        # Group by the mapping type
-        group_by_mapping = mapping_df.groupby(
-            self.mapping_file_mapped_type_column)
+    #     # Group by the mapping type
+    #     group_by_mapping = mapping_df.groupby(
+    #         self.mapping_file_mapped_type_column)
 
-        # Create nested dictionary {exact_mapping: {faire_col: metadata_col}, narrow_mapping: {faire_col: metadta_col}, etc.}
-        mapping_dict = {}
-        for mapping_value, group in group_by_mapping:
-            column_map_dict = {k: v for k, v in zip(
-                group[self.mapping_file_FAIRe_column], group[self.mapping_file_metadata_column]) if pd.notna(v)}
-            mapping_dict[mapping_value] = column_map_dict
+    #     # Create nested dictionary {exact_mapping: {faire_col: metadata_col}, narrow_mapping: {faire_col: metadta_col}, etc.}
+    #     mapping_dict = {}
+    #     for mapping_value, group in group_by_mapping:
+    #         column_map_dict = {k: v for k, v in zip(
+    #             group[self.mapping_file_FAIRe_column], group[self.mapping_file_metadata_column]) if pd.notna(v)}
+    #         mapping_dict[mapping_value] = column_map_dict
 
-        return mapping_dict
+    #     return mapping_dict
 
     def create_nc_mapping_dict(self) -> dict:
 
         nc_mapping_dict = {}
-        for mapping_type, col_dict in self.mapping_dict.items():
+        for mapping_type, col_dict in self.sample_extract_mapping_builder.sample_mapping_dict.items():
             if isinstance(col_dict, dict):
                 filtered_nested = {
                     k: v for k, v in col_dict.items() if k in nc_faire_field_cols}
@@ -1157,7 +1160,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                     self.add_neg_cont_type)
 
             elif faire_col == 'dna_yield':
-                vol_col = self.mapping_dict[self.exact_mapping].get('samp_vol_we_dna_ext')
+                vol_col = self.sample_extract_mapping_builder.sample_mapping_dict[self.exact_mapping].get('samp_vol_we_dna_ext')
                 nc_results[faire_col] = self.nc_df.apply(
                         lambda row: self.calculate_dna_yield(metadata_row=row, sample_vol_metadata_col=vol_col),
                         axis = 1

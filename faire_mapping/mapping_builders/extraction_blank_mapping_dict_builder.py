@@ -6,14 +6,13 @@ class ExtractionBlankMappingDictBuilder(BaseMappingBuilder):
     """
     Creates the mapping dictionary for the extraction blanks. E.g. {exact_mapping: {faire_col: metadata_col}, narrow_mapping: {faire_col: metadta_col}, etc.}
     """
-
-    EXTRACT_MAPPING_SHEET_NAME = "extractionMetadata" # Name of the extraction mapping google sheet in the mapping google sheet
     FAIRE_SAMP_VOL_WE_DNA_EXT_COL_NAME = "samp_vol_we_dna_ext"
     FAIRE_POOL_NUM_COL_NAME = "pool_dna_num"
     FAIRE_NUCL_ACID_EXT_METHOD_ADDITIONAL_COL_NAME = "nucl_acid_ext_method_additional"
 
-    def __init__(self, google_sheet_mapping_file_id: str):
-        self.google_sheet_mapping_file_id = google_sheet_mapping_file_id
+    def __init__(self, google_sheet_mapping_file_id):
+        super().__init__(google_sheet_mapping_file_id)
+    
         self.extraction_blanks_mapping_dict = self.create_extraction_blank_mapping_dict()
 
     def create_extraction_blank_mapping_dict(self) -> dict:
