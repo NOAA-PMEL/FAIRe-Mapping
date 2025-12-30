@@ -1,6 +1,7 @@
 import pandas as pd
 
 from faire_mapping.utils import load_google_sheet_as_df, str_replace_for_samps, fix_cruise_code_in_samp_names, convert_mdy_date_to_iso8061
+from faire_mapping.mapping_builders.sample_extract_mapping_dict_builder import SampleExtractionMappingDictBuilder
 
 # TODO: update extraction_mapping_dict in sample_mapper part
 # TODO: outline what extractions_info dict looks like from config.yaml files in documentions in __init__
@@ -40,22 +41,25 @@ class ExtractionStandardizer:
     # Below Range standard value
     BELOW_RANGE_STD_VAL = "BDL"
 
-    def __init__(self, extractions_info: list, google_sheet_json_cred: str, unwanted_cruise_code: str = None, desired_cruise_code: str = None):
+    def __init__(self, extractions_info: list, google_sheet_json_cred: str, sample_extract_mapping_builder: SampleExtractionMappingDictBuilder, unwanted_cruise_code: str = None, desired_cruise_code: str = None):
         """
         extractions_info is the extraction is the list of dictionaries from the config.yaml file that outlines the extraction spreadsheet(s)
         google_sheet_json_cred is the path to the where the credentialss.json file lives for acessing google sheet programatically. Will be specified in the config.yaml file
+        sample_extract_mapping_builder is an instance of the mapping_dict for the sample/extract metadata. This will need to get updated when column names in extractions are updated.
         unwanted_cruise_code is the cruise code in the sample names that is not desireable (see config.yaml files)
         desired_cruise_code is the desired cruise in the sample names (see config.yaml file)
         google_sheet_mapping_file_id is the id of the google sheet mapping file
         """
         self.extractions_info = extractions_info
         self.google_sheet_json_cred = google_sheet_json_cred
+        self.sample_extract_mapping_builder = sample_extract_mapping_builder
         self.unwanted_cruise_code = unwanted_cruise_code
         self.desired_cruise_code = desired_cruise_code
         self.extract_new_old_col_mapping_dict = self.create_extract_old_new_col_master_mapping_dict() # Creates a dictionary with new extraction column names as keys and a set of old extraction column names as values
         self.extraction_df = self.create_finalized_extraction_df() # the standardized extraction_df that will be joined with the sample metadata df in other modules
         self.extraction_blank_rel_cont_dict = {} # Will get filled out in get_extraction_blanks_applicable_to_cruise_samps
         self.extraction_blanks_df = self.get_extraction_blanks_applicable_to_cruise_samps()
+        self.update_mapping_dictionary_col_names() # update sample_extract_mapping_builder dictionary with new extract column names
 
     def create_finalized_extraction_df(self) -> pd.DataFrame:
         """
@@ -101,14 +105,7 @@ class ExtractionStandardizer:
 
         # Concat dataframes
         final_extraction_df = pd.concat(extraction_dfs)
-
-        # if any columns changed names that are in the mapping dict, change them there too
-        # for maps in self.mapping_dict.values():
-        #     for faire_col, metadata_col in maps.items():
-        #         if metadata_col in extraction_column_mappings.keys():
-        #             maps[faire_col] = extraction_column_mappings.get(metadata_col)
         
-     
         return final_extraction_df
     
     def create_extract_old_new_col_master_mapping_dict(self) -> dict:
@@ -243,4 +240,17 @@ class ExtractionStandardizer:
                 "Warning: Extraction samples are not grouped, double check this")
         
         return blank_df
+    
+    def update_mapping_dictionary_col_names(self):
+        """
+        Update the sample/extract mapping dictionary with the new column names for the extraction df
+        """
+
+        for maps in self.sample_extract_mapping_builder.sample_mapping_dict.values():
+            for faire_col, metadata_col in list(maps.items()):
+                for new_canonical_name, old_names_set in self.extract_new_old_col_mapping_dict.items():
+                    if metadata_col in old_names_set:
+                        maps[faire_col] = new_canonical_name
+                        break
+        
     

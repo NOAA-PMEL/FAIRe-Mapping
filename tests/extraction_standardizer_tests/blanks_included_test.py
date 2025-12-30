@@ -1,4 +1,5 @@
 from faire_mapping.sample_mapper.extraction_standardizer import ExtractionStandardizer
+from faire_mapping.mapping_builders.sample_extract_mapping_dict_builder import SampleExtractionMappingDictBuilder
 
 extractions_info = [
     {
@@ -14,10 +15,14 @@ extractions_info = [
     }
 ]
 google_sheet_json_cred = "/home/poseidon/zalmanek/FAIRe-Mapping/credentials.json"
+mapping_file_id = "1lnHUaAVj2ybyiruvBUY-vxtYpBM8xyAnsxHaC-y3W08"
+sample_mapping_builder = SampleExtractionMappingDictBuilder(google_sheet_mapping_file_id=mapping_file_id, google_sheet_json_cred=google_sheet_json_cred)
 
 extract_standardizer = ExtractionStandardizer(extractions_info=extractions_info, 
-                                              google_sheet_json_cred=google_sheet_json_cred)
+                                              google_sheet_json_cred=google_sheet_json_cred,
+                                              sample_extract_mapping_builder=sample_mapping_builder)
 
 print(extract_standardizer.extraction_df)
 print(extract_standardizer.extraction_blanks_df)
 print(extract_standardizer.extraction_blank_rel_cont_dict)
+print(extract_standardizer.sample_extract_mapping_builder.sample_mapping_dict)
