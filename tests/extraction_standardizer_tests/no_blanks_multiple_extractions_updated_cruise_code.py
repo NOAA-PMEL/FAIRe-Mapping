@@ -1,5 +1,4 @@
 from faire_mapping.dataframe_builders.extraction_builder import ExtractionBuilder
-from faire_mapping.mapping_builders.sample_extract_mapping_dict_builder import SampleExtractionMappingDictBuilder
 
 extractions_info = [
         {
@@ -28,16 +27,12 @@ extractions_info = [
 google_sheet_json_cred = "/home/poseidon/zalmanek/FAIRe-Mapping/credentials.json"
 unwanted_cruise_code = ".SKQ2021"
 desired_cruise_code = ".SKQ21-15S"
-mapping_file_id = "13mqrAXO0dpE3vrCfG10Eze-KnYo-rAZmxb0HverQWy8"
-sample_mapping_builder = SampleExtractionMappingDictBuilder(google_sheet_mapping_file_id=mapping_file_id, google_sheet_json_cred=google_sheet_json_cred)
 
 extract_standardizer = ExtractionBuilder(extractions_info=extractions_info, 
                                               google_sheet_json_cred=google_sheet_json_cred,
                                               unwanted_cruise_code=unwanted_cruise_code,
-                                              desired_cruise_code=desired_cruise_code,
-                                              sample_extract_mapping_builder=sample_mapping_builder)
+                                              desired_cruise_code=desired_cruise_code)
 
 print(extract_standardizer.extraction_df)
 print(extract_standardizer.extraction_blanks_df)
 print(extract_standardizer.extraction_blank_rel_cont_dict)
-print(extract_standardizer.sample_extract_mapping_builder.sample_mapping_dict)

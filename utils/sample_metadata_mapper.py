@@ -16,7 +16,7 @@ from .custom_exception import NoInsdcGeoLocError
 from .lists import nc_faire_field_cols
 from geopy.distance import geodesic
 from faire_mapping.utils import fix_cruise_code_in_samp_names, load_google_sheet_as_df
-from faire_mapping.sample_mapper.extraction_standardizer import ExtractionStandardizer
+from faire_mapping.dataframe_builders.extraction_builder import ExtractionBuilder
 from faire_mapping.mapping_builders.extraction_blank_mapping_dict_builder import ExtractionBlankMappingDictBuilder
 from faire_mapping.mapping_builders.sample_extract_mapping_dict_builder import SampleExtractionMappingDictBuilder
 
@@ -50,16 +50,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                                              "pos_cont_type": "not applicable: sample group"}
     gebco_file = "/home/poseidon/zalmanek/FAIRe-Mapping/utils/GEBCO_2024.nc"
 
-    # # common extraction columns created during extraction manipulation
-    # extract_samp_name_col = "samp_name"
-    # extract_conc_col = "extraction_conc"
-    # extract_date_col = "extraction_date"
-    # extraction_set_col = "extraction_set"
-    # extraction_cruise_key_col = "extraction_cruise_key"
-    # extraction_name_col = "extraction_name"
-    # extraction_blank_vol_we_dna_ext_col = "extraction_blank_vol_dna_ext"
-    # extract_id_col = 'extract_id'
-
     def __init__(self, config_yaml: yaml):
         # TODO: used to have exp_metadata_df: pd.Series as init, but removed because of abstracting out sequencing yaml. See all associated commented out portions
         # May need to move this part into a separate class that combines after all sample_metadata is generated for each cruise
@@ -78,25 +68,23 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.google_sheet_mapping_file_id = self.config_file['google_sheet_mapping_file_id']
         self.unwanted_cruise_code = self.config_file['cruise_code_fixes']['unwanted_cruise_code'] if 'cruise_code_fixes' in self.config_file else None
         self.desired_cruise_code = self.config_file['cruise_code_fixes']['desired_cruise_code'] if 'cruise_code_fixes' in self.config_file else None
+        self.google_json_creds = self.config_file['json_creds']
 
         self.samp_dur_info = self.config_file['samp_store_dur_sheet_info'] if 'samp_store_dur_sheet_info' in self.config_file else None
         self.samp_stor_dur_dict = self.create_samp_stor_dict() if 'samp_store_dur_sheet_info' in self.config_file else None
         
         #Instantiate mapping dict builder
-        self.sample_extract_mapping_builder = SampleExtractionMappingDictBuilder(google_sheet_mapping_file_id=self.google_sheet_mapping_file_id)
+        self.sample_extract_mapping_builder = SampleExtractionMappingDictBuilder(google_sheet_mapping_file_id=self.google_sheet_mapping_file_id, google_sheet_json_cred=self.google_json_creds)
 
-        # self.extractions_info = self.config_file['extractions']
-        # self.extractions_df = self.create_concat_extraction_df()
-        # self.extraction_blank_rel_cont_dict = {}
 
-        self.extraction_standardizer = ExtractionStandardizer(extractions_info=self.config_file['extractions'],
+        self.extraction_standardizer = ExtractionBuilder(extractions_info=self.config_file['extractions'],
                                                               google_sheet_json_cred=self.config_file['json_creds'],
+                                                              sample_extract_mapping_builder=self.sample_extract_mapping_builder,
                                                               unwanted_cruise_code=self.unwanted_cruise_code,
                                                               desired_cruise_code=self.desired_cruise_code)
         
         self.sample_metadata_df = self.filter_metadata_dfs()[0]
         self.nc_df = self.filter_metadata_dfs()[1]
-        # self.extraction_blanks_df = self.get_extraction_blanks_applicable_to_cruise_samps()
         self.sample_faire_template_df = self.load_faire_template_as_df(
             file_path=self.config_file['faire_template_file'], sheet_name=self.sample_mapping_sheet_name, header=self.faire_sheet_header).dropna()
         self.replicates_dict = self.create_biological_replicates_dict()
@@ -109,80 +97,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.station_lat_lon_ref_dict = station_dicts[0] if 'station_name_reference_google_sheet_id' in self.config_file else None # Some projects won't have reference stations (RC0083)
         self.standardized_station_dict = station_dicts[1] if 'station_name_reference_google_sheet_id' in self.config_file else None # Some projects won't have reference stations (RC0083)
         self.station_line_dict = station_dicts[2] if 'station_name_reference_google_sheet_id' in self.config_file else None # Some projects won't have reference stations (RC0083)
-
-    # def create_sample_mapping_dict(self) -> dict:
-    #     # creates a mapping dictionary and saves as self.mapping_dict
-
-    #     # First concat sample_mapping_df with extractions_mapping_df
-    #     sample_mapping_df = load_google_sheet_as_df(
-    #         google_sheet_id=self.google_sheet_mapping_file_id, sheet_name=self.sample_mapping_sheet_name, header=0)
-    #     extractions_mapping_df = load_google_sheet_as_df(
-    #         google_sheet_id=self.google_sheet_mapping_file_id, sheet_name=self.extraction_mapping_sheet_name, header=1)
- 
-    #     mapping_df = pd.concat([sample_mapping_df, extractions_mapping_df])
-
-    #     # Group by the mapping type
-    #     group_by_mapping = mapping_df.groupby(
-    #         self.mapping_file_mapped_type_column)
-
-    #     # Create nested dictionary {exact_mapping: {faire_col: metadata_col}, narrow_mapping: {faire_col: metadta_col}, etc.}
-    #     mapping_dict = {}
-    #     for mapping_value, group in group_by_mapping:
-    #         column_map_dict = {k: v for k, v in zip(
-    #             group[self.mapping_file_FAIRe_column], group[self.mapping_file_metadata_column]) if pd.notna(v)}
-    #         mapping_dict[mapping_value] = column_map_dict
-
-    #     return mapping_dict
-
-    # def create_nc_mapping_dict(self) -> dict:
-
-    #     nc_mapping_dict = {}
-    #     for mapping_type, col_dict in self.sample_extract_mapping_builder.sample_mapping_dict.items():
-    #         if isinstance(col_dict, dict):
-    #             filtered_nested = {
-    #                 k: v for k, v in col_dict.items() if k in nc_faire_field_cols}
-    #             nc_mapping_dict[mapping_type] = filtered_nested
-
-    #     # change values that will be differenct for NC's
-    #     nc_mapping_dict[self.constant_mapping]['habitat_natural_artificial_0_1'] = '1'
-    #     nc_mapping_dict[self.constant_mapping]['samp_mat_process'] = self.nc_samp_mat_process
-    #     nc_mapping_dict[self.related_mapping]['prepped_samp_store_dur'] = self.config_file['nc_prepped_samp_store_dur']
-    #     nc_mapping_dict[self.constant_mapping]['samp_store_dur'] = "not applicable: control sample"
-    #     nc_mapping_dict[self.constant_mapping]['samp_store_temp'] = 'ambient temperature'
-    #     nc_mapping_dict[self.constant_mapping]['samp_store_loc'] = self.vessel_name
-
-    #     return nc_mapping_dict
-
-    # def create_extraction_blank_mapping_dict(self) -> dict:
-    #     # Creates a mapping dict for extraction blanks - mapping will be the same for only extractions faire attributes
-    #     extractions_mapping_df = self.load_google_sheet_as_df(
-    #         google_sheet_id=self.google_sheet_mapping_file_id, sheet_name=self.extraction_mapping_sheet_name, header=1)
-
-    #     group_by_mapping = extractions_mapping_df.groupby(
-    #         self.mapping_file_mapped_type_column)
-
-    #     # Create nested dictionary {exact_mapping: {faire_col: metadata_col}, narrow_mapping: {faire_col: metadta_col}, etc.}
-    #     mapping_dict = {}
-    #     for mapping_value, group in group_by_mapping:
-    #         column_map_dict = {k: v for k, v in zip(
-    #             group[self.mapping_file_FAIRe_column], group[self.mapping_file_metadata_column]) if pd.notna(v)}
-    #         mapping_dict[mapping_value] = column_map_dict
-
-    #     # If there is an exact mapping for samp_vol_we_dna_ext then remove and put constant value base on config file value
-    #     if self.faire_samp_vol_we_dna_ext_col_name in mapping_dict[self.exact_mapping]:
-    #         mapping_col = mapping_dict[self.exact_mapping][self.faire_samp_vol_we_dna_ext_col_name]
-    #         del mapping_dict[self.exact_mapping][self.faire_samp_vol_we_dna_ext_col_name]
-    #         mapping_dict[self.related_mapping][self.faire_samp_vol_we_dna_ext_col_name] = mapping_col
-
-
-    #     # If pool_dna_num in exact mapping automatically make constant mapping of 1 (may need to change if blanks are ever pooled for some reason)
-    #     if self.faire_pool_num_col_name in mapping_dict[self.exact_mapping]:
-    #         del mapping_dict[self.exact_mapping][self.faire_pool_num_col_name]
-    #         del mapping_dict[self.exact_mapping][self.faire_nucl_acid_ext_method_additional_col_name]
-    #         mapping_dict[self.constant_mapping][self.faire_pool_num_col_name] = 1
-    #         mapping_dict[self.constant_mapping][self.faire_nucl_acid_ext_method_additional_col_name] = "missing: not provided"
-
-    #     return mapping_dict
 
     def create_samp_stor_dict(self) -> dict:
 
@@ -202,7 +116,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # Creates a lat_lon_station_ref_dict reference dictionary for station names and their lat_lon coords (e.g. {'BF2': {'lat': '71.75076', 'lon': -154.4567}, 'DBO1.1': {'lat': '62.01', 'lon': -175.06}}
         # Also creates a standardized station dict
         
-        station_ref_df = load_google_sheet_as_df(google_sheet_id=self.station_name_reference_google_sheet_id, sheet_name='Sheet1', header=0)
+        station_ref_df = load_google_sheet_as_df(google_sheet_id=self.station_name_reference_google_sheet_id, sheet_name='Sheet1', header=0, google_sheet_json_cred=self.google_json_creds)
         station_lat_lon_ref_dict = self.create_station_lat_lon_ref_dict(station_ref_df=station_ref_df)
         station_standardized_name_dict = self.create_standardized_station_name_ref_dict(station_ref_df=station_ref_df)
         station_line_dict = self.create_station_line_id_ref_dict(station_ref_df=station_ref_df)
@@ -246,213 +160,31 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         station_line_dict = dict(zip(station_ref_df['station_name'], station_ref_df['line_id']))
         return station_line_dict
      
-    # def convert_mdy_date_to_iso8061(self, date_string: str) -> str:
-    #     # converts from m/d/y to iso8061
-    #     date_string = str(date_string).strip()
 
-    #     # Handle both single and double digit formats
-    #     try:
-    #         parts = date_string.split('/')
-    #         if len(parts) == 3:
-    #             month, day, year = parts
+    # def transform_metadata_df(self):
+    #     # Converts sample metadata to a data frame and checks to make sure NC samples have NC in the name (dy2206 had this problem)
+    #     # Also fixes sample names for SKQ23 cruise where sample metadata has _, but extraction metadata has -
+    #     samp_metadata_df = self.load_csv_as_df(
+    #         file_path=Path(self.config_file['sample_metadata_file']))
 
-    #             formatted_date = f"{int(month):02d}/{int(day):02}/{year}"
+    #     # Add .NC to sample name if the Negative Control column is True and its missing (in DY2206 cruise)
+    #     samp_metadata_df[self.sample_metadata_sample_name_column] = samp_metadata_df.apply(
+    #         lambda row: self._check_nc_samp_name_has_nc(metadata_row=row),
+    #         axis=1)
 
-    #             # parse date string
-    #             date_obj = datetime.strptime(formatted_date, "%m/%d/%Y")
+    #     # Fix sample names that have _ with -. For SKQ23 cruises where run and extraction metadata has -, and sample metadata has _
+    #     samp_metadata_df[self.sample_metadata_sample_name_column] = samp_metadata_df[self.sample_metadata_sample_name_column].apply(
+    #         self._fix_samp_names)
 
-    #             # convert to iso 8601 format
-    #             return date_obj.strftime('%Y-%m-%d')
-
-    #         elif len(parts) == 2:
-    #             # hande month/year format by assuming day=1
-    #             month, year = parts
-    #             formatted_date = f"{int(month):02d}/01/{year}"
-
-    #             # parse date string
-    #             date_obj = datetime.strptime(formatted_date, "%m/%d/%Y")
-
-    #             # convert to iso 8601 format
-    #             return date_obj.strftime('%Y-%m-%d')
-    #         else:
-    #             raise ValueError(
-    #                 f"Date doesn't have two or three parts: {date_string}")
-
-    #     except Exception as e:
-    #         print(f"Error converting {date_string}: {str(e)}")
-
-    # def extraction_avg_aggregation(self, extractions_df: pd.DataFrame):
-    #     # For extractions, calculates the mean if more than one concentration per sample name.
-
-    #     # Keep Below Range
-    #     if all(isinstance(conc, str) and ("below range" in conc.lower() or "br" == conc.lower() or "bdl" == conc.lower()) for conc in extractions_df):
-    #         return "BDL"
-
-    #     # For everything else, convert to numeric and calculate mean
-    #     numeric_series = pd.to_numeric(
-    #         extractions_df, errors='coerce')  # Non numeric becomes NaN
-
-    #     mean_value = numeric_series.mean()
-
-    #     return round(mean_value, 2)
-
-    # def get_extraction_blanks_applicable_to_cruise_samps(self):
-    #     # Get extraction blank df (applicable to RC0083 cruise)
-
-    #     blank_df = pd.DataFrame(columns=self.extractions_df.columns)
-
-    #     # TODO: peel out 'Extraction Set' column name into config.yaml file
-    #         # try grouping by extraction set if it exists
-    #     grouped = self.extractions_df.groupby(
-    #         self.extraction_set_col)
-
-    #     try:
-    #         for extraction_set, group_df in grouped:
-    #             # Check if any in the group contains the extraction cruise key
-    #             has_cruise_samps = group_df.apply(
-    #                 lambda row: str(row[self.extraction_cruise_key_col]) in str(row[self.extract_samp_name_col]),
-    #                 axis = 1
-    #             ).any()
-                
-    #             if has_cruise_samps:
-    #                 # find blank samples in this group ('Larson NC are extraction blanks for the SKQ23 cruise)
-    #                 extraction_blank_samps = group_df[
-    #                     (group_df[self.extract_samp_name_col].str.contains('blank', case=False, na=False)) | 
-    #                     (group_df[self.extract_samp_name_col].str.contains('Larson NC', case=False, na=False))]
-                    
-    #                 try:
-    #                     # get list of samples associated with blanks and put into dict for rel_cont_id
-    #                     valid_samples = group_df[self.extract_samp_name_col].tolist()
-    #                     for sample in valid_samples:
-    #                         if 'blank' in sample.lower() or 'Larson NC' in sample:
-    #                             other_samples = [samp for samp in valid_samples if samp != sample]
-    #                             # update cruise codes in sample names
-    #                             if self.unwanted_cruise_code and self.desired_cruise_code:
-    #                                 sample = sample.replace(self.unwanted_cruise_code, self.desired_cruise_code)
-    #                                 other_samples = [samp.replace(self.unwanted_cruise_code, self.desired_cruise_code) for samp in other_samples]
-    #                             self.extraction_blank_rel_cont_dict[sample] = other_samples
-    #                 except:
-    #                     raise ValueError("blank dictionary mapping not working!")
-
-
-    #                 blank_df = pd.concat([blank_df, extraction_blank_samps])
-
-    #         blank_df[self.extract_conc_col] = blank_df[self.extract_conc_col].replace(
-    #             "BR", "BDL").replace("Below Range", "BDL").replace("br", "BDL")
-    #     except:
-    #         raise ValueError(
-    #             "Warning: Extraction samples are not grouped, double check this")
-        
-    #     return blank_df
-     
-    # def create_concat_extraction_df(self) -> pd.DataFrame:
-    #     # Concatenate extractions together and create common column names
-
-    #     extraction_dfs = []
-    #     # loop through extractions and append extraction dfs to list
-    #     for extraction in self.extractions_info:
-    #         # mappings from config file to what we want to call it so it has a common name 
-    #         extraction_column_mappings = {extraction['extraction_sample_name_col']: self.extract_samp_name_col,
-    #                                      extraction['extraction_conc_col_name']: self.extract_conc_col,
-    #                                      extraction['extraction_date_col_name']: self.extract_date_col,
-    #                                      extraction['extraction_set_grouping_col_name']: self.extraction_set_col,}
-            
-    #         extraction_df = self.load_google_sheet_as_df(google_sheet_id=extraction['extraction_metadata_google_sheet_id'], sheet_name=extraction['extraction_metadata_sheet_name'], header=0)
-
-    #         # change necessary column names so they will match across extraction dfs and add additional info
-    #         extraction_df = extraction_df.rename(columns=extraction_column_mappings)
-    #         extraction_df[self.extraction_cruise_key_col] = extraction.get('extraction_cruise_key')
-    #         extraction_df[self.extraction_blank_vol_we_dna_ext_col] = extraction.get('extraction_blank_vol_we_dna_ext')
-    #         extraction_df[self.extraction_name_col] = extraction.get('extraction_name')
-
-    #         extraction_df[self.extract_id_col] = extraction_df[self.extraction_name_col].astype(str).replace(r'\s+', '_', regex=True) + "_" + extraction_df[self.extraction_set_col].astype(str).replace(r'\s+', '_', regex=True)
-    #         extraction_dfs.append(extraction_df)
-
-    #     # Concat dataframes
-    #     final_extraction_df = pd.concat(extraction_dfs)
-
-    #     # if any columns changed names that are in the mapping dict, change them there too
-    #     for maps in self.mapping_dict.values():
-    #         for faire_col, metadata_col in maps.items():
-    #             if metadata_col in extraction_column_mappings.keys():
-    #                 maps[faire_col] = extraction_column_mappings.get(metadata_col)
-        
-    #     if self.unwanted_cruise_code and self.desired_cruise_code and self.unwanted_cruise_code != '.NO20': # this gets updates twice because unwanted cruise code is in the desired cruise code so will update later
-    #         final_extraction_df = fix_cruise_code_in_samp_names(df=final_extraction_df,
-    #                                                             unwanted_cruise_code=self.unwanted_cruise_code,
-    #                                                             desired_cruise_code=self.desired_cruise_code,
-    #                                                             sample_name_col=self.extract_samp_name_col)
-     
-    #     return final_extraction_df
-
-    # def filter_cruise_avg_extraction_conc(self) -> pd.DataFrame:
-    #     # If extractions have multiple measurements for extraction concentrations, calculates the avg.
-    #     # and creates a column called pool_num to show the number of samples pooled
-    #     # First filter extractions df for samples that contain the cruise key in their sample name
-    #     cruise_key_mask = self.extractions_df.apply(
-    #         lambda row: str(row[self.extraction_cruise_key_col]) in str(row[self.extract_samp_name_col])
-    #         if pd.notna(row[self.extraction_cruise_key_col]) and pd.notna(row[self.extract_samp_name_col])
-    #         else False,
-    #         axis = 1
-    #     )
-        
-    #     # Then calculate average concentration
-    #     extract_avg_df = self.extractions_df[cruise_key_mask].groupby(
-    #         self.extract_samp_name_col).agg({
-    #             self.extract_conc_col: self.extraction_avg_aggregation,
-    #             **{col: 'first' for col in self.extractions_df.columns if col != self.extract_samp_name_col and col != self.extract_conc_col}
-    #         }).reset_index()
-
-    #     # Add pool_num column that shows how many samples were averaged for each group
-    #     sample_counts = self.extractions_df[cruise_key_mask].groupby(
-    #         self.extract_samp_name_col).size().reset_index(name='pool_num')
-
-    #     # merge sample_counts into dataframe
-    #     extract_avg_df = extract_avg_df.merge(
-    #         sample_counts, on=self.extract_samp_name_col, how='left')
-
-    #     # Add extraction_method_additional for samples that pooled more than one extract
-    #     extract_avg_df['extraction_method_additional'] = extract_avg_df['pool_num'].apply(
-    #         lambda x: "One sample, but two filters were used because sample clogged. Two extractions were pooled together and average concentration calculated." if x > 1 else "missing: not provided")
-
-    #     # update samp name for DY2012 cruises (from DY20) and remove E numbers from any NC samples
-    #     extract_avg_df[self.extract_samp_name_col] = extract_avg_df[self.extract_samp_name_col].apply(
-    #         self.str_replace_for_samps)
-
-    #     # update dates to iso8601 TODO: may need to adjust this for ones that are already in this format
-    #     extract_avg_df[self.extract_date_col] = extract_avg_df[self.extract_date_col].apply(
-    #         self.convert_mdy_date_to_iso8061)
+    #     # Remove 'CTD' from Cast_No. value if present
+    #     samp_metadata_df[self.sample_metadata_cast_no_col_name] = samp_metadata_df[self.sample_metadata_cast_no_col_name].apply(
+    #         self.remove_extraneous_cast_no_chars)
         
     #     if self.unwanted_cruise_code and self.desired_cruise_code:
-    #         if 'NO20' not in self.unwanted_cruise_code: # NO20 is updated in str_replace_samps (can't remove it from there because the experimentRunMetadata uses it)
-    #             extract_avg_df = fix_cruise_code_in_samp_names(df=extract_avg_df, sample_name_col=self.extract_samp_name_col)
-
-    #     return extract_avg_df
-
-    def transform_metadata_df(self):
-        # Converts sample metadata to a data frame and checks to make sure NC samples have NC in the name (dy2206 had this problem)
-        # Also fixes sample names for SKQ23 cruise where sample metadata has _, but extraction metadata has -
-        samp_metadata_df = self.load_csv_as_df(
-            file_path=Path(self.config_file['sample_metadata_file']))
-
-        # Add .NC to sample name if the Negative Control column is True and its missing (in DY2206 cruise)
-        samp_metadata_df[self.sample_metadata_sample_name_column] = samp_metadata_df.apply(
-            lambda row: self._check_nc_samp_name_has_nc(metadata_row=row),
-            axis=1)
-
-        # Fix sample names that have _ with -. For SKQ23 cruises where run and extraction metadata has -, and sample metadata has _
-        samp_metadata_df[self.sample_metadata_sample_name_column] = samp_metadata_df[self.sample_metadata_sample_name_column].apply(
-            self._fix_samp_names)
-
-        # Remove 'CTD' from Cast_No. value if present
-        samp_metadata_df[self.sample_metadata_cast_no_col_name] = samp_metadata_df[self.sample_metadata_cast_no_col_name].apply(
-            self.remove_extraneous_cast_no_chars)
-        
-        if self.unwanted_cruise_code and self.desired_cruise_code:
-            samp_metadata_df = fix_cruise_code_in_samp_names(df=samp_metadata_df, 
-                                                             unwanted_cruise_code=self.unwanted_cruise_code,
-                                                             desired_cruise_code=self.desired_cruise_code,
-                                                             sample_name_col=self.sample_metadata_sample_name_column)
+    #         samp_metadata_df = fix_cruise_code_in_samp_names(df=samp_metadata_df, 
+    #                                                          unwanted_cruise_code=self.unwanted_cruise_code,
+    #                                                          desired_cruise_code=self.desired_cruise_code,
+    #                                                          sample_name_col=self.sample_metadata_sample_name_column)
 
         return samp_metadata_df
 
@@ -476,36 +208,36 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     
         return metadata_df
 
-    def _check_nc_samp_name_has_nc(self, metadata_row: pd.Series) -> str:
-        # Checks to make sure sample names have .NC if the negative control column is True, if not adds the .NC
-        sample_name = metadata_row[self.sample_metadata_sample_name_column]
-        if metadata_row[self.sample_metadata_file_neg_control_col_name] == 'TRUE' or metadata_row[self.sample_metadata_file_neg_control_col_name] == True:
-            if '.NC' not in metadata_row[self.sample_metadata_sample_name_column]:
-                samp_name_bits = sample_name.split('.')
-                samp_name = f'{samp_name_bits[0]}.NC.{samp_name_bits[1]}'
-                return samp_name
-            else:
-                return sample_name
-        else:
-            return sample_name
+    # def _check_nc_samp_name_has_nc(self, metadata_row: pd.Series) -> str:
+    #     # Checks to make sure sample names have .NC if the negative control column is True, if not adds the .NC
+    #     sample_name = metadata_row[self.sample_metadata_sample_name_column]
+    #     if metadata_row[self.sample_metadata_file_neg_control_col_name] == 'TRUE' or metadata_row[self.sample_metadata_file_neg_control_col_name] == True:
+    #         if '.NC' not in metadata_row[self.sample_metadata_sample_name_column]:
+    #             samp_name_bits = sample_name.split('.')
+    #             samp_name = f'{samp_name_bits[0]}.NC.{samp_name_bits[1]}'
+    #             return samp_name
+    #         else:
+    #             return sample_name
+    #     else:
+    #         return sample_name
 
-    def _fix_samp_names(self, sample_name: str) -> str:
-        # Fixes samples names (really just for SKQ23 sample names to replace _ with -. As the extraction and run sheets use -)
-        if '_' in sample_name:
-            sample_name = sample_name.replace('_', '-')
-        if '.DY23-06' in sample_name:
-            sample_name = sample_name.replace('-', '')
-        if '.SKQ2021': 
-            sample_name = sample_name.replace('.SKQ2021', '.SKQ21-15S')
+    # def _fix_samp_names(self, sample_name: str) -> str:
+    #     # Fixes samples names (really just for SKQ23 sample names to replace _ with -. As the extraction and run sheets use -)
+    #     if '_' in sample_name:
+    #         sample_name = sample_name.replace('_', '-')
+    #     if '.DY23-06' in sample_name:
+    #         sample_name = sample_name.replace('-', '')
+    #     if '.SKQ2021': 
+    #         sample_name = sample_name.replace('.SKQ2021', '.SKQ21-15S')
 
-        return sample_name
+    #     return sample_name
 
-    def remove_extraneous_cast_no_chars(self, cast_no: str) -> int:
-        # If Cast_No. is in the format of CTD001, then returns just the int
-        if pd.notna(cast_no) and isinstance(cast_no, str) and 'CTD' in cast_no:
-            cast_no = int(cast_no.replace('CTD', ''))
+    # def remove_extraneous_cast_no_chars(self, cast_no: str) -> int:
+    #     # If Cast_No. is in the format of CTD001, then returns just the int
+    #     if pd.notna(cast_no) and isinstance(cast_no, str) and 'CTD' in cast_no:
+    #         cast_no = int(cast_no.replace('CTD', ''))
 
-        return cast_no
+    #     return cast_no
 
     def filter_metadata_dfs(self):
 
@@ -652,24 +384,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             return well[0]
         except:
             None
-
-    # def fix_cruise_code_in_samp_names(self, df: pd.DataFrame, sample_name_col: str = None) -> pd.DataFrame:
-    #     # fixes the cruise code in the sample names to be SKQ21-15S as requested by Shannon on 07/23/2025
-    #     if self.desired_cruise_code == '.DY20-12': # since the extraction sheet used .DY20 and teh sample metadata use .DY2012 need to replace for both
-    #         mask = (df[sample_name_col].str.endswith('.DY20')) | (df[sample_name_col].str.endswith(self.unwanted_cruise_code))
-    #         # Apply the replacement only to the rows where the mask is True
-    #         df.loc[mask, sample_name_col] = df.loc[mask, sample_name_col].str.replace(
-    #             self.unwanted_cruise_code, 
-    #             self.desired_cruise_code
-    #         )
-    #     else: # everything else just replaces with the desired cruise code
-    #         df[sample_name_col] = df[sample_name_col].str.replace(self.unwanted_cruise_code, self.desired_cruise_code)
-
-    #     return df 
     
     def calculate_dna_yield(self, metadata_row: pd.Series, sample_vol_metadata_col: str) -> float:
         # calculate the dna yield based on the concentration (ng/uL) and the sample_volume (mL)
-        concentration = str(metadata_row[self.extract_conc_col])
+        concentration = str(metadata_row[self.extraction_standardizer.EXTRACT_CONC_COL])
         sample_vol = str(metadata_row[sample_vol_metadata_col]).replace('~','')
         
         if concentration == '' or concentration == None or concentration == 'nan':

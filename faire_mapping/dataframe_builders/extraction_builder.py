@@ -6,12 +6,13 @@ from faire_mapping.mapping_builders.sample_extract_mapping_dict_builder import S
 # TODO: update extraction_mapping_dict in sample_mapper part
 # TODO: outline what extractions_info dict looks like from config.yaml files in documentions in __init__
 # TODO: in filter_cruise_avg_extraction_conc method, unhardcode the extraction_method_additional to be more flexible for other reasons.
-class ExtractionStandardizer:
+class ExtractionBuilder:
     """
     Prepares the extraction google sheets applicable to a cruise (or batch of samples being standardized
     together) by concatenating together if multiple extraction sheets provide in config.yaml file (e.g. extraction_info)
     standardizing dates, sample names a bit, calculating concentration averages if samples extractions were pooled, and creates
-    a separate blanks_df, as well as a extraction_blank_rel_cont_dict that includes samples associated with the blanks
+    a separate blanks_df, as well as a extraction_blank_rel_cont_dict that includes samples associated with the blanks. Does not ahve the BaseDfBuilder
+    as parent class because there can be multiple extraction dfs. 
     """
 
     # extraction_info keys (from config.yaml file

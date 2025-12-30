@@ -25,6 +25,10 @@ def load_google_sheet_as_df(google_sheet_id: str, sheet_name: str, header: int, 
         
         return df
 
+def load_csv_as_df(self, file_path: str, header=0, sep=',') -> pd. DataFrame:
+        # Load csv files as a data frame
+        return pd.read_csv(file_path, header=header, sep=sep)
+
 def fix_cruise_code_in_samp_names(df: pd.DataFrame, unwanted_cruise_code: str, desired_cruise_code: str, sample_name_col: str = None) -> pd.DataFrame:
         """
         Fixes the cruise code in the sample names for a data frame by specifying the sample name column. 

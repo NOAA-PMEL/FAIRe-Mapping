@@ -73,71 +73,16 @@ class OmeFaireMapper:
         
         return pd.read_excel(file_path, sheet_name=sheet_name, header=header)
     
-    def load_csv_as_df(self, file_path: Path, header=0, sep=',') -> pd. DataFrame:
-        # Load csv files as a data frame
+    # def load_csv_as_df(self, file_path: Path, header=0, sep=',') -> pd. DataFrame:
+    #     # Load csv files as a data frame
 
-        return pd.read_csv(file_path, header=header, sep=sep)
-    
-    # def load_google_sheet_as_df(self, google_sheet_id: str, sheet_name: str, header: int) -> pd.DataFrame:
-
-    #     scopes = ['https://www.googleapis.com/auth/spreadsheets.readonly']
-
-    #     creds = Credentials.from_service_account_file(self.google_sheet_json_cred, scopes=scopes)
-    #     client = gspread.authorize(creds)
-
-    #     sheet = client.open_by_key(google_sheet_id)
-    #     worksheet = sheet.worksheet(sheet_name)
-        
-    #     # Get all values
-    #     values = worksheet.get_all_values()
-    #     headers = values[header]
-    #     data_rows = values[header+1:]
-    #     df = pd.DataFrame(data_rows, columns=headers)
-        
-    #     return df
+    #     return pd.read_csv(file_path, header=header, sep=sep)
     
     def load_beBop_yaml_terms(self, path_to_bebop: str):
         # read BeBOP yaml terms
         with open(path_to_bebop, 'r', encoding='utf-8') as f:
             post = frontmatter.load(f)
             return post
-        
-    def str_replace_for_samps(self, samp_name: pd.Series) -> str:
-        # Fixes sample names in the data frame
-        # if sample is part of the DY2012 cruise, will replace any str of DY20 with DY2012
-        samp_name = str(samp_name)
-        if '_' in samp_name and 'pool' not in samp_name: # osu samp names have _ that needs to be . For example, E62_1B_DY20. Pooled samples keep the underscore
-            samp_name = samp_name.replace('_', '.')
-        if '.DY20' in samp_name:
-           samp_name = samp_name.replace('.DY20', '.DY20-12')
-        if '(P10 D2)' in samp_name:
-            samp_name = samp_name.replace(' (P10 D2)', '') # for E1875.OC0723 (P10 D2) in Run2
-        if '.IB.NO20' in samp_name: # for E265.1B.NO20 sample - in metadata was E265.1B.NO20
-            return samp_name.replace('.IB.NO20', '.1B.NO20-01')
-        if 'E.2139.' in samp_name:
-            return samp_name.replace('E.2139.', 'E2139.') # For E239 QiavacTest, had a . between E and number in metadata
-        if 'E687' in samp_name:
-            return samp_name.replace('E687', 'E687.WCOA21')
-        if '.NC' in samp_name: # If an E was put in front of an NC sample (this happends in some of the extractions e.g. the SKQ21 extractions), will remove the E
-            samp_name = samp_name.replace('E.', '')
-        if '*' in samp_name:
-            samp_name = samp_name.replace('*','')
-        if '.SKQ2021' in samp_name:
-            samp_name = samp_name.replace('.SKQ2021', '.SKQ21-15S')
-        if '.NO20' in samp_name:
-            samp_name = samp_name.replace('.NO20', '.NO20-01')
-        if 'Mid.NC.SKQ21' in samp_name:
-            samp_name = samp_name.replace('Mid.NC.SKQ21', 'MID.NC.SKQ21-15S')
-        if '.DY2206' in samp_name:
-            samp_name = samp_name.replace('.DY2206', '.DY22-06')
-        if '.DY2209' in samp_name:
-            samp_name =  samp_name.replace('.DY2209', '.DY22-09')
-        if '.DY2306' in samp_name:
-            samp_name =  samp_name.replace('.DY2306', '.DY23-06')
-        if 'E2030.NC' == samp_name:
-            samp_name = 'E2030.NC.SKQ23-12S'
-
-        return samp_name
     
     def extract_controlled_vocab(self, faire_attribute: str) -> list:
         
