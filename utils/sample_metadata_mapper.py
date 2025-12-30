@@ -15,8 +15,9 @@ from bs4 import BeautifulSoup
 from .custom_exception import NoInsdcGeoLocError
 from .lists import nc_faire_field_cols
 from geopy.distance import geodesic
-from faire_mapping.utils import fix_cruise_code_in_samp_names
+from faire_mapping.utils import fix_cruise_code_in_samp_names, load_google_sheet_as_df
 from faire_mapping.sample_mapper.extraction_standardizer import ExtractionStandardizer
+from faire_mapping.mapping_builders.extraction_blank_mapping_dict_builder import ExtractionBlankMappingDictBuilder
 
 
 # TODO: Turn nucl_acid_ext for DY20/12 into a BeBOP and change in extraction spreadsheet. Link to spreadsheet: https://docs.google.com/spreadsheets/d/1iY7Z8pNsKXHqsp6CsfjvKn2evXUPDYM2U3CVRGKUtX8/edit?gid=0#gid=0
@@ -42,7 +43,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     faire_density_col_name = "density"
     faire_max_depth_col_name = "maximumDepthInMeters"
     faire_min_depth_col_name = "minimumDepthInMeters"
-    faire_nucl_acid_ext_method_additional_col_name = "nucl_acid_ext_method_additional"
+    # faire_nucl_acid_ext_method_additional_col_name = "nucl_acid_ext_method_additional"
     faire_tot_depth_water_col_method_col_name = 'tot_depth_water_col_method'
     not_applicable_to_samp_faire_col_dict = {"neg_cont_type": "not applicable: sample group",
                                              "pos_cont_type": "not applicable: sample group"}
@@ -110,9 +111,9 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # creates a mapping dictionary and saves as self.mapping_dict
 
         # First concat sample_mapping_df with extractions_mapping_df
-        sample_mapping_df = self.load_google_sheet_as_df(
+        sample_mapping_df = load_google_sheet_as_df(
             google_sheet_id=self.google_sheet_mapping_file_id, sheet_name=self.sample_mapping_sheet_name, header=0)
-        extractions_mapping_df = self.load_google_sheet_as_df(
+        extractions_mapping_df = load_google_sheet_as_df(
             google_sheet_id=self.google_sheet_mapping_file_id, sheet_name=self.extraction_mapping_sheet_name, header=1)
  
         mapping_df = pd.concat([sample_mapping_df, extractions_mapping_df])
@@ -182,7 +183,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
     def create_samp_stor_dict(self) -> dict:
 
-        samp_dur_df = self.load_google_sheet_as_df(google_sheet_id=self.samp_dur_info['google_sheet_id'], sheet_name='Sheet1', header=0)
+        samp_dur_df = load_google_sheet_as_df(google_sheet_id=self.samp_dur_info['google_sheet_id'], sheet_name='Sheet1', header=0)
 
         # fix sample names if cruise-code was corrrected in sample names
         if self.unwanted_cruise_code and self.desired_cruise_code:
@@ -198,7 +199,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # Creates a lat_lon_station_ref_dict reference dictionary for station names and their lat_lon coords (e.g. {'BF2': {'lat': '71.75076', 'lon': -154.4567}, 'DBO1.1': {'lat': '62.01', 'lon': -175.06}}
         # Also creates a standardized station dict
         
-        station_ref_df = self.load_google_sheet_as_df(google_sheet_id=self.station_name_reference_google_sheet_id, sheet_name='Sheet1', header=0)
+        station_ref_df = load_google_sheet_as_df(google_sheet_id=self.station_name_reference_google_sheet_id, sheet_name='Sheet1', header=0)
         station_lat_lon_ref_dict = self.create_station_lat_lon_ref_dict(station_ref_df=station_ref_df)
         station_standardized_name_dict = self.create_standardized_station_name_ref_dict(station_ref_df=station_ref_df)
         station_line_dict = self.create_station_line_id_ref_dict(station_ref_df=station_ref_df)
@@ -454,15 +455,12 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
     def join_sample_and_extract_df(self):
         # join extraction sheet with sample metadata sheet on Sample name - keeping only samples from extraction df
-
-        extract_df = self.filter_cruise_avg_extraction_conc()
-
         samp_df = self.transform_metadata_df()
 
         metadata_df = pd.merge(
-            left=extract_df,
+            left=self.extraction_standardizer.extraction_df,
             right=samp_df,
-            left_on=self.extract_samp_name_col,
+            left_on=self.extraction_standardizer.EXTRACT_SAMP_NAME_COL,
             right_on=self.sample_metadata_sample_name_column,
             how='left'
         )
@@ -1217,40 +1215,40 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
     def fill_extraction_blanks_metadata(self) -> pd.DataFrame:
 
-        extraction_blanks_mapping_dict = self.create_extraction_blank_mapping_dict()
+        extracton_blanks_mapping_builder = ExtractionBlankMappingDictBuilder(google_sheet_mapping_file_id=self.google_sheet_mapping_file_id)
 
         extract_blank_results = {}
 
-        if not self.extraction_blanks_df.empty:
+        if not self.extraction_standardizer.extraction_blanks_df.empty:
 
-            extract_blank_results[self.faire_sample_name_col] = self.extraction_blanks_df[self.extract_samp_name_col]
+            extract_blank_results[self.faire_sample_name_col] = self.extraction_standardizer.extraction_blanks_df[self.extraction_standardizer.EXTRACT_SAMP_NAME_COL]
             extract_blank_results[self.faire_sample_category_name_col] = "negative control"
             extract_blank_results[self.faire_neg_cont_type_name_col] = "extraction negative"
             extract_blank_results['habitat_natural_artificial_0_1'] = 1
 
             # Add mappings from mappings dict which is just mapping from extractionMetadata sheet
             # add exact mappings
-            for faire_col, metadata_col in extraction_blanks_mapping_dict[self.exact_mapping].items():
-                extract_blank_results[faire_col] = self.extraction_blanks_df[metadata_col].apply(
+            for faire_col, metadata_col in extracton_blanks_mapping_builder.extraction_blanks_mapping_dict[self.exact_mapping].items():
+                extract_blank_results[faire_col] = self.extraction_standardizer.extraction_blanks_df[metadata_col].apply(
                     lambda row: self.apply_exact_mappings(metadata_row=row, faire_col=faire_col))
 
             # Step 2: Add constant mappings
-            for faire_col, static_value in extraction_blanks_mapping_dict[self.constant_mapping].items():
+            for faire_col, static_value in extracton_blanks_mapping_builder.extraction_blanks_mapping_dict[self.constant_mapping].items():
                 extract_blank_results[faire_col] = self.apply_static_mappings(
                     faire_col=faire_col, static_value=static_value)
 
             # Step 3: Add related mappings
-            for faire_col, metadata_col in extraction_blanks_mapping_dict[self.related_mapping].items():
+            for faire_col, metadata_col in extracton_blanks_mapping_builder.extraction_blanks_mapping_dict[self.related_mapping].items():
                 if faire_col == 'date_ext':
-                    extract_blank_results[faire_col] = self.extraction_blanks_df[metadata_col].apply(
+                    extract_blank_results[faire_col] = self.extraction_standardizer.extraction_blanks_df[metadata_col].apply(
                         self.convert_date_to_iso8601)
                 if faire_col == 'dna_yield':
-                    extract_blank_results[faire_col] = self.extraction_blanks_df.apply(
-                        lambda row: self.calculate_dna_yield(metadata_row=row, sample_vol_metadata_col=self.extraction_blank_vol_we_dna_ext_col),
+                    extract_blank_results[faire_col] = self.extraction_standardizer.extraction_blanks_df.apply(
+                        lambda row: self.calculate_dna_yield(metadata_row=row, sample_vol_metadata_col=self.extraction_standardizer.EXTRACT_BLANK_VOL_WE_DNA_EXT_COL),
                         axis = 1
                     )
                 if faire_col == 'samp_vol_we_dna_ext':
-                    extract_blank_results[faire_col] = self.extraction_blanks_df[self.extraction_blank_vol_we_dna_ext_col]
+                    extract_blank_results[faire_col] = self.extraction_standardizer.extraction_blanks_df[self.extraction_standardizer.EXTRACT_BLANK_VOL_WE_DNA_EXT_COL]
 
             extract_blanks_df = pd.concat(
                 [self.sample_faire_template_df, pd.DataFrame(extract_blank_results)])
@@ -1281,7 +1279,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             current_samp = row[self.faire_sample_name_col]
             related_blanks = []
 
-            for extraction_blank, associated_samples in self.extraction_blank_rel_cont_dict.items():
+            for extraction_blank, associated_samples in self.extraction_standardizer.extraction_blank_rel_cont_dict.items():
                 if current_samp in associated_samples:
                     related_blanks.append(extraction_blank)
 

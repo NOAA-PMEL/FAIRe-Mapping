@@ -2,7 +2,7 @@ import pandas as pd
 from faire_mapping.mapping_builders.base_mapping_builder import BaseMappingBuilder
 from faire_mapping.utils import load_google_sheet_as_df
 
-class ExtractionBlankDictBuilder(BaseMappingBuilder):
+class ExtractionBlankMappingDictBuilder(BaseMappingBuilder):
     """
     Creates the mapping dictionary for the extraction blanks. E.g. {exact_mapping: {faire_col: metadata_col}, narrow_mapping: {faire_col: metadta_col}, etc.}
     """
