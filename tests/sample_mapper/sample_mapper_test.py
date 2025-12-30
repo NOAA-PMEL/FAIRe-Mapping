@@ -38,7 +38,7 @@ def create_rc0083_sample_metadata():
                 axis=1
             )
 
-        # # env_medium depends on what geo_loc_name is (from review with Shannon and Sean: see notes.)
+        # env_medium depends on what geo_loc_name is (from review with Shannon and Sean: see notes.)
         # elif faire_col == 'geo_loc_name':
         #     lat_lon_cols = metadata_col.split(' | ')
         #     geo_loc_name = sample_mapper.sample_metadata_df_builder.sample_metadata_df.apply(

@@ -11,21 +11,15 @@ import geopandas as gpd
 import gsw
 from shapely.geometry import Point
 # from geopy.distance import geodesic
-from bs4 import BeautifulSoup
+# from bs4 import BeautifulSoup
 from .custom_exception import NoInsdcGeoLocError
 from .lists import nc_faire_field_cols
 from geopy.distance import geodesic
-from faire_mapping.utils import fix_cruise_code_in_samp_names, load_google_sheet_as_df
-from faire_mapping.dataframe_and_dict_builders.extraction_metadata_builder import ExtractionMetadataBuilder
-from faire_mapping.mapping_builders.extraction_blank_mapping_dict_builder import ExtractionBlankMappingDictBuilder
-from faire_mapping.mapping_builders.sample_extract_mapping_dict_builder import SampleExtractionMappingDictBuilder
-from faire_mapping.dataframe_and_dict_builders.sample_metadata_builder import SampleMetadataBuilder
-from faire_mapping.dataframe_and_dict_builders.reference_station_builder import ReferenceStationBuilder
-
+from faire_mapping.scrapers import extract_insdc_geographic_locations
+from faire_mapping import ExtractionMetadataBuilder, SampleMetadataBuilder, ReferenceStationBuilder, SampleStoreBuilder, ExtractionBlankMappingDictBuilder, SampleExtractionMappingDictBuilder, extract_insdc_geographic_locations
 
 # TODO: Turn nucl_acid_ext for DY20/12 into a BeBOP and change in extraction spreadsheet. Link to spreadsheet: https://docs.google.com/spreadsheets/d/1iY7Z8pNsKXHqsp6CsfjvKn2evXUPDYM2U3CVRGKUtX8/edit?gid=0#gid=0
 # TODO: continue update pos_df - add not applicable: sample to user defined fields, also add pos_cont_type
-
 
 class FaireSampleMetadataMapper(OmeFaireMapper):
 
@@ -73,7 +67,13 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.google_json_creds = self.config_file['json_creds']
 
         self.samp_dur_info = self.config_file['samp_store_dur_sheet_info'] if 'samp_store_dur_sheet_info' in self.config_file else None
-        self.samp_stor_dur_dict = self.create_samp_stor_dict() if 'samp_store_dur_sheet_info' in self.config_file else None
+
+        # Sample storage duration info
+        if 'samp_store_dur_sheet_info' in self.config_file:
+            self.samp_store_dur_builder = SampleStoreBuilder(unwanted_cruise_code=self.unwanted_cruise_code,
+                                                        desired_cruise_code=self.desired_cruise_code, 
+                                                        google_sheet_id=self.samp_dur_info['google_sheet_id'],
+                                                        json_creds_path=self.google_json_creds)
         
         #Instantiate mapping dict builder
         self.sample_extract_mapping_builder = SampleExtractionMappingDictBuilder(google_sheet_mapping_file_id=self.google_sheet_mapping_file_id, google_sheet_json_cred=self.google_json_creds)
@@ -101,70 +101,11 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.sample_faire_template_df = self.load_faire_template_as_df(
             file_path=self.config_file['faire_template_file'], sheet_name=self.sample_mapping_sheet_name, header=self.faire_sheet_header).dropna()
 
-        self.insdc_locations = self.extract_insdc_geographic_locations()
+        self.insdc_locations = extract_insdc_geographic_locations()
 
         # stations/reference stations stuff
         self.station_name_reference_google_sheet_id = self.config_file['station_name_reference_google_sheet_id'] if 'station_name_reference_google_sheet_id' in self.config_file else None # Some projects won't have reference stations (RC0083)
         self.ref_station_builder = ReferenceStationBuilder(header=0, google_sheet_id=self.station_name_reference_google_sheet_id, json_creds_path=self.google_json_creds)
-
-    def create_samp_stor_dict(self) -> dict:
-
-        samp_dur_df = load_google_sheet_as_df(google_sheet_id=self.samp_dur_info['google_sheet_id'], sheet_name='Sheet1', header=0)
-
-        # fix sample names if cruise-code was corrrected in sample names
-        if self.unwanted_cruise_code and self.desired_cruise_code:
-            samp_dur_df = fix_cruise_code_in_samp_names(df=samp_dur_df, 
-                                                        unwanted_cruise_code=self.unwanted_cruise_code,
-                                                        desired_cruise_code=self.desired_cruise_code,
-                                                        sample_name_col=self.samp_dur_info['samp_name_col'])
-        samp_dur_dict = dict(zip(samp_dur_df[self.samp_dur_info['samp_name_col']], samp_dur_df[self.samp_dur_info['samp_stor_dur_col']]))
-
-        return samp_dur_dict
-
-
-    def extract_insdc_geographic_locations(self) -> list:
-
-        url = 'https://www.insdc.org/submitting-standards/geo_loc_name-qualifier-vocabulary/'
-
-        response = requests.get(url)
-        response.raise_for_status()  # Raise an exception for HTTP errors
-        html_content = response.text
-
-        soup = BeautifulSoup(html_content, 'html.parser')
-
-        # Get all elements that fall under the class name
-        elements = soup.find_all(class_='wp-block-list has-large-font-size')
-
-        # extract all elements with 'li' in their tag and get the text
-        locations = []
-        for element in elements:
-            li_elements = element.find_all('li', recursive=True)
-            for li in li_elements:
-                locations.append(li.get_text(strip=True))
-
-        return locations
-        
-    # def extract_replicate_sample_parent(self, sample_name):
-    #     # Extracts the E number in the sample name
-    #     if pd.notna(sample_name):
-    #         return sample_name.split('.')[0]
-
-    # def create_biological_replicates_dict(self) -> dict:
-    #     # Creates a dictionary of the parent E number as a key and the replicate sample names as the values
-    #     # e.g. {'E26': ['E26.2B.DY2012', 'E26.1B.NC.DY2012']}
-
-    #     # Extract the parent E number and add to column called replicate_parent
-    #     # Uses set() to remove any technical replicates (they will have the same)
-    #     self.sample_metadata_df_builder.sample_metadata_df[self.replicate_parent_sample_metadata_col] = self.sample_metadata_df_builder.sample_metadata_df[self.sample_metadata_sample_name_column].apply(
-    #         self.extract_replicate_sample_parent)
-    #     # Group by replicate parent
-    #     replicate_dict = self.sample_metadata_df_builder.sample_metadata_df.groupby(self.replicate_parent_sample_metadata_col)[
-    #         self.sample_metadata_sample_name_column].apply(set).to_dict()
-    #     # remove any key, value pairs where there aren't replicates and convert back to list
-    #     replicate_dict = {replicate_parent: list(set(
-    #         sample_name)) for replicate_parent, sample_name in replicate_dict.items() if len(sample_name) > 1}
-
-    #     return replicate_dict
 
     def add_biological_replicates(self, metadata_row: pd.Series, faire_missing_val: str) -> dict:
 
@@ -478,7 +419,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     def get_samp_store_dur(self, sample_name: pd.Series) -> str:
         # Get the samp_store_dur based on the sample name
         
-        samp_stor_dur = self.samp_stor_dur_dict.get(sample_name, '')
+        samp_stor_dur = self.samp_store_dur_builder.samp_store_dur_dict.get(sample_name, '')
         
         if self.samp_dur_info['dur_units'] == 'hour':
             samp_stor_dur_formatted = f"T{samp_stor_dur}H"
@@ -488,7 +429,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
     def get_samp_store_loc_by_samp_store_dur(self, sample_name: pd.Series) -> str:
         # Gets the samp_store_loc based on the samp_name, based on the samp_store_dur. If samp_stor_dur > 1 hr, loc is vessel name fridge else just vessel name
-        samp_stor_dur = int(self.samp_stor_dur_dict.get(sample_name, ''))
+        samp_stor_dur = int(self.samp_store_dur_builder.samp_store_dur_dict.get(sample_name, ''))
          
         if self.samp_dur_info['dur_units'] == 'hour':
             if samp_stor_dur > 1:
@@ -500,7 +441,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             raise ValueError(f"samp_store_loc not able to be calculated by {self.samp_dur_info['dur_units']}, add functionality to get_samp_store_loc_by_samp_store_dur method")
 
     def get_samp_sore_temp_by_samp_store_dur(self, sample_name: pd.Series) -> str:
-        samp_stor_dur = int(self.samp_stor_dur_dict.get(sample_name, ''))
+        samp_stor_dur = int(self.samp_store_dur_builder.samp_store_dur_dict.get(sample_name, ''))
 
         if self.samp_dur_info['dur_units'] == 'hour':
             if samp_stor_dur > 1:
