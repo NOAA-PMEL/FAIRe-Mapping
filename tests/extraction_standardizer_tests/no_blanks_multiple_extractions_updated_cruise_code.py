@@ -1,4 +1,4 @@
-from faire_mapping.dataframe_builders.extraction_builder import ExtractionBuilder
+from faire_mapping.dataframe_builders.extraction_metadata_builder import ExtractionMetadataBuilder
 
 extractions_info = [
         {
@@ -28,7 +28,7 @@ google_sheet_json_cred = "/home/poseidon/zalmanek/FAIRe-Mapping/credentials.json
 unwanted_cruise_code = ".SKQ2021"
 desired_cruise_code = ".SKQ21-15S"
 
-extract_standardizer = ExtractionBuilder(extractions_info=extractions_info, 
+extract_standardizer = ExtractionMetadataBuilder(extractions_info=extractions_info, 
                                               google_sheet_json_cred=google_sheet_json_cred,
                                               unwanted_cruise_code=unwanted_cruise_code,
                                               desired_cruise_code=desired_cruise_code)

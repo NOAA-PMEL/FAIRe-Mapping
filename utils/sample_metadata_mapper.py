@@ -16,10 +16,11 @@ from .custom_exception import NoInsdcGeoLocError
 from .lists import nc_faire_field_cols
 from geopy.distance import geodesic
 from faire_mapping.utils import fix_cruise_code_in_samp_names, load_google_sheet_as_df
-from faire_mapping.dataframe_builders.extraction_builder import ExtractionBuilder
+from faire_mapping.dataframe_and_dict_builders.extraction_metadata_builder import ExtractionMetadataBuilder
 from faire_mapping.mapping_builders.extraction_blank_mapping_dict_builder import ExtractionBlankMappingDictBuilder
 from faire_mapping.mapping_builders.sample_extract_mapping_dict_builder import SampleExtractionMappingDictBuilder
-from faire_mapping.dataframe_builders.sample_metadata_df_builder import SampleMetadataDfBuilder
+from faire_mapping.dataframe_and_dict_builders.sample_metadata_builder import SampleMetadataBuilder
+from faire_mapping.dataframe_and_dict_builders.reference_station_builder import ReferenceStationBuilder
 
 
 # TODO: Turn nucl_acid_ext for DY20/12 into a BeBOP and change in extraction spreadsheet. Link to spreadsheet: https://docs.google.com/spreadsheets/d/1iY7Z8pNsKXHqsp6CsfjvKn2evXUPDYM2U3CVRGKUtX8/edit?gid=0#gid=0
@@ -78,16 +79,17 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.sample_extract_mapping_builder = SampleExtractionMappingDictBuilder(google_sheet_mapping_file_id=self.google_sheet_mapping_file_id, google_sheet_json_cred=self.google_json_creds)
 
 
-        self.extraction_standardizer = ExtractionBuilder(extractions_info=self.config_file['extractions'],
+        self.extraction_standardizer = ExtractionMetadataBuilder(extractions_info=self.config_file['extractions'],
                                                               google_sheet_json_cred=self.config_file['json_creds'],
                                                               sample_extract_mapping_builder=self.sample_extract_mapping_builder,
                                                               unwanted_cruise_code=self.unwanted_cruise_code,
                                                               desired_cruise_code=self.desired_cruise_code)
         
         
-        self.sample_metadata_df_builder = SampleMetadataDfBuilder(sample_name_metadata_col_name=self.sample_metadata_sample_name_column,
+        self.sample_metadata_df_builder = SampleMetadataBuilder(sample_name_metadata_col_name=self.sample_metadata_sample_name_column,
                                                                   sample_metadata_file_neg_control_col_name=self.sample_metadata_file_neg_control_col_name,
                                                                   sample_metadata_cast_no_col_name=self.sample_metadata_cast_no_col_name,
+                                                                  replicate_parent_sample_metadata_col=self.replicate_parent_sample_metadata_col,
                                                                   extraction_df=self.extraction_standardizer.extraction_df,
                                                                   csv_path=self.config_file['sample_metadata_file'],
                                                                   unwanted_cruise_code=self.unwanted_cruise_code,
@@ -98,16 +100,12 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         
         self.sample_faire_template_df = self.load_faire_template_as_df(
             file_path=self.config_file['faire_template_file'], sheet_name=self.sample_mapping_sheet_name, header=self.faire_sheet_header).dropna()
-        self.replicates_dict = self.create_biological_replicates_dict()
-        self.insdc_locations = self.extract_insdc_geographic_locations()
 
+        self.insdc_locations = self.extract_insdc_geographic_locations()
 
         # stations/reference stations stuff
         self.station_name_reference_google_sheet_id = self.config_file['station_name_reference_google_sheet_id'] if 'station_name_reference_google_sheet_id' in self.config_file else None # Some projects won't have reference stations (RC0083)
-        station_dicts = self.create_station_ref_dicts() if 'station_name_reference_google_sheet_id' in self.config_file else None # Some projects won't have reference stations (RC0083)
-        self.station_lat_lon_ref_dict = station_dicts[0] if 'station_name_reference_google_sheet_id' in self.config_file else None # Some projects won't have reference stations (RC0083)
-        self.standardized_station_dict = station_dicts[1] if 'station_name_reference_google_sheet_id' in self.config_file else None # Some projects won't have reference stations (RC0083)
-        self.station_line_dict = station_dicts[2] if 'station_name_reference_google_sheet_id' in self.config_file else None # Some projects won't have reference stations (RC0083)
+        self.ref_station_builder = ReferenceStationBuilder(header=0, google_sheet_id=self.station_name_reference_google_sheet_id, json_creds_path=self.google_json_creds)
 
     def create_samp_stor_dict(self) -> dict:
 
@@ -123,54 +121,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         return samp_dur_dict
 
-    def create_station_ref_dicts(self) -> dict:
-        # Creates a lat_lon_station_ref_dict reference dictionary for station names and their lat_lon coords (e.g. {'BF2': {'lat': '71.75076', 'lon': -154.4567}, 'DBO1.1': {'lat': '62.01', 'lon': -175.06}}
-        # Also creates a standardized station dict
-        
-        station_ref_df = load_google_sheet_as_df(google_sheet_id=self.station_name_reference_google_sheet_id, sheet_name='Sheet1', header=0, google_sheet_json_cred=self.google_json_creds)
-        station_lat_lon_ref_dict = self.create_station_lat_lon_ref_dict(station_ref_df=station_ref_df)
-        station_standardized_name_dict = self.create_standardized_station_name_ref_dict(station_ref_df=station_ref_df)
-        station_line_dict = self.create_station_line_id_ref_dict(station_ref_df=station_ref_df)
-
-        return station_lat_lon_ref_dict, station_standardized_name_dict, station_line_dict
-    
-    def create_station_lat_lon_ref_dict(self, station_ref_df: pd.DataFrame) -> dict:
-        station_lat_lon_ref_dict = {}
-        for _, row in station_ref_df.iterrows():
-            station_name = row['station_name']
-            lat = row['LatitudeDecimalDegree']
-            lon = row['LongitudeDemicalDegree']
-            lat_hem = row['LatitudeHem']
-            lon_hem = row['LongitudeHem']
-
-            # Add direction sign to lat/lon
-            if 'S' == lat_hem:
-                lat = float(-abs(float(lat)))
-            if 'W' == lon_hem:
-                lon = float(-abs(float(lon)))
-            
-            station_lat_lon_ref_dict[station_name] = {
-                'lat': lat,
-                'lon': lon
-            }
-
-        return station_lat_lon_ref_dict
-    
-    def create_standardized_station_name_ref_dict(self, station_ref_df: pd.DataFrame) -> dict:
-        station_standardized_name_dict = {}
-        for _, row in station_ref_df.iterrows():
-            standardized_name = row['station_name']
-            non_standardized_names = row['ome_station'].split(' | ')
-
-            station_standardized_name_dict[standardized_name] = non_standardized_names
-
-        return station_standardized_name_dict
-    
-    def create_station_line_id_ref_dict(self, station_ref_df: pd.DataFrame) -> dict:
-        # create reference dict where station name is key and line id is value
-        station_line_dict = dict(zip(station_ref_df['station_name'], station_ref_df['line_id']))
-        return station_line_dict
-    
 
     def extract_insdc_geographic_locations(self) -> list:
 
@@ -194,31 +144,31 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         return locations
         
-    def extract_replicate_sample_parent(self, sample_name):
-        # Extracts the E number in the sample name
-        if pd.notna(sample_name):
-            return sample_name.split('.')[0]
+    # def extract_replicate_sample_parent(self, sample_name):
+    #     # Extracts the E number in the sample name
+    #     if pd.notna(sample_name):
+    #         return sample_name.split('.')[0]
 
-    def create_biological_replicates_dict(self) -> dict:
-        # Creates a dictionary of the parent E number as a key and the replicate sample names as the values
-        # e.g. {'E26': ['E26.2B.DY2012', 'E26.1B.NC.DY2012']}
+    # def create_biological_replicates_dict(self) -> dict:
+    #     # Creates a dictionary of the parent E number as a key and the replicate sample names as the values
+    #     # e.g. {'E26': ['E26.2B.DY2012', 'E26.1B.NC.DY2012']}
 
-        # Extract the parent E number and add to column called replicate_parent
-        # Uses set() to remove any technical replicates (they will have the same)
-        self.sample_metadata_df_builder.sample_metadata_df[self.replicate_parent_sample_metadata_col] = self.sample_metadata_df_builder.sample_metadata_df[self.sample_metadata_sample_name_column].apply(
-            self.extract_replicate_sample_parent)
-        # Group by replicate parent
-        replicate_dict = self.sample_metadata_df_builder.sample_metadata_df.groupby(self.replicate_parent_sample_metadata_col)[
-            self.sample_metadata_sample_name_column].apply(set).to_dict()
-        # remove any key, value pairs where there aren't replicates and convert back to list
-        replicate_dict = {replicate_parent: list(set(
-            sample_name)) for replicate_parent, sample_name in replicate_dict.items() if len(sample_name) > 1}
+    #     # Extract the parent E number and add to column called replicate_parent
+    #     # Uses set() to remove any technical replicates (they will have the same)
+    #     self.sample_metadata_df_builder.sample_metadata_df[self.replicate_parent_sample_metadata_col] = self.sample_metadata_df_builder.sample_metadata_df[self.sample_metadata_sample_name_column].apply(
+    #         self.extract_replicate_sample_parent)
+    #     # Group by replicate parent
+    #     replicate_dict = self.sample_metadata_df_builder.sample_metadata_df.groupby(self.replicate_parent_sample_metadata_col)[
+    #         self.sample_metadata_sample_name_column].apply(set).to_dict()
+    #     # remove any key, value pairs where there aren't replicates and convert back to list
+    #     replicate_dict = {replicate_parent: list(set(
+    #         sample_name)) for replicate_parent, sample_name in replicate_dict.items() if len(sample_name) > 1}
 
-        return replicate_dict
+    #     return replicate_dict
 
     def add_biological_replicates(self, metadata_row: pd.Series, faire_missing_val: str) -> dict:
 
-        if self.replicates_dict.get(metadata_row.get(self.replicate_parent_sample_metadata_col)):
+        if self.sample_metadata_df_builder.replicates_dict.get(metadata_row.get(self.replicate_parent_sample_metadata_col)):
             replicates = ' | '.join(self.replicates_dict.get(
                 metadata_row[self.replicate_parent_sample_metadata_col], None))
             return replicates
@@ -322,9 +272,9 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
     def get_line_id(self, station) -> str:
         # Get the line id by the referance station (must be standardized station name)
-        if station in self.station_line_dict:
-            if self.station_line_dict.get(station):
-                return self.station_line_dict.get(station)
+        if station in self.ref_station_builder.station_line_dict:
+            if self.ref_station_builder.station_line_dict.get(station):
+                return self.ref_station_builder.station_line_dict.get(station)
             else:
                 return "not applicable"
 
@@ -581,7 +531,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         if 'NC' not in sample_name or 'blank' not in sample_name.lower():
             # Standardizes station ids to be from the reference station sheet
-            for standard_station_name, unstandardized_station_list in self.standardized_station_dict.items():
+            for standard_station_name, unstandardized_station_list in self.ref_station_builder.station_standardized_name_dict.items():
                 if station_name in unstandardized_station_list or station_name == standard_station_name:
                     return standard_station_name
         
@@ -609,7 +559,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             distances = []
             error_distances = []
 
-            for station_name, coords in self.station_lat_lon_ref_dict.items():
+            for station_name, coords in self.ref_station_builder.station_lat_lon_ref_dict.items():
                 station_lat = coords['lat']
                 station_lon = coords ['lon']
 

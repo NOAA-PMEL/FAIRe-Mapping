@@ -6,7 +6,7 @@ from faire_mapping.mapping_builders.sample_extract_mapping_dict_builder import S
 # TODO: update extraction_mapping_dict in sample_mapper part
 # TODO: outline what extractions_info dict looks like from config.yaml files in documentions in __init__
 # TODO: in filter_cruise_avg_extraction_conc method, unhardcode the extraction_method_additional to be more flexible for other reasons.
-class ExtractionBuilder:
+class ExtractionMetadataBuilder:
     """
     Prepares the extraction google sheets applicable to a cruise (or batch of samples being standardized
     together) by concatenating together if multiple extraction sheets provide in config.yaml file (e.g. extraction_info)
