@@ -40,9 +40,9 @@ class ExtractionStandardizer:
     # Below Range standard value
     BELOW_RANGE_STD_VAL = "BDL"
 
-    def __init__(self, extractions_info: dict, google_sheet_json_cred: str, unwanted_cruise_code: str, desired_cruise_code: str):
+    def __init__(self, extractions_info: list, google_sheet_json_cred: str, unwanted_cruise_code: str = None, desired_cruise_code: str = None):
         """
-        extractions_info is the extractions dictionary from the config.yaml file that outlines the extraction spreadsheet(s)
+        extractions_info is the extraction is the list of dictionaries from the config.yaml file that outlines the extraction spreadsheet(s)
         google_sheet_json_cred is the path to the where the credentialss.json file lives for acessing google sheet programatically. Will be specified in the config.yaml file
         unwanted_cruise_code is the cruise code in the sample names that is not desireable (see config.yaml files)
         desired_cruise_code is the desired cruise in the sample names (see config.yaml file)
@@ -65,17 +65,21 @@ class ExtractionStandardizer:
         # Step 1. Concatenate extraction dfs together and standardize column names
         concat_extraction_df = self.create_concat_extraction_df()
 
-        # Step 2. Get pool_num and average concentration if multiple extractions of the same sample were taken
-        pool_num_extract_df = self.filter_cruise_avg_extraction_conc(concated_extraction_df=concat_extraction_df)
+        # Step 2. Fix cruise codes
+        if self.unwanted_cruise_code and self.desired_cruise_code:
+            cruise_code_fixed_df = fix_cruise_code_in_samp_names(df=concat_extraction_df, sample_name_col=self.EXTRACT_SAMP_NAME_COL, unwanted_cruise_code=self.unwanted_cruise_code, desired_cruise_code=self.desired_cruise_code)
+            # Step 2. Get pool_num and average concentration if multiple extractions of the same sample were taken
+            pool_num_extract_df = self.filter_cruise_avg_extraction_conc(concated_extraction_df=cruise_code_fixed_df)
+        else:
+            pool_num_extract_df = concat_extraction_df
 
         # Step 3. Fix sample names (# update samp name for DY2012 cruises (from DY20) and remove E numbers from any NC samples) and cruise codes
         pool_num_extract_df[self.EXTRACT_SAMP_NAME_COL] = pool_num_extract_df[self.EXTRACT_SAMP_NAME_COL].apply(str_replace_for_samps)
-        if self.unwanted_cruise_code and self.desired_cruise_code:
-            if 'NO20' not in self.unwanted_cruise_code: # NO20 is updated in str_replace_samps (can't remove it from there because the experimentRunMetadata uses it)
-                pool_num_extract_df = fix_cruise_code_in_samp_names(df=pool_num_extract_df, sample_name_col=self.EXTRACT_SAMP_NAME_COL)
 
         # Step 4. update dates to iso8601 TODO: may need to adjust this for ones that are already in this format
         pool_num_extract_df[self.EXTRACT_DATE_COL] = pool_num_extract_df[self.EXTRACT_DATE_COL].apply(convert_mdy_date_to_iso8061)
+
+        return pool_num_extract_df
     
     def create_concat_extraction_df(self) -> pd.DataFrame:
         # Concatenate extractions together and create common column names
@@ -84,7 +88,7 @@ class ExtractionStandardizer:
         # loop through extractions and append extraction dfs to list
         for extraction in self.extractions_info:
 
-            extraction_df = load_google_sheet_as_df(google_sheet_id=extraction[self.EXTRACT_METADATA_GOOGLE_SHEET_ID_KEY], sheet_name=extraction[self.EXTRACT_METADATA_SHEET_NAME_KEY], header=0)
+            extraction_df = load_google_sheet_as_df(google_sheet_id=extraction[self.EXTRACT_METADATA_GOOGLE_SHEET_ID_KEY], sheet_name=extraction[self.EXTRACT_METADATA_SHEET_NAME_KEY], header=0, google_sheet_json_cred=self.google_sheet_json_cred)
 
             # Update column names
             extraction_df = self.standardize_extraction_df_col_names(df=extraction_df)
@@ -195,7 +199,6 @@ class ExtractionStandardizer:
         """
         Get extraction blank df (applicable to RC0083 cruise)
         """
-
         blank_df = pd.DataFrame(columns=self.extraction_df.columns)
 
         grouped = self.extraction_df.groupby(
