@@ -134,24 +134,24 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
     #     return mapping_dict
 
-    def create_nc_mapping_dict(self) -> dict:
+    # def create_nc_mapping_dict(self) -> dict:
 
-        nc_mapping_dict = {}
-        for mapping_type, col_dict in self.sample_extract_mapping_builder.sample_mapping_dict.items():
-            if isinstance(col_dict, dict):
-                filtered_nested = {
-                    k: v for k, v in col_dict.items() if k in nc_faire_field_cols}
-                nc_mapping_dict[mapping_type] = filtered_nested
+    #     nc_mapping_dict = {}
+    #     for mapping_type, col_dict in self.sample_extract_mapping_builder.sample_mapping_dict.items():
+    #         if isinstance(col_dict, dict):
+    #             filtered_nested = {
+    #                 k: v for k, v in col_dict.items() if k in nc_faire_field_cols}
+    #             nc_mapping_dict[mapping_type] = filtered_nested
 
-        # change values that will be differenct for NC's
-        nc_mapping_dict[self.constant_mapping]['habitat_natural_artificial_0_1'] = '1'
-        nc_mapping_dict[self.constant_mapping]['samp_mat_process'] = self.nc_samp_mat_process
-        nc_mapping_dict[self.related_mapping]['prepped_samp_store_dur'] = self.config_file['nc_prepped_samp_store_dur']
-        nc_mapping_dict[self.constant_mapping]['samp_store_dur'] = "not applicable: control sample"
-        nc_mapping_dict[self.constant_mapping]['samp_store_temp'] = 'ambient temperature'
-        nc_mapping_dict[self.constant_mapping]['samp_store_loc'] = self.vessel_name
+    #     # change values that will be differenct for NC's
+    #     nc_mapping_dict[self.constant_mapping]['habitat_natural_artificial_0_1'] = '1'
+    #     nc_mapping_dict[self.constant_mapping]['samp_mat_process'] = self.nc_samp_mat_process
+    #     nc_mapping_dict[self.related_mapping]['prepped_samp_store_dur'] = self.config_file['nc_prepped_samp_store_dur']
+    #     nc_mapping_dict[self.constant_mapping]['samp_store_dur'] = "not applicable: control sample"
+    #     nc_mapping_dict[self.constant_mapping]['samp_store_temp'] = 'ambient temperature'
+    #     nc_mapping_dict[self.constant_mapping]['samp_store_loc'] = self.vessel_name
 
-        return nc_mapping_dict
+    #     return nc_mapping_dict
 
     # def create_extraction_blank_mapping_dict(self) -> dict:
     #     # Creates a mapping dict for extraction blanks - mapping will be the same for only extractions faire attributes
