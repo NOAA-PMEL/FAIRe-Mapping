@@ -25,7 +25,7 @@ def load_google_sheet_as_df(google_sheet_id: str, sheet_name: str, header: int, 
         
         return df
 
-def load_csv_as_df(self, file_path: str, header=0, sep=',') -> pd. DataFrame:
+def load_csv_as_df(file_path: str, header=0, sep=',') -> pd. DataFrame:
         # Load csv files as a data frame
         return pd.read_csv(file_path, header=header, sep=sep)
 

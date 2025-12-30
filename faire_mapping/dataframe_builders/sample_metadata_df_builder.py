@@ -33,7 +33,7 @@ class SampleMetadataDfBuilder(BaseDfBuilder):
         extract_samp_name_col is the name of the sample name column in
         """
         
-        super().__init__(header, sep, csv_path, google_sheet_id, json_creds_path, sheet_name)
+        super().__init__(header=header, sep=sep, csv_path=csv_path, google_sheet_id=google_sheet_id, json_creds_path=json_creds_path, sheet_name=sheet_name)
 
         self.sample_name_metadata_col_name = sample_name_metadata_col_name
         self.sample_metadata_file_neg_control_col_name = sample_metadata_file_neg_control_col_name
@@ -41,8 +41,34 @@ class SampleMetadataDfBuilder(BaseDfBuilder):
         self.unwanted_cruise_code = unwanted_cruise_code
         self.desired_cruise_code = desired_cruise_code
         self.extraction_df = extraction_df
-        self.df = self.join_sample_and_extract_df()
+        self.sample_metadata_df, self.nc_metadata_df = self.filter_metadata_dfs()
+        
 
+    def filter_metadata_dfs(self):
+
+        # Join sample metadata with extraction metadata to get samp_df
+        samp_df = self.join_sample_and_extract_df()
+
+        try:
+            nc_mask = samp_df[self.sample_name_metadata_col_name].astype(
+                str).str.contains('.NC', case=True)
+            nc_df = samp_df[nc_mask].copy()
+            samp_df_filtered = samp_df[~nc_mask].copy()
+
+            # Replace any - with NaN
+            nc_df = nc_df.replace('-', pd.NA)
+            nc_df = nc_df.reset_index()
+            samp_df_filtered = samp_df_filtered.replace('-', pd.NA)
+            samp_df_filtered = samp_df_filtered.reset_index()
+            
+            return samp_df_filtered, nc_df
+        
+        except:
+            print(
+                "Looks like there are no negatives in the sample df, returning an empty nc_df")
+            nc_df = pd.DataFrame()
+            return samp_df_filtered, nc_df
+    
     def join_sample_and_extract_df(self):
         """
         Join the extraction df with the sample df to create the finalized sample
@@ -71,25 +97,25 @@ class SampleMetadataDfBuilder(BaseDfBuilder):
         Also fixes sample names for SKQ23 cruise where sample metadata has _, but extraction metadata has -
         Add .NC to sample name if the Negative Control column is True and its missing (in DY2206 cruise)
         """
-        self.df[self.sample_name_metadata_col_name] = samp_metadata_df.apply(
+        self.df[self.sample_name_metadata_col_name] = self.df.apply(
             lambda row: self._check_nc_samp_name_has_nc(metadata_row=row),
             axis=1)
 
         # Fix sample names that have _ with -. For SKQ23 cruises where run and extraction metadata has -, and sample metadata has _
-        samp_metadata_df[self.sample_name_metadata_col_name] = samp_metadata_df[self.sample_name_metadata_col_name].apply(
+        self.df[self.sample_name_metadata_col_name] = self.df[self.sample_name_metadata_col_name].apply(
             self._fix_samp_names)
 
         # Remove 'CTD' from Cast_No. value if present
-        samp_metadata_df[self.sample_metadata_cast_no_col_name] = samp_metadata_df[self.sample_metadata_cast_no_col_name].apply(
+        self.df[self.sample_metadata_cast_no_col_name] = self.df[self.sample_metadata_cast_no_col_name].apply(
             self.remove_extraneous_cast_no_chars)
         
         if self.unwanted_cruise_code and self.desired_cruise_code:
-            samp_metadata_df = fix_cruise_code_in_samp_names(df=samp_metadata_df, 
+            self.df = fix_cruise_code_in_samp_names(df=self.df, 
                                                              unwanted_cruise_code=self.unwanted_cruise_code,
                                                              desired_cruise_code=self.desired_cruise_code,
                                                              sample_name_col=self.sample_name_metadata_col_name)
 
-        return samp_metadata_df
+        return self.df
     
     def _check_nc_samp_name_has_nc(self, metadata_row: pd.Series) -> str:
         # Checks to make sure sample names have .NC if the negative control column is True, if not adds the .NC
@@ -110,7 +136,7 @@ class SampleMetadataDfBuilder(BaseDfBuilder):
             sample_name = sample_name.replace('_', '-')
         if '.DY23-06' in sample_name:
             sample_name = sample_name.replace('-', '')
-        if '.SKQ2021': 
+        if '.SKQ2021' in sample_name: 
             sample_name = sample_name.replace('.SKQ2021', '.SKQ21-15S')
 
         return sample_name

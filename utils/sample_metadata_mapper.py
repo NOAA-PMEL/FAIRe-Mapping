@@ -19,6 +19,7 @@ from faire_mapping.utils import fix_cruise_code_in_samp_names, load_google_sheet
 from faire_mapping.dataframe_builders.extraction_builder import ExtractionBuilder
 from faire_mapping.mapping_builders.extraction_blank_mapping_dict_builder import ExtractionBlankMappingDictBuilder
 from faire_mapping.mapping_builders.sample_extract_mapping_dict_builder import SampleExtractionMappingDictBuilder
+from faire_mapping.dataframe_builders.sample_metadata_df_builder import SampleMetadataDfBuilder
 
 
 # TODO: Turn nucl_acid_ext for DY20/12 into a BeBOP and change in extraction spreadsheet. Link to spreadsheet: https://docs.google.com/spreadsheets/d/1iY7Z8pNsKXHqsp6CsfjvKn2evXUPDYM2U3CVRGKUtX8/edit?gid=0#gid=0
@@ -83,8 +84,18 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                                                               unwanted_cruise_code=self.unwanted_cruise_code,
                                                               desired_cruise_code=self.desired_cruise_code)
         
-        self.sample_metadata_df = self.filter_metadata_dfs()[0]
-        self.nc_df = self.filter_metadata_dfs()[1]
+        
+        self.sample_metadata_df_builder = SampleMetadataDfBuilder(sample_name_metadata_col_name=self.sample_metadata_sample_name_column,
+                                                                  sample_metadata_file_neg_control_col_name=self.sample_metadata_file_neg_control_col_name,
+                                                                  sample_metadata_cast_no_col_name=self.sample_metadata_cast_no_col_name,
+                                                                  extraction_df=self.extraction_standardizer.extraction_df,
+                                                                  csv_path=self.config_file['sample_metadata_file'],
+                                                                  unwanted_cruise_code=self.unwanted_cruise_code,
+                                                                  desired_cruise_code=self.desired_cruise_code)
+        # self.sample_metadata_df = self.filter_metadata_dfs()[0]
+        # self.nc_df = self.filter_metadata_dfs()[1]
+        
+        
         self.sample_faire_template_df = self.load_faire_template_as_df(
             file_path=self.config_file['faire_template_file'], sheet_name=self.sample_mapping_sheet_name, header=self.faire_sheet_header).dropna()
         self.replicates_dict = self.create_biological_replicates_dict()
@@ -188,25 +199,25 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         return samp_metadata_df
 
-    def join_sample_and_extract_df(self):
-        # join extraction sheet with sample metadata sheet on Sample name - keeping only samples from extraction df
-        samp_df = self.transform_metadata_df()
+    # def join_sample_and_extract_df(self):
+    #     # join extraction sheet with sample metadata sheet on Sample name - keeping only samples from extraction df
+    #     samp_df = self.transform_metadata_df()
 
-        metadata_df = pd.merge(
-            left=self.extraction_standardizer.extraction_df,
-            right=samp_df,
-            left_on=self.extraction_standardizer.EXTRACT_SAMP_NAME_COL,
-            right_on=self.sample_metadata_sample_name_column,
-            how='left'
-        )
+    #     metadata_df = pd.merge(
+    #         left=self.extraction_standardizer.extraction_df,
+    #         right=samp_df,
+    #         left_on=self.extraction_standardizer.EXTRACT_SAMP_NAME_COL,
+    #         right_on=self.sample_metadata_sample_name_column,
+    #         how='left'
+    #     )
 
-        # Drop rows where the sample name column value is NA. This is for cruises where samples were split up
-        # e.g. PPS samples that were deployed from the DY2306 cruise. They will be a separate sample metadata file.
-        metadata_df = metadata_df.dropna(
-            subset=[self.sample_metadata_sample_name_column])
+    #     # Drop rows where the sample name column value is NA. This is for cruises where samples were split up
+    #     # e.g. PPS samples that were deployed from the DY2306 cruise. They will be a separate sample metadata file.
+    #     metadata_df = metadata_df.dropna(
+    #         subset=[self.sample_metadata_sample_name_column])
 
     
-        return metadata_df
+    #     return metadata_df
 
     # def _check_nc_samp_name_has_nc(self, metadata_row: pd.Series) -> str:
     #     # Checks to make sure sample names have .NC if the negative control column is True, if not adds the .NC
@@ -239,28 +250,28 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
     #     return cast_no
 
-    def filter_metadata_dfs(self):
+    # def filter_metadata_dfs(self):
 
-        # Join sample metadata with extraction metadata to get samp_df
-        samp_df = self.join_sample_and_extract_df()
+    #     # Join sample metadata with extraction metadata to get samp_df
+    #     samp_df = self.join_sample_and_extract_df()
 
-        try:
-            nc_mask = samp_df[self.sample_metadata_sample_name_column].astype(
-                str).str.contains('.NC', case=True)
-            nc_df = samp_df[nc_mask].copy()
-            samp_df_filtered = samp_df[~nc_mask].copy()
+    #     try:
+    #         nc_mask = samp_df[self.sample_metadata_sample_name_column].astype(
+    #             str).str.contains('.NC', case=True)
+    #         nc_df = samp_df[nc_mask].copy()
+    #         samp_df_filtered = samp_df[~nc_mask].copy()
 
-            # Replace any - with NaN
-            nc_df = nc_df.replace('-', pd.NA)
-            samp_df_filtered = samp_df_filtered.replace('-', pd.NA)
+    #         # Replace any - with NaN
+    #         nc_df = nc_df.replace('-', pd.NA)
+    #         samp_df_filtered = samp_df_filtered.replace('-', pd.NA)
             
-            return samp_df_filtered, nc_df
+    #         return samp_df_filtered, nc_df
         
-        except:
-            print(
-                "Looks like there are no negatives in the sample df, returning an empty nc_df")
-            nc_df = pd.DataFrame()
-            return samp_df_filtered, nc_df
+    #     except:
+    #         print(
+    #             "Looks like there are no negatives in the sample df, returning an empty nc_df")
+    #         nc_df = pd.DataFrame()
+    #         return samp_df_filtered, nc_df
 
     def extract_insdc_geographic_locations(self) -> list:
 
@@ -295,10 +306,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         # Extract the parent E number and add to column called replicate_parent
         # Uses set() to remove any technical replicates (they will have the same)
-        self.sample_metadata_df[self.replicate_parent_sample_metadata_col] = self.sample_metadata_df[self.sample_metadata_sample_name_column].apply(
+        self.sample_metadata_df_builder.sample_metadata_df[self.replicate_parent_sample_metadata_col] = self.sample_metadata_df_builder.sample_metadata_df[self.sample_metadata_sample_name_column].apply(
             self.extract_replicate_sample_parent)
         # Group by replicate parent
-        replicate_dict = self.sample_metadata_df.groupby(self.replicate_parent_sample_metadata_col)[
+        replicate_dict = self.sample_metadata_df_builder.sample_metadata_df.groupby(self.replicate_parent_sample_metadata_col)[
             self.sample_metadata_sample_name_column].apply(set).to_dict()
         # remove any key, value pairs where there aren't replicates and convert back to list
         replicate_dict = {replicate_parent: list(set(
