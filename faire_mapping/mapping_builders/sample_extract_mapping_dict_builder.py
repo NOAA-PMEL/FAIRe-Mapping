@@ -10,8 +10,8 @@ class SampleExtractionMappingDictBuilder(BaseMappingBuilder):
 
     SAMPLE_MAPPING_SHEET_NAME = "sampleMetadata" # The name of the google sheet for the sample metadata mapping (should always be sampleMetadata)
 
-    def __init__(self, google_sheet_mapping_file_id):
-        super().__init__(google_sheet_mapping_file_id)
+    def __init__(self, google_sheet_mapping_file_id, google_sheet_json_cred):
+        super().__init__(google_sheet_mapping_file_id, google_sheet_json_cred)
 
         self.sample_mapping_dict = self.create_sample_mapping_dict()
 
@@ -20,9 +20,9 @@ class SampleExtractionMappingDictBuilder(BaseMappingBuilder):
 
         # First concat sample_mapping_df with extractions_mapping_df
         sample_mapping_df = load_google_sheet_as_df(
-            google_sheet_id=self.google_sheet_mapping_file_id, sheet_name=self.SAMPLE_MAPPING_SHEET_NAME, header=0)
+            google_sheet_id=self.google_sheet_mapping_file_id, sheet_name=self.SAMPLE_MAPPING_SHEET_NAME, header=0, google_sheet_json_cred=self.google_sheet_json_cred)
         extractions_mapping_df = load_google_sheet_as_df(
-            google_sheet_id=self.google_sheet_mapping_file_id, sheet_name=self.EXTRACT_MAPPING_SHEET_NAME, header=1)
+            google_sheet_id=self.google_sheet_mapping_file_id, sheet_name=self.EXTRACT_MAPPING_SHEET_NAME, header=1, google_sheet_json_cred=self.google_sheet_json_cred)
  
         mapping_df = pd.concat([sample_mapping_df, extractions_mapping_df])
 

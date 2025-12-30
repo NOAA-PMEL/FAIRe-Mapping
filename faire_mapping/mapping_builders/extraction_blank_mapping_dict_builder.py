@@ -10,15 +10,15 @@ class ExtractionBlankMappingDictBuilder(BaseMappingBuilder):
     FAIRE_POOL_NUM_COL_NAME = "pool_dna_num"
     FAIRE_NUCL_ACID_EXT_METHOD_ADDITIONAL_COL_NAME = "nucl_acid_ext_method_additional"
 
-    def __init__(self, google_sheet_mapping_file_id):
-        super().__init__(google_sheet_mapping_file_id)
+    def __init__(self, google_sheet_mapping_file_id, google_sheet_json_cred):
+        super().__init__(google_sheet_mapping_file_id, google_sheet_json_cred)
     
         self.extraction_blanks_mapping_dict = self.create_extraction_blank_mapping_dict()
 
     def create_extraction_blank_mapping_dict(self) -> dict:
         # Creates a mapping dict for extraction blanks - mapping will be the same for only extractions faire attributes
         extractions_mapping_df = load_google_sheet_as_df(
-            google_sheet_id=self.google_sheet_mapping_file_id, sheet_name=self.EXTRACT_MAPPING_SHEET_NAME, header=1)
+            google_sheet_id=self.google_sheet_mapping_file_id, sheet_name=self.EXTRACT_MAPPING_SHEET_NAME, header=1, google_sheet_json_cred=self.google_sheet_json_cred)
 
         group_by_mapping = extractions_mapping_df.groupby(
             self.MAPPING_FILE_MAPPED_TYPE_COL)
