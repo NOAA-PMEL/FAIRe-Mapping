@@ -15,6 +15,8 @@ from bs4 import BeautifulSoup
 from .custom_exception import NoInsdcGeoLocError
 from .lists import nc_faire_field_cols
 from geopy.distance import geodesic
+from faire_mapping.utils import fix_cruise_code_in_samp_names
+from faire_mapping.sample_mapper.extraction_standardizer import ExtractionStandardizer
 
 
 # TODO: Turn nucl_acid_ext for DY20/12 into a BeBOP and change in extraction spreadsheet. Link to spreadsheet: https://docs.google.com/spreadsheets/d/1iY7Z8pNsKXHqsp6CsfjvKn2evXUPDYM2U3CVRGKUtX8/edit?gid=0#gid=0
@@ -27,12 +29,12 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     faire_sample_category_name_col = "samp_category"
     faire_neg_cont_type_name_col = "neg_cont_type"
     sample_mapping_sheet_name = "sampleMetadata"
-    extraction_mapping_sheet_name = "extractionMetadata"
+    # extraction_mapping_sheet_name = "extractionMetadata"
     replicate_parent_sample_metadata_col = "replicate_parent"
     faire_lat_col_name = "decimalLatitude"
     faire_lon_col_name = "decimalLongitude"
-    faire_samp_vol_we_dna_ext_col_name = "samp_vol_we_dna_ext"
-    faire_pool_num_col_name = "pool_dna_num"
+    # faire_samp_vol_we_dna_ext_col_name = "samp_vol_we_dna_ext"
+    # faire_pool_num_col_name = "pool_dna_num"
     faire_rel_cont_id_col_name = "rel_cont_id"
     faire_temp_col_name = "temp"
     faire_pressure_col_name = "pressure"
@@ -46,15 +48,15 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                                              "pos_cont_type": "not applicable: sample group"}
     gebco_file = "/home/poseidon/zalmanek/FAIRe-Mapping/utils/GEBCO_2024.nc"
 
-    # common extraction columns created during extraction manipulation
-    extract_samp_name_col = "samp_name"
-    extract_conc_col = "extraction_conc"
-    extract_date_col = "extraction_date"
-    extraction_set_col = "extraction_set"
-    extraction_cruise_key_col = "extraction_cruise_key"
-    extraction_name_col = "extraction_name"
-    extraction_blank_vol_we_dna_ext_col = "extraction_blank_vol_dna_ext"
-    extract_id_col = 'extract_id'
+    # # common extraction columns created during extraction manipulation
+    # extract_samp_name_col = "samp_name"
+    # extract_conc_col = "extraction_conc"
+    # extract_date_col = "extraction_date"
+    # extraction_set_col = "extraction_set"
+    # extraction_cruise_key_col = "extraction_cruise_key"
+    # extraction_name_col = "extraction_name"
+    # extraction_blank_vol_we_dna_ext_col = "extraction_blank_vol_dna_ext"
+    # extract_id_col = 'extract_id'
 
     def __init__(self, config_yaml: yaml):
         # TODO: used to have exp_metadata_df: pd.Series as init, but removed because of abstracting out sequencing yaml. See all associated commented out portions
@@ -72,19 +74,25 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.vessel_name = self.config_file['vessel_name']
         self.faire_template_file = self.config_file['faire_template_file']
         self.google_sheet_mapping_file_id = self.config_file['google_sheet_mapping_file_id']
-        self.unwanted_cruise_code = self.config_file['cruise_code_fixes'].get('unwanted_cruise_code', None) if 'cruise_code_fixes' in self.config_file else None
+        self.unwanted_cruise_code = self.config_file['cruise_code_fixes']['unwanted_cruise_code'] if 'cruise_code_fixes' in self.config_file else None
         self.desired_cruise_code = self.config_file['cruise_code_fixes']['desired_cruise_code'] if 'cruise_code_fixes' in self.config_file else None
 
         self.samp_dur_info = self.config_file['samp_store_dur_sheet_info'] if 'samp_store_dur_sheet_info' in self.config_file else None
         self.samp_stor_dur_dict = self.create_samp_stor_dict() if 'samp_store_dur_sheet_info' in self.config_file else None
         
         self.mapping_dict = self.create_sample_mapping_dict()
-        self.extractions_info = self.config_file['extractions']
-        self.extractions_df = self.create_concat_extraction_df()
-        self.extraction_blank_rel_cont_dict = {}
+        # self.extractions_info = self.config_file['extractions']
+        # self.extractions_df = self.create_concat_extraction_df()
+        # self.extraction_blank_rel_cont_dict = {}
+
+        self.extraction_standardizer = ExtractionStandardizer(extractions_info=self.config_file['extractions'],
+                                                              google_sheet_json_cred=self.config_file['json_creds'],
+                                                              unwanted_cruise_code=self.unwanted_cruise_code,
+                                                              desired_cruise_code=self.desired_cruise_code)
+        
         self.sample_metadata_df = self.filter_metadata_dfs()[0]
         self.nc_df = self.filter_metadata_dfs()[1]
-        self.extraction_blanks_df = self.get_extraction_blanks_applicable_to_cruise_samps()
+        # self.extraction_blanks_df = self.get_extraction_blanks_applicable_to_cruise_samps()
         self.sample_faire_template_df = self.load_faire_template_as_df(
             file_path=self.config_file['faire_template_file'], sheet_name=self.sample_mapping_sheet_name, header=self.faire_sheet_header).dropna()
         self.replicates_dict = self.create_biological_replicates_dict()
@@ -116,7 +124,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # Create nested dictionary {exact_mapping: {faire_col: metadata_col}, narrow_mapping: {faire_col: metadta_col}, etc.}
         mapping_dict = {}
         for mapping_value, group in group_by_mapping:
-            column_map_dict = {k.strip(): v.strip() for k, v in zip(
+            column_map_dict = {k: v for k, v in zip(
                 group[self.mapping_file_FAIRe_column], group[self.mapping_file_metadata_column]) if pd.notna(v)}
             mapping_dict[mapping_value] = column_map_dict
 
@@ -128,7 +136,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         for mapping_type, col_dict in self.mapping_dict.items():
             if isinstance(col_dict, dict):
                 filtered_nested = {
-                    k.strip(): v.strip() for k, v in col_dict.items() if k in nc_faire_field_cols}
+                    k: v for k, v in col_dict.items() if k in nc_faire_field_cols}
                 nc_mapping_dict[mapping_type] = filtered_nested
 
         # change values that will be differenct for NC's
@@ -141,36 +149,36 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         return nc_mapping_dict
 
-    def create_extraction_blank_mapping_dict(self) -> dict:
-        # Creates a mapping dict for extraction blanks - mapping will be the same for only extractions faire attributes
-        extractions_mapping_df = self.load_google_sheet_as_df(
-            google_sheet_id=self.google_sheet_mapping_file_id, sheet_name=self.extraction_mapping_sheet_name, header=1)
+    # def create_extraction_blank_mapping_dict(self) -> dict:
+    #     # Creates a mapping dict for extraction blanks - mapping will be the same for only extractions faire attributes
+    #     extractions_mapping_df = self.load_google_sheet_as_df(
+    #         google_sheet_id=self.google_sheet_mapping_file_id, sheet_name=self.extraction_mapping_sheet_name, header=1)
 
-        group_by_mapping = extractions_mapping_df.groupby(
-            self.mapping_file_mapped_type_column)
+    #     group_by_mapping = extractions_mapping_df.groupby(
+    #         self.mapping_file_mapped_type_column)
 
-        # Create nested dictionary {exact_mapping: {faire_col: metadata_col}, narrow_mapping: {faire_col: metadta_col}, etc.}
-        mapping_dict = {}
-        for mapping_value, group in group_by_mapping:
-            column_map_dict = {k.strip(): v.strip() for k, v in zip(
-                group[self.mapping_file_FAIRe_column], group[self.mapping_file_metadata_column]) if pd.notna(v)}
-            mapping_dict[mapping_value] = column_map_dict
+    #     # Create nested dictionary {exact_mapping: {faire_col: metadata_col}, narrow_mapping: {faire_col: metadta_col}, etc.}
+    #     mapping_dict = {}
+    #     for mapping_value, group in group_by_mapping:
+    #         column_map_dict = {k: v for k, v in zip(
+    #             group[self.mapping_file_FAIRe_column], group[self.mapping_file_metadata_column]) if pd.notna(v)}
+    #         mapping_dict[mapping_value] = column_map_dict
 
-        # If there is an exact mapping for samp_vol_we_dna_ext then remove and put constant value base on config file value
-        if self.faire_samp_vol_we_dna_ext_col_name in mapping_dict[self.exact_mapping]:
-            mapping_col = mapping_dict[self.exact_mapping][self.faire_samp_vol_we_dna_ext_col_name]
-            del mapping_dict[self.exact_mapping][self.faire_samp_vol_we_dna_ext_col_name]
-            mapping_dict[self.related_mapping][self.faire_samp_vol_we_dna_ext_col_name] = mapping_col
+    #     # If there is an exact mapping for samp_vol_we_dna_ext then remove and put constant value base on config file value
+    #     if self.faire_samp_vol_we_dna_ext_col_name in mapping_dict[self.exact_mapping]:
+    #         mapping_col = mapping_dict[self.exact_mapping][self.faire_samp_vol_we_dna_ext_col_name]
+    #         del mapping_dict[self.exact_mapping][self.faire_samp_vol_we_dna_ext_col_name]
+    #         mapping_dict[self.related_mapping][self.faire_samp_vol_we_dna_ext_col_name] = mapping_col
 
 
-        # If pool_dna_num in exact mapping automatically make constant mapping of 1 (may need to change if blanks are ever pooled for some reason)
-        if self.faire_pool_num_col_name in mapping_dict[self.exact_mapping]:
-            del mapping_dict[self.exact_mapping][self.faire_pool_num_col_name]
-            del mapping_dict[self.exact_mapping][self.faire_nucl_acid_ext_method_additional_col_name]
-            mapping_dict[self.constant_mapping][self.faire_pool_num_col_name] = 1
-            mapping_dict[self.constant_mapping][self.faire_nucl_acid_ext_method_additional_col_name] = "missing: not provided"
+    #     # If pool_dna_num in exact mapping automatically make constant mapping of 1 (may need to change if blanks are ever pooled for some reason)
+    #     if self.faire_pool_num_col_name in mapping_dict[self.exact_mapping]:
+    #         del mapping_dict[self.exact_mapping][self.faire_pool_num_col_name]
+    #         del mapping_dict[self.exact_mapping][self.faire_nucl_acid_ext_method_additional_col_name]
+    #         mapping_dict[self.constant_mapping][self.faire_pool_num_col_name] = 1
+    #         mapping_dict[self.constant_mapping][self.faire_nucl_acid_ext_method_additional_col_name] = "missing: not provided"
 
-        return mapping_dict
+    #     return mapping_dict
 
     def create_samp_stor_dict(self) -> dict:
 
@@ -178,7 +186,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         # fix sample names if cruise-code was corrrected in sample names
         if self.unwanted_cruise_code and self.desired_cruise_code:
-            samp_dur_df = self.fix_cruise_code_in_samp_names(df=samp_dur_df, sample_name_col=self.samp_dur_info['samp_name_col'])
+            samp_dur_df = fix_cruise_code_in_samp_names(df=samp_dur_df, 
+                                                        unwanted_cruise_code=self.unwanted_cruise_code,
+                                                        desired_cruise_code=self.desired_cruise_code,
+                                                        sample_name_col=self.samp_dur_info['samp_name_col'])
         samp_dur_dict = dict(zip(samp_dur_df[self.samp_dur_info['samp_name_col']], samp_dur_df[self.samp_dur_info['samp_stor_dur_col']]))
 
         return samp_dur_dict
@@ -231,205 +242,188 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         station_line_dict = dict(zip(station_ref_df['station_name'], station_ref_df['line_id']))
         return station_line_dict
      
-    def convert_mdy_date_to_iso8061(self, date_string: str) -> str:
-        # converts from m/d/y to iso8061
-        date_string = str(date_string).strip()
+    # def convert_mdy_date_to_iso8061(self, date_string: str) -> str:
+    #     # converts from m/d/y to iso8061
+    #     date_string = str(date_string).strip()
 
-        if not date_string:
-            print("Input date string is empty or only whitespace. Returning missing: not collected")
-            return "missing: not collected"
+    #     # Handle both single and double digit formats
+    #     try:
+    #         parts = date_string.split('/')
+    #         if len(parts) == 3:
+    #             month, day, year = parts
 
-        # Handle both single and double digit formats
-        try:
-            parts = date_string.split('/')
+    #             formatted_date = f"{int(month):02d}/{int(day):02}/{year}"
 
-            month = parts[0]
-            if len(parts) == 3:
-                # Full m/d/y or m/dd/yyyy format
-                day = parts[1]
-                year = parts[2]
+    #             # parse date string
+    #             date_obj = datetime.strptime(formatted_date, "%m/%d/%Y")
+
+    #             # convert to iso 8601 format
+    #             return date_obj.strftime('%Y-%m-%d')
+
+    #         elif len(parts) == 2:
+    #             # hande month/year format by assuming day=1
+    #             month, year = parts
+    #             formatted_date = f"{int(month):02d}/01/{year}"
+
+    #             # parse date string
+    #             date_obj = datetime.strptime(formatted_date, "%m/%d/%Y")
+
+    #             # convert to iso 8601 format
+    #             return date_obj.strftime('%Y-%m-%d')
+    #         else:
+    #             raise ValueError(
+    #                 f"Date doesn't have two or three parts: {date_string}")
+
+    #     except Exception as e:
+    #         print(f"Error converting {date_string}: {str(e)}")
+
+    # def extraction_avg_aggregation(self, extractions_df: pd.DataFrame):
+    #     # For extractions, calculates the mean if more than one concentration per sample name.
+
+    #     # Keep Below Range
+    #     if all(isinstance(conc, str) and ("below range" in conc.lower() or "br" == conc.lower() or "bdl" == conc.lower()) for conc in extractions_df):
+    #         return "BDL"
+
+    #     # For everything else, convert to numeric and calculate mean
+    #     numeric_series = pd.to_numeric(
+    #         extractions_df, errors='coerce')  # Non numeric becomes NaN
+
+    #     mean_value = numeric_series.mean()
+
+    #     return round(mean_value, 2)
+
+    # def get_extraction_blanks_applicable_to_cruise_samps(self):
+    #     # Get extraction blank df (applicable to RC0083 cruise)
+
+    #     blank_df = pd.DataFrame(columns=self.extractions_df.columns)
+
+    #     # TODO: peel out 'Extraction Set' column name into config.yaml file
+    #         # try grouping by extraction set if it exists
+    #     grouped = self.extractions_df.groupby(
+    #         self.extraction_set_col)
+
+    #     try:
+    #         for extraction_set, group_df in grouped:
+    #             # Check if any in the group contains the extraction cruise key
+    #             has_cruise_samps = group_df.apply(
+    #                 lambda row: str(row[self.extraction_cruise_key_col]) in str(row[self.extract_samp_name_col]),
+    #                 axis = 1
+    #             ).any()
                 
-                # Determine the correct year format code based on the year length
-                if len(year) == 4:
-                    DATE_FORMAT = "%m/%d/%Y" # Four-digit year
-                elif len(year) == 2:
-                    DATE_FORMAT = "%m/%d/%y" # Two-digit year
-                else:
-                    raise ValueError(f"Year part '{year}' is not 2 or 4 digits.")
-            
-                # Pad month and day to ensure two digits for strptime
-                formatted_date = f"{int(month):02d}/{int(day):02d}/{year}"
-
-            elif len(parts) == 2:
-                # m/y or m/yyyy format (assuming day=1)
-                year = parts[1]
-                
-                # Determine the correct year format code based on the year length
-                if len(year) == 4:
-                    DATE_FORMAT = "%m/%d/%Y" # Four-digit year
-                elif len(year) == 2:
-                    DATE_FORMAT = "%m/%d/%y" # Two-digit year
-                else:
-                    raise ValueError(f"Year part '{year}' is not 2 or 4 digits.")
-                
-                # Assume day = 1 and pad month
-                formatted_date = f"{int(month):02d}/01/{year}"
-            else:
-                raise ValueError(
-                    f"Date doesn't have two or three parts: {date_string}")
-            
-            # Parse date string
-            date_obj = datetime.strptime(formatted_date, DATE_FORMAT)
-            # convert to iso 8601 format
-            return date_obj.strftime('%Y-%m-%d')
-
-        except Exception as e:
-            print(f"Error converting {date_string}: {str(e)}")
-
-    def extraction_avg_aggregation(self, extractions_df: pd.DataFrame):
-        # For extractions, calculates the mean if more than one concentration per sample name.
-
-        # Keep Below Range
-        if all(isinstance(conc, str) and ("below range" in conc.lower() or "br" == conc.lower() or "bdl" == conc.lower()) for conc in extractions_df):
-            return "BDL"
-
-        # For everything else, convert to numeric and calculate mean
-        numeric_series = pd.to_numeric(
-            extractions_df, errors='coerce')  # Non numeric becomes NaN
-
-        mean_value = numeric_series.mean()
-
-        return round(mean_value, 2)
-
-    def get_extraction_blanks_applicable_to_cruise_samps(self):
-        # Get extraction blank df (applicable to RC0083 cruise)
-
-        blank_df = pd.DataFrame(columns=self.extractions_df.columns)
-
-        # TODO: peel out 'Extraction Set' column name into config.yaml file
-            # try grouping by extraction set if it exists
-        grouped = self.extractions_df.groupby(
-            self.extraction_set_col)
-
-        try:
-            for extraction_set, group_df in grouped:
-                # Check if any in the group contains the extraction cruise key
-                has_cruise_samps = group_df.apply(
-                    lambda row: str(row[self.extraction_cruise_key_col]) in str(row[self.extract_samp_name_col]),
-                    axis = 1
-                ).any()
-                
-                if has_cruise_samps:
-                    # find blank samples in this group ('Larson NC are extraction blanks for the SKQ23 cruise)
-                    extraction_blank_samps = group_df[
-                        (group_df[self.extract_samp_name_col].str.contains('blank', case=False, na=False)) | 
-                        (group_df[self.extract_samp_name_col].str.contains('Larson NC', case=False, na=False))]
+    #             if has_cruise_samps:
+    #                 # find blank samples in this group ('Larson NC are extraction blanks for the SKQ23 cruise)
+    #                 extraction_blank_samps = group_df[
+    #                     (group_df[self.extract_samp_name_col].str.contains('blank', case=False, na=False)) | 
+    #                     (group_df[self.extract_samp_name_col].str.contains('Larson NC', case=False, na=False))]
                     
-                    try:
-                        # get list of samples associated with blanks and put into dict for rel_cont_id
-                        valid_samples = group_df[self.extract_samp_name_col].tolist()
-                        for sample in valid_samples:
-                            if 'blank' in sample.lower() or 'Larson NC' in sample:
-                                other_samples = [samp for samp in valid_samples if samp != sample]
-                                # update cruise codes in sample names
-                                if self.unwanted_cruise_code and self.desired_cruise_code:
-                                    sample = sample.replace(self.unwanted_cruise_code, self.desired_cruise_code)
-                                    other_samples = [samp.replace(self.unwanted_cruise_code, self.desired_cruise_code) for samp in other_samples]
-                                self.extraction_blank_rel_cont_dict[sample] = other_samples
-                    except:
-                        raise ValueError("blank dictionary mapping not working!")
+    #                 try:
+    #                     # get list of samples associated with blanks and put into dict for rel_cont_id
+    #                     valid_samples = group_df[self.extract_samp_name_col].tolist()
+    #                     for sample in valid_samples:
+    #                         if 'blank' in sample.lower() or 'Larson NC' in sample:
+    #                             other_samples = [samp for samp in valid_samples if samp != sample]
+    #                             # update cruise codes in sample names
+    #                             if self.unwanted_cruise_code and self.desired_cruise_code:
+    #                                 sample = sample.replace(self.unwanted_cruise_code, self.desired_cruise_code)
+    #                                 other_samples = [samp.replace(self.unwanted_cruise_code, self.desired_cruise_code) for samp in other_samples]
+    #                             self.extraction_blank_rel_cont_dict[sample] = other_samples
+    #                 except:
+    #                     raise ValueError("blank dictionary mapping not working!")
 
 
-                    blank_df = pd.concat([blank_df, extraction_blank_samps])
+    #                 blank_df = pd.concat([blank_df, extraction_blank_samps])
 
-            blank_df[self.extract_conc_col] = blank_df[self.extract_conc_col].replace(
-                "BR", "BDL").replace("Below Range", "BDL").replace("br", "BDL")
-        except:
-            raise ValueError(
-                "Warning: Extraction samples are not grouped, double check this")
+    #         blank_df[self.extract_conc_col] = blank_df[self.extract_conc_col].replace(
+    #             "BR", "BDL").replace("Below Range", "BDL").replace("br", "BDL")
+    #     except:
+    #         raise ValueError(
+    #             "Warning: Extraction samples are not grouped, double check this")
         
-        return blank_df
+    #     return blank_df
      
-    def create_concat_extraction_df(self) -> pd.DataFrame:
-        # Concatenate extractions together and create common column names
+    # def create_concat_extraction_df(self) -> pd.DataFrame:
+    #     # Concatenate extractions together and create common column names
 
-        extraction_dfs = []
-        # loop through extractions and append extraction dfs to list
-        for extraction in self.extractions_info:
-            # mappings from config file to what we want to call it so it has a common name 
-            extraction_column_mappings = {extraction['extraction_sample_name_col']: self.extract_samp_name_col,
-                                         extraction['extraction_conc_col_name']: self.extract_conc_col,
-                                         extraction['extraction_date_col_name']: self.extract_date_col,
-                                         extraction['extraction_set_grouping_col_name']: self.extraction_set_col,}
+    #     extraction_dfs = []
+    #     # loop through extractions and append extraction dfs to list
+    #     for extraction in self.extractions_info:
+    #         # mappings from config file to what we want to call it so it has a common name 
+    #         extraction_column_mappings = {extraction['extraction_sample_name_col']: self.extract_samp_name_col,
+    #                                      extraction['extraction_conc_col_name']: self.extract_conc_col,
+    #                                      extraction['extraction_date_col_name']: self.extract_date_col,
+    #                                      extraction['extraction_set_grouping_col_name']: self.extraction_set_col,}
             
-            extraction_df = self.load_google_sheet_as_df(google_sheet_id=extraction['extraction_metadata_google_sheet_id'], sheet_name=extraction['extraction_metadata_sheet_name'], header=0)
+    #         extraction_df = self.load_google_sheet_as_df(google_sheet_id=extraction['extraction_metadata_google_sheet_id'], sheet_name=extraction['extraction_metadata_sheet_name'], header=0)
 
-            # change necessary column names so they will match across extraction dfs and add additional info
-            extraction_df = extraction_df.rename(columns=extraction_column_mappings)
-            extraction_df[self.extraction_cruise_key_col] = extraction.get('extraction_cruise_key')
-            extraction_df[self.extraction_blank_vol_we_dna_ext_col] = extraction.get('extraction_blank_vol_we_dna_ext')
-            extraction_df[self.extraction_name_col] = extraction.get('extraction_name')
+    #         # change necessary column names so they will match across extraction dfs and add additional info
+    #         extraction_df = extraction_df.rename(columns=extraction_column_mappings)
+    #         extraction_df[self.extraction_cruise_key_col] = extraction.get('extraction_cruise_key')
+    #         extraction_df[self.extraction_blank_vol_we_dna_ext_col] = extraction.get('extraction_blank_vol_we_dna_ext')
+    #         extraction_df[self.extraction_name_col] = extraction.get('extraction_name')
 
-            extraction_df[self.extract_id_col] = extraction_df[self.extraction_name_col].astype(str).replace(r'\s+', '_', regex=True) + "_" + extraction_df[self.extraction_set_col].astype(str).replace(r'\s+', '_', regex=True)
-            extraction_dfs.append(extraction_df)
+    #         extraction_df[self.extract_id_col] = extraction_df[self.extraction_name_col].astype(str).replace(r'\s+', '_', regex=True) + "_" + extraction_df[self.extraction_set_col].astype(str).replace(r'\s+', '_', regex=True)
+    #         extraction_dfs.append(extraction_df)
 
-        # Concat dataframes
-        final_extraction_df = pd.concat(extraction_dfs)
+    #     # Concat dataframes
+    #     final_extraction_df = pd.concat(extraction_dfs)
 
-        # if any columns changed names that are in the mapping dict, change them there too
-        for maps in self.mapping_dict.values():
-            for faire_col, metadata_col in maps.items():
-                if metadata_col in extraction_column_mappings.keys():
-                    maps[faire_col] = extraction_column_mappings.get(metadata_col)
+    #     # if any columns changed names that are in the mapping dict, change them there too
+    #     for maps in self.mapping_dict.values():
+    #         for faire_col, metadata_col in maps.items():
+    #             if metadata_col in extraction_column_mappings.keys():
+    #                 maps[faire_col] = extraction_column_mappings.get(metadata_col)
         
-        if self.unwanted_cruise_code and self.desired_cruise_code and self.unwanted_cruise_code != '.NO20': # this gets updates twice because unwanted cruise code is in the desired cruise code so will update later
-            final_extraction_df = self.fix_cruise_code_in_samp_names(df=final_extraction_df, sample_name_col=self.extract_samp_name_col)
+    #     if self.unwanted_cruise_code and self.desired_cruise_code and self.unwanted_cruise_code != '.NO20': # this gets updates twice because unwanted cruise code is in the desired cruise code so will update later
+    #         final_extraction_df = fix_cruise_code_in_samp_names(df=final_extraction_df,
+    #                                                             unwanted_cruise_code=self.unwanted_cruise_code,
+    #                                                             desired_cruise_code=self.desired_cruise_code,
+    #                                                             sample_name_col=self.extract_samp_name_col)
      
-        return final_extraction_df
+    #     return final_extraction_df
 
-    def filter_cruise_avg_extraction_conc(self) -> pd.DataFrame:
-        # If extractions have multiple measurements for extraction concentrations, calculates the avg.
-        # and creates a column called pool_num to show the number of samples pooled
-        # First filter extractions df for samples that contain the cruise key in their sample name
-        cruise_key_mask = self.extractions_df.apply(
-            lambda row: str(row[self.extraction_cruise_key_col]) in str(row[self.extract_samp_name_col])
-            if pd.notna(row[self.extraction_cruise_key_col]) and pd.notna(row[self.extract_samp_name_col])
-            else False,
-            axis = 1
-        )
+    # def filter_cruise_avg_extraction_conc(self) -> pd.DataFrame:
+    #     # If extractions have multiple measurements for extraction concentrations, calculates the avg.
+    #     # and creates a column called pool_num to show the number of samples pooled
+    #     # First filter extractions df for samples that contain the cruise key in their sample name
+    #     cruise_key_mask = self.extractions_df.apply(
+    #         lambda row: str(row[self.extraction_cruise_key_col]) in str(row[self.extract_samp_name_col])
+    #         if pd.notna(row[self.extraction_cruise_key_col]) and pd.notna(row[self.extract_samp_name_col])
+    #         else False,
+    #         axis = 1
+    #     )
         
-        # Then calculate average concentration
-        extract_avg_df = self.extractions_df[cruise_key_mask].groupby(
-            self.extract_samp_name_col).agg({
-                self.extract_conc_col: self.extraction_avg_aggregation,
-                **{col: 'first' for col in self.extractions_df.columns if col != self.extract_samp_name_col and col != self.extract_conc_col}
-            }).reset_index()
+    #     # Then calculate average concentration
+    #     extract_avg_df = self.extractions_df[cruise_key_mask].groupby(
+    #         self.extract_samp_name_col).agg({
+    #             self.extract_conc_col: self.extraction_avg_aggregation,
+    #             **{col: 'first' for col in self.extractions_df.columns if col != self.extract_samp_name_col and col != self.extract_conc_col}
+    #         }).reset_index()
 
-        # Add pool_num column that shows how many samples were averaged for each group
-        sample_counts = self.extractions_df[cruise_key_mask].groupby(
-            self.extract_samp_name_col).size().reset_index(name='pool_num')
+    #     # Add pool_num column that shows how many samples were averaged for each group
+    #     sample_counts = self.extractions_df[cruise_key_mask].groupby(
+    #         self.extract_samp_name_col).size().reset_index(name='pool_num')
 
-        # merge sample_counts into dataframe
-        extract_avg_df = extract_avg_df.merge(
-            sample_counts, on=self.extract_samp_name_col, how='left')
+    #     # merge sample_counts into dataframe
+    #     extract_avg_df = extract_avg_df.merge(
+    #         sample_counts, on=self.extract_samp_name_col, how='left')
 
-        # Add extraction_method_additional for samples that pooled more than one extract
-        extract_avg_df['extraction_method_additional'] = extract_avg_df['pool_num'].apply(
-            lambda x: "One sample, but two filters were used because sample clogged. Two extractions were pooled together and average concentration calculated." if x > 1 else "missing: not provided")
+    #     # Add extraction_method_additional for samples that pooled more than one extract
+    #     extract_avg_df['extraction_method_additional'] = extract_avg_df['pool_num'].apply(
+    #         lambda x: "One sample, but two filters were used because sample clogged. Two extractions were pooled together and average concentration calculated." if x > 1 else "missing: not provided")
 
-        # update samp name for DY2012 cruises (from DY20) and remove E numbers from any NC samples
-        extract_avg_df[self.extract_samp_name_col] = extract_avg_df[self.extract_samp_name_col].apply(
-            self.str_replace_for_samps)
+    #     # update samp name for DY2012 cruises (from DY20) and remove E numbers from any NC samples
+    #     extract_avg_df[self.extract_samp_name_col] = extract_avg_df[self.extract_samp_name_col].apply(
+    #         self.str_replace_for_samps)
 
-        # update dates to iso8601 TODO: may need to adjust this for ones that are already in this format
-        extract_avg_df[self.extract_date_col] = extract_avg_df[self.extract_date_col].apply(
-            self.convert_mdy_date_to_iso8061)
+    #     # update dates to iso8601 TODO: may need to adjust this for ones that are already in this format
+    #     extract_avg_df[self.extract_date_col] = extract_avg_df[self.extract_date_col].apply(
+    #         self.convert_mdy_date_to_iso8061)
         
-        if self.unwanted_cruise_code and self.desired_cruise_code:
-            if 'NO20' not in self.unwanted_cruise_code: # NO20 is updated in str_replace_samps (can't remove it from there because the experimentRunMetadata uses it)
-                extract_avg_df = self.fix_cruise_code_in_samp_names(df=extract_avg_df, sample_name_col=self.extract_samp_name_col)
+    #     if self.unwanted_cruise_code and self.desired_cruise_code:
+    #         if 'NO20' not in self.unwanted_cruise_code: # NO20 is updated in str_replace_samps (can't remove it from there because the experimentRunMetadata uses it)
+    #             extract_avg_df = fix_cruise_code_in_samp_names(df=extract_avg_df, sample_name_col=self.extract_samp_name_col)
 
-        return extract_avg_df
+    #     return extract_avg_df
 
     def transform_metadata_df(self):
         # Converts sample metadata to a data frame and checks to make sure NC samples have NC in the name (dy2206 had this problem)
@@ -450,8 +444,11 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         samp_metadata_df[self.sample_metadata_cast_no_col_name] = samp_metadata_df[self.sample_metadata_cast_no_col_name].apply(
             self.remove_extraneous_cast_no_chars)
         
-        if self.desired_cruise_code:
-            samp_metadata_df = self.fix_cruise_code_in_samp_names(df=samp_metadata_df)
+        if self.unwanted_cruise_code and self.desired_cruise_code:
+            samp_metadata_df = fix_cruise_code_in_samp_names(df=samp_metadata_df, 
+                                                             unwanted_cruise_code=self.unwanted_cruise_code,
+                                                             desired_cruise_code=self.desired_cruise_code,
+                                                             sample_name_col=self.sample_metadata_sample_name_column)
 
         return samp_metadata_df
 
@@ -461,13 +458,13 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         extract_df = self.filter_cruise_avg_extraction_conc()
 
         samp_df = self.transform_metadata_df()
-        
+
         metadata_df = pd.merge(
             left=extract_df,
             right=samp_df,
             left_on=self.extract_samp_name_col,
             right_on=self.sample_metadata_sample_name_column,
-            how='right'
+            how='left'
         )
 
         # Drop rows where the sample name column value is NA. This is for cruises where samples were split up
@@ -655,25 +652,19 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         except:
             None
 
-    def fix_cruise_code_in_samp_names(self, df: pd.DataFrame, sample_name_col: str = None) -> pd.DataFrame:
-        # fixes the cruise code in the sample names to be SKQ21-15S as requested by Shannon on 07/23/2025
-        # if sample name is not specified the will use the sample metadata sample name specified in the config - may be different (for sampe dur storage df)
-        if not sample_name_col:
-            sample_name_col = self.sample_metadata_sample_name_column
+    # def fix_cruise_code_in_samp_names(self, df: pd.DataFrame, sample_name_col: str = None) -> pd.DataFrame:
+    #     # fixes the cruise code in the sample names to be SKQ21-15S as requested by Shannon on 07/23/2025
+    #     if self.desired_cruise_code == '.DY20-12': # since the extraction sheet used .DY20 and teh sample metadata use .DY2012 need to replace for both
+    #         mask = (df[sample_name_col].str.endswith('.DY20')) | (df[sample_name_col].str.endswith(self.unwanted_cruise_code))
+    #         # Apply the replacement only to the rows where the mask is True
+    #         df.loc[mask, sample_name_col] = df.loc[mask, sample_name_col].str.replace(
+    #             self.unwanted_cruise_code, 
+    #             self.desired_cruise_code
+    #         )
+    #     else: # everything else just replaces with the desired cruise code
+    #         df[sample_name_col] = df[sample_name_col].str.replace(self.unwanted_cruise_code, self.desired_cruise_code)
 
-        if self.desired_cruise_code == '.DY20-12': # since the extraction sheet used .DY20 and teh sample metadata use .DY2012 need to replace for both
-            mask = (df[sample_name_col].str.endswith('.DY20')) | (df[sample_name_col].str.endswith(self.unwanted_cruise_code))
-            # Apply the replacement only to the rows where the mask is True
-            df.loc[mask, sample_name_col] = df.loc[mask, sample_name_col].str.replace(
-                self.unwanted_cruise_code, 
-                self.desired_cruise_code
-            )
-        elif not self.unwanted_cruise_code: # If just need to append the cruise code onto the sample name, and sample name does not have wrong cruise code.
-            df[sample_name_col] = df[sample_name_col].apply(lambda x: x if str(x).endswith(self.desired_cruise_code) else str(x) + self.desired_cruise_code)
-        else: # everything else just replaces with the desired cruise code
-            df[sample_name_col] = df[sample_name_col].str.replace(self.unwanted_cruise_code, self.desired_cruise_code)
-
-        return df 
+    #     return df 
     
     def calculate_dna_yield(self, metadata_row: pd.Series, sample_vol_metadata_col: str) -> float:
         # calculate the dna yield based on the concentration (ng/uL) and the sample_volume (mL)
@@ -693,25 +684,13 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                 return 'not applicable: control sample'
             return 'not applicable'
 
-    def calculate_altitude(self, metadata_row: pd.Series, depth_col: str, tot_depth_col: str, altitude_col: str = None) -> float:
-        # Calculates the altitude by subtracting the depth from the tot_depth_col if altitude is None. Otherwise returns the altitude
-        # If altitude is over 95 then use depth to calculate. Not sure why we need this, but Sean mentioned it.
+    def calculate_altitude(self, metadata_row: pd.Series, depth_col: str, tot_depth_col: str) -> float:
+        # Calculates the altitude by subtracting the depth from the tot_depth_col
         depth = metadata_row[depth_col]
         tot_depth_water_col = metadata_row[tot_depth_col]
-        altitude = metadata_row.get(altitude_col, None) if altitude_col else None
 
-        # Checks if the existing altitude is missing or a zero/falsy value
-        is_missing = (not altitude or pd.isna(altitude)) 
+        return round((tot_depth_water_col - depth), 2)
 
-        # If there is not value for the altitude of the altitude is greater than 95, then calcualte using the depth and total_depth
-        if not is_missing:
-            if float(altitude) > 95:
-                return round((tot_depth_water_col - depth), 2)
-            else:
-                return altitude
-        else:
-            return round((tot_depth_water_col - depth), 2)
-        
     def get_line_id(self, station) -> str:
         # Get the line id by the referance station (must be standardized station name)
         if station in self.station_line_dict:
@@ -812,15 +791,13 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         aphotic = "marine aphotic zone [ENVO:00000210]"
         photic = "marine photic zone [ENVO:00000209]"
 
-        try:
-            depth = float(depth)
+       
+        if float(depth) <= 200:
+            env_local_scale = photic
+        elif float(depth) > 200:
+            env_local_scale = aphotic
 
-            if float(depth) <= 200:
-                return photic
-            elif float(depth) > 200:
-                return aphotic
-        except (ValueError, TypeError, UnboundLocalError):
-            return "missing: not collected"
+        return env_local_scale
 
     def format_dates_for_duration_calculation(self, date: str) -> datetime:
         if date in  [None, 'nan', 'missing: not collected', '', 'missing: not provided']:
@@ -970,8 +947,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
     def get_station_id_from_unstandardized_station_name(self, metadata_row: pd.Series, unstandardized_station_name_col: str) -> str:
         # Gets the standardized station name from the unstandardized station name
-        station_name = metadata_row[unstandardized_station_name_col].strip()
-        sample_name = metadata_row[self.sample_metadata_sample_name_column].strip()
+        station_name = metadata_row[unstandardized_station_name_col]
+        sample_name = metadata_row[self.sample_metadata_sample_name_column]
 
         if 'NC' not in sample_name or 'blank' not in sample_name.lower():
             # Standardizes station ids to be from the reference station sheet
@@ -987,10 +964,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
     def calculate_distance_btwn_lat_lon_points(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
             # Calculates the surface distance between two points in lat/lon using the great_circle package of GeoPy
-            try:
-                return geodesic((lat1, lon1), (lat2, lon2)).kilometers   
-            except ValueError:
-                return "can't calculate distance"
+            return geodesic((lat1, lon1), (lat2, lon2)).kilometers   
     
     def get_stations_within_5km(self, metadata_row: pd.Series, station_name_col: str, lat_col: str, lon_col: str) -> str:
         # Get alternate station names based on lat/lon coords and grabs all stations within 5 km as alternate stations - need to use standardized station names for station_name_col to be able to look 
@@ -1012,9 +986,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
                 # calculate distance
                 distance = self.calculate_distance_btwn_lat_lon_points(lat1=lat, lon1=lon, lat2=station_lat, lon2=station_lon)
-
-                if type(distance) == str:
-                    return "can't find"
 
                 # Account for DBO1.9 which moved but coordinates haven't been updated yet - see email from Shaun
                 # Also make exception for DBO4.1 (took this out since changing from 1 km to 3 km)
@@ -1065,54 +1036,37 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         method_cols = [col for col in df.columns if col.endswith('method') and col != 'samp_collect_method']
         method_str = '_method'
 
-        # verbatimCoorinateSystem
-        vertatim_coord_sys_cols = ['verbatimCoordinateSystem', 'verbatimSRS']
-        updated_df_for_coords = self.update_companion_cols(df=df, companion_col_list=vertatim_coord_sys_cols)
-
-        updated_df_for_unit = self.update_companion_cols(df=updated_df_for_coords, companion_col_list=unit_cols, str_to_remove_for_main_col=unit_str)
+        updated_df_for_unit = self.update_companion_cols(df=df, companion_col_list=unit_cols, str_to_remove_for_main_col=unit_str)
         updated_df_for_woce = self.update_companion_cols(df=updated_df_for_unit, companion_col_list=woce_cols, str_to_remove_for_main_col=woce_str)
         updated_df_for_method = self.update_companion_cols(df=updated_df_for_woce, companion_col_list=method_cols, str_to_remove_for_main_col=method_str)
 
         return updated_df_for_method
     
-    def update_companion_cols(self, df: pd.DataFrame, companion_col_list: list, str_to_remove_for_main_col: str = None) -> pd.DataFrame:
+    def update_companion_cols(self, df: pd.DataFrame, companion_col_list: list, str_to_remove_for_main_col: str) -> pd.DataFrame:
             # iterates through a list of unit columns or WOCE flag columns and updates df
             for companion_col in companion_col_list:
                 if companion_col == 'DepthInMeters_method':
                     main_col = 'maximumDepthInMeters'
-                elif companion_col in ['verbatimCoordinateSystem', 'verbatimSRS']:
-                    main_col = ['verbatimLongitude', 'verbatimLatitude']
                 else:
                     main_col = companion_col.replace(str_to_remove_for_main_col, '') # Remove the 'unit' or 'WOCE_flag' from the column name
 
-
-                if isinstance(main_col, list): # for the veratimCoord system or verbatimSRS
-                    if len(main_col) == 2:
-                        for idx in df.index:
-                            val1 = df.at[idx, main_col[0]]
-                            val2 = df.at[idx, main_col[1]]
-                            if (pd.isna(val1) or val1 == None or 'missing' in str(val1).lower() or 'not applicable' in str(val1).lower()) and (pd.isna(val1) or val2 == None or 'missing' in str(val2).lower() or 'not applicable' in str(val2).lower()):
-                                df.at[idx, companion_col] = 'not applicable'
-
-
-                elif isinstance(main_col, str):
-                    if main_col in df.columns:
-                        for idx in df.index:
-                            val = df.at[idx, main_col]
-                            # Check if we should update the unit
-                            try:
-                                should_update = False
-                                if pd.isna(val) or val == None:
+                if main_col in df.columns:
+                    for idx in df.index:
+                        val = df.at[idx, main_col]
+                        # Check if we should update the unit
+                        try:
+                            should_update = False
+                            if pd.isna(val) or val == None:
+                                should_update = True
+                            elif isinstance(val, str):
+                                val_lower = val.lower()
+                                if 'missing' in val_lower or 'not applicable' in val_lower:
                                     should_update = True
-                                elif isinstance(val, str):
-                                    val_lower = val.lower()
-                                    if 'missing' in val_lower or 'not applicable' in val_lower:
-                                        should_update = True
-                                
-                                if should_update:
-                                    df.at[idx, companion_col] = 'not applicable'
-                            except:
-                                print("updating companion col is not working!")
+                            
+                            if should_update:
+                                df.at[idx, companion_col] = 'not applicable'
+                        except:
+                            print("updating companion col is not working!")
 
             return df
     
