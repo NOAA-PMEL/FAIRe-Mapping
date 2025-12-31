@@ -2,6 +2,8 @@ import pandas as pd
 from faire_mapping.dataframe_and_dict_builders.base_df_builder import BaseDfBuilder
 from faire_mapping.utils import fix_cruise_code_in_samp_names
 
+pd.set_option('future.no_silent_downcasting', True)
+
 # TODO: _check_nc_samp_name_has_nc method is specific to OME for sample naming problems. When we standardize sample naming, can remove.
 # TODO: _fix_samp_names specific to OME and for certain cruises. Can remove after data for these cruises has been submitted and sample naming becomes standardized. 
 class SampleMetadataBuilder(BaseDfBuilder):
@@ -9,12 +11,12 @@ class SampleMetadataBuilder(BaseDfBuilder):
     Builds the raw sample metadata data frame. Cleans some things and joins with the extraction df to complete the sample metadata df
     """
     EXTRACT_SAMP_NAME_COL = "samp_name"
+    REPLICATE_PARENT_KEY_NAME = "replicate_parent" # They key name created in the replicates_dict
     
     def __init__(self,
                  sample_name_metadata_col_name: str,
                  sample_metadata_file_neg_control_col_name: str,
                  sample_metadata_cast_no_col_name: str,
-                 replicate_parent_sample_metadata_col: str,
                  extraction_df: pd.DataFrame,
                  header: int = 0, 
                  sep: str = ',',
@@ -28,7 +30,6 @@ class SampleMetadataBuilder(BaseDfBuilder):
         sample_name_metadata_col_name is the name of the column in the sample metadata for the sample name (in the config.yaml)
         sample_metadata_file_neg_control_col_name is the name of the column in the sample metadata that specifies if its a negative control (specific to OME and in the config.yaml)
         sample_metadata_cast_no_col_name is the name of the column in the sample metadata file that refers to the cast (from the config.yaml file)
-        replicate_parent_sample_metadata_col is the name of the column in the sample metadata file that refers to the parent sample of the replicates.
         unwanted_cruise_code is optional and is the cruise code in the sample names that needs to be changed (from the config.yaml).
         desired_cruise_code is optional and is the cruise code in the sample names that is desired (from the config.yaml)
         extraction_df is the extraction data frame (from the extraction_builder)
@@ -40,14 +41,12 @@ class SampleMetadataBuilder(BaseDfBuilder):
         self.sample_name_metadata_col_name = sample_name_metadata_col_name
         self.sample_metadata_file_neg_control_col_name = sample_metadata_file_neg_control_col_name
         self.sample_metadata_cast_no_col_name = sample_metadata_cast_no_col_name
-        self.replicate_parent_sample_metadata_col = replicate_parent_sample_metadata_col
         self.unwanted_cruise_code = unwanted_cruise_code
         self.desired_cruise_code = desired_cruise_code
         self.extraction_df = extraction_df
         self.sample_metadata_df, self.nc_metadata_df = self.filter_metadata_dfs()
         self.replicates_dict = self.create_biological_replicates_dict()
         
-
     def filter_metadata_dfs(self):
 
         # Join sample metadata with extraction metadata to get samp_df
@@ -93,6 +92,9 @@ class SampleMetadataBuilder(BaseDfBuilder):
         metadata_df = metadata_df.dropna(
             subset=[self.sample_name_metadata_col_name])
 
+        if metadata_df.empty:
+            raise ValueError(f"Something went wrong in sample df join with extraction df - most likely cruise code or sample naming issues!")
+
         return metadata_df
     
     def transform_metadata_df(self):
@@ -113,7 +115,7 @@ class SampleMetadataBuilder(BaseDfBuilder):
         self.df[self.sample_metadata_cast_no_col_name] = self.df[self.sample_metadata_cast_no_col_name].apply(
             self.remove_extraneous_cast_no_chars)
         
-        if self.unwanted_cruise_code and self.desired_cruise_code:
+        if self.desired_cruise_code:
             self.df = fix_cruise_code_in_samp_names(df=self.df, 
                                                              unwanted_cruise_code=self.unwanted_cruise_code,
                                                              desired_cruise_code=self.desired_cruise_code,
@@ -158,14 +160,15 @@ class SampleMetadataBuilder(BaseDfBuilder):
 
         # Extract the parent E number and add to column called replicate_parent
         # Uses set() to remove any technical replicates (they will have the same)
-        self.sample_metadata_df[self.replicate_parent_sample_metadata_col] = self.sample_metadata_df[self.sample_name_metadata_col_name].apply(
+        self.sample_metadata_df[self.REPLICATE_PARENT_KEY_NAME] = self.sample_metadata_df[self.sample_name_metadata_col_name].apply(
             self.extract_replicate_sample_parent)
         # Group by replicate parent
-        replicate_dict = self.sample_metadata_df.groupby(self.replicate_parent_sample_metadata_col)[
+        replicate_dict = self.sample_metadata_df.groupby(self.REPLICATE_PARENT_KEY_NAME)[
             self.sample_name_metadata_col_name].apply(set).to_dict()
         # remove any key, value pairs where there aren't replicates and convert back to list
         replicate_dict = {replicate_parent: list(set(
             sample_name)) for replicate_parent, sample_name in replicate_dict.items() if len(sample_name) > 1}
+
 
         return replicate_dict
     

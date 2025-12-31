@@ -71,11 +71,27 @@ class SampleMetadataTransformer:
             .build()
         )
 
+        # Rule 4: biological_rep_relation (OME specific based on sample names)
+        rule_bio_rep_relation = (
+            TransformationBuilder('biological_rep_relation')
+            .when(lambda f, m, mt: (
+                mt == 'related' and
+                f == 'biological_rep_relation'
+            ))
+            .apply(
+                lambda df, f, m: self.mapper.add_biological_replicates_column(df, f, m),
+                mode = 'direct'
+            )
+            .for_mapping_type('related')
+            .build()
+        )
+
         # Register all rules
         self.pipeline.register_rules([
             rule_exact_mappings,
             rule_constant_mappings,
-            rule_samp_category
+            rule_samp_category,
+            rule_bio_rep_relation
         ])
 
         logger.info(f"Registered {len(self.pipeline.rules)} transformation rules")

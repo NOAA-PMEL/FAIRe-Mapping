@@ -28,7 +28,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     faire_neg_cont_type_name_col = "neg_cont_type"
     sample_mapping_sheet_name = "sampleMetadata"
     # extraction_mapping_sheet_name = "extractionMetadata"
-    replicate_parent_sample_metadata_col = "replicate_parent"
+    # replicate_parent_sample_metadata_col = "replicate_parent"
     faire_lat_col_name = "decimalLatitude"
     faire_lon_col_name = "decimalLongitude"
     # faire_samp_vol_we_dna_ext_col_name = "samp_vol_we_dna_ext"
@@ -89,7 +89,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.sample_metadata_df_builder = SampleMetadataBuilder(sample_name_metadata_col_name=self.sample_metadata_sample_name_column,
                                                                   sample_metadata_file_neg_control_col_name=self.sample_metadata_file_neg_control_col_name,
                                                                   sample_metadata_cast_no_col_name=self.sample_metadata_cast_no_col_name,
-                                                                  replicate_parent_sample_metadata_col=self.replicate_parent_sample_metadata_col,
                                                                   extraction_df=self.extraction_standardizer.extraction_df,
                                                                   csv_path=self.config_file['sample_metadata_file'],
                                                                   unwanted_cruise_code=self.unwanted_cruise_code,
@@ -115,6 +114,26 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             return replicates
         else:
             return faire_missing_val
+        
+    def add_biological_replicates_column(self, df: pd.DataFrame, faire_col: str, metadata_col: str) -> pd.Series:
+        """
+        Add biological replicates for all samples
+        """
+
+        # If replicates_dict is empty, return all as 'not applicable'
+        if not self.sample_metadata_df_builder.replicates_dict:
+            return pd.Series(['not applicable'] * len(df), index=df.index)
+        
+        parent_samples = df[self.sample_metadata_df_builder.REPLICATE_PARENT_KEY_NAME]
+
+        # Map parent samples to their replicate strings
+        replicate_strings = parent_samples.map(
+            lambda parent: ' | '.join(self.sample_metadata_df_builder.replicates_dict[parent])
+            if parent and parent in self.sample_metadata_df_builder.replicates_dict
+            else 'not applicable'
+        )
+
+        return replicate_strings
 
     def add_neg_cont_type(self, samp_name: str) -> dict:
         # Adds the negative control type to the neg_cont_type column of the FAIRe template based on strings in the sample name

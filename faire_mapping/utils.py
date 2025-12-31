@@ -41,6 +41,8 @@ def fix_cruise_code_in_samp_names(df: pd.DataFrame, unwanted_cruise_code: str, d
                 unwanted_cruise_code, 
                 desired_cruise_code
                 )
+        elif not unwanted_cruise_code: # If not unwanted cruise code, just append desired cruise code onto saple name
+             df[sample_name_col] = df[sample_name_col].apply(lambda x: x if str(x).endswith(desired_cruise_code) else str(x) + desired_cruise_code)
         else: # everything else just replaces with the desired cruise code
                 df[sample_name_col] = df[sample_name_col].str.replace(unwanted_cruise_code, desired_cruise_code)
 
