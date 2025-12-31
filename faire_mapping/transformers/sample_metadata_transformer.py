@@ -13,7 +13,7 @@ class SampleMetadataTransformer:
     """
     Transformer for sample metadata using the transformation pipeline
     """
-    def __init__(self, sample_mapper: FaireSampleMetadataMapper):
+    def __init__(self, sample_mapper: FaireSampleMetadataMapper, ome_auto_setup: bool = True):
         """
         Initialize the transformer
         """
@@ -22,11 +22,13 @@ class SampleMetadataTransformer:
             source_df=sample_mapper.sample_metadata_df_builder.sample_metadata_df,
             mapper=sample_mapper
         )
-        self._setup_rules()
 
-    def _setup_rules(self):
+        if ome_auto_setup:
+            self._ome_setup_default_rules()
+
+    def _ome_setup_default_rules(self):
         """ 
-        Setup transformation rules specific to sample metadata.
+        Setup OME defualt transformation rules.
         """
         # Rule 1: exact mappings
         rule_exact_mappings = (

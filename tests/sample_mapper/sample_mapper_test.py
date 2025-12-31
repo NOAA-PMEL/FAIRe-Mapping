@@ -164,7 +164,7 @@ def main() -> None:
     # sample_metadata = create_rc0083_sample_metadata()
 
     sample_mapper = FaireSampleMetadataMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/projects/AK_Carbon/rc0083/config.yaml')
-    transformer = SampleMetadataTransformer(sample_mapper=sample_mapper)
+    transformer = SampleMetadataTransformer(sample_mapper=sample_mapper, ome_auto_setup=True)
     sample_metadata_df = transformer.transform()
     sample_metadata_df.to_csv("/home/poseidon/zalmanek/FAIRe-Mapping/tests/sample_mapper/test.csv")
 
