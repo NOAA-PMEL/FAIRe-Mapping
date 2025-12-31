@@ -1,6 +1,7 @@
 from faire_mapping.transformers.transformation_pipeline import TransformationPipeline, TransformationBuilder
+from faire_mapping.transformers.rules import get_all_ome_default_rules
 from utils.sample_metadata_mapper import FaireSampleMetadataMapper
-from typing import Dict
+from typing import Dict, List
 import pandas as pd
 import logging
 
@@ -30,75 +31,11 @@ class SampleMetadataTransformer:
         """ 
         Setup OME defualt transformation rules.
         """
-        # Rule 1: exact mappings
-        rule_exact_mappings = (
-            TransformationBuilder('exact_mapping')
-            .when(lambda f, m, mt: mt == 'exact')
-            .apply(
-                lambda df, f, mt: self.mapper.apply_exact_mappings(df, f, mt),
-                mode='direct'
-            )
-            .for_mapping_type('exact')
-            .build())
-        
-        # Rule 2: constant_mappings
-        rule_constant_mappings = (
-            TransformationBuilder('constant_mapping')
-            .when(lambda f, m, mt: mt == 'constant')
-            .apply(
-                lambda df, f, mt: self.mapper.apply_static_mappings(df, f, mt),
-                mode='direct'
-            )
-            .for_mapping_type('constant')
-            .build()
-        )
+        rules=get_all_ome_default_rules(self.mapper)
+        self.pipeline.register_rules(rules)
+        logger.info(f"Registered {len(rules)} OME default transformation rules")
 
-        # Rule 3: Sample category (OME specific based on sample naming rules)
-        rule_samp_category = (
-            TransformationBuilder('samp_category')
-            .when(lambda f, m, mt: ( # mt is mapping type, f is faire col m is metadata col
-                f == self.mapper.faire_sample_category_name_col and 
-                m == self.mapper.sample_metadata_sample_name_column and
-                mt == 'related'
-            ))
-            .apply(
-                lambda row: self.mapper.add_samp_category_by_sample_name(
-                    metadata_row=row, 
-                    faire_col='samp_category', 
-                    metadata_col=self.mapper.sample_metadata_sample_name_column
-                ), 
-                mode='row'
-            )
-            .for_mapping_type(mapping_type='related')
-            .build()
-        )
-
-        # Rule 4: biological_rep_relation (OME specific based on sample names)
-        rule_bio_rep_relation = (
-            TransformationBuilder('biological_rep_relation')
-            .when(lambda f, m, mt: (
-                mt == 'related' and
-                f == 'biological_rep_relation'
-            ))
-            .apply(
-                lambda df, f, m: self.mapper.add_biological_replicates_column(df, f, m),
-                mode = 'direct'
-            )
-            .for_mapping_type('related')
-            .build()
-        )
-
-        # Register all rules
-        self.pipeline.register_rules([
-            rule_exact_mappings,
-            rule_constant_mappings,
-            rule_samp_category,
-            rule_bio_rep_relation
-        ])
-
-        logger.info(f"Registered {len(self.pipeline.rules)} transformation rules")
-
-    def add_custom_rule(self, rule: TransformationBuilder) -> 'SampleMetadataTransformer':
+    def add_custom_rule(self, rules: List[TransformationBuilder]) -> 'SampleMetadataTransformer':
         """
         Add a custom rule to the pipeline
 
@@ -108,7 +45,37 @@ class SampleMetadataTransformer:
         Returns:
             Self for method chaining
         """
-        self.pipeline.register_rule(rule.build())
+        for rule in rules:
+            self.pipeline.register_rule(rule.build())
+        logger.info(f"Added {len(rules)} custom rules")
+        return self
+    
+    def insert_rule_after(self, after_rule_name: str, new_rule: TransformationBuilder) -> 'SampleMetadataTransformer':
+        """
+        Insert a ruls after a specific existing rule
+        """
+        rule_names = self.pipeline.get_rule_names()
+
+        if after_rule_name not in rule_names:
+            raise ValueError(f"Rule '{after_rule_name}' not found in pipeline")
+        
+        index = rule_names.index(after_rule_name)
+        self.pipeline.rules.insert(index + 1, new_rule.build())
+        logger.info(f"Inserted rule after '{after_rule_name}")
+        return self
+    
+    def insert_rule_before(self, before_rule_name: str, new_rule: TransformationBuilder) -> 'SampleMetadataTransformer':
+        """
+        Insert a rule before a specific existing rule
+        """
+        rule_names = self.pipeline.get_rule_names()
+
+        if before_rule_name not in rule_names:
+            raise ValueError(f"Rule '{before_rule_name}' not found in pipeline")
+        
+        index = rule_names.index(before_rule_name)
+        self.pipeline.rules.insert(index + 1, new_rule.build())
+        logger.info(f"Inserted rule after '{before_rule_name}")
         return self
     
     def transform(self) -> pd.DataFrame:

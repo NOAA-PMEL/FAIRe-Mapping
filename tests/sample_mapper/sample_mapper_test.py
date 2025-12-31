@@ -165,6 +165,9 @@ def main() -> None:
 
     sample_mapper = FaireSampleMetadataMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/projects/AK_Carbon/rc0083/config.yaml')
     transformer = SampleMetadataTransformer(sample_mapper=sample_mapper, ome_auto_setup=True)
+    # transforer.insert_rule_before('biological_rep_relation', rule5)
+    # additional_rules = [rule6, rule7]
+    # transformer.add_custom_rules(additional_rules)
     sample_metadata_df = transformer.transform()
     sample_metadata_df.to_csv("/home/poseidon/zalmanek/FAIRe-Mapping/tests/sample_mapper/test.csv")
 
