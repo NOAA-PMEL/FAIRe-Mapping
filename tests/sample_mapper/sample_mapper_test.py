@@ -2,9 +2,7 @@
 from utils.sample_metadata_mapper import FaireSampleMetadataMapper
 import pandas as pd
 import numpy as np
-
-# TODO: add related mapping to tot_depth_water_col when GDBC downloads when net cdf finishes copying
-
+from faire_mapping.transformers.sample_metadata_transformer import SampleMetadataTransformer
 
 def create_rc0083_sample_metadata():
     
@@ -163,7 +161,15 @@ def create_rc0083_sample_metadata():
 
 def main() -> None:
 
-    sample_metadata = create_rc0083_sample_metadata()
+    # sample_metadata = create_rc0083_sample_metadata()
+
+    sample_mapper = FaireSampleMetadataMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/projects/AK_Carbon/rc0083/config.yaml')
+    transformer = SampleMetadataTransformer(sample_mapper=sample_mapper)
+    sample_metadata_df = transformer.transform()
+    sample_metadata_df.to_csv("/home/poseidon/zalmanek/FAIRe-Mapping/tests/sample_mapper/test.csv")
+
+
+    
                 
 if __name__ == "__main__":
     main()

@@ -111,26 +111,30 @@ class OmeFaireMapper:
                 new_value = ' | '.join(value)
                 return new_value
     
-    def apply_exact_mappings(self, metadata_row, faire_col):
+    def apply_exact_mappings(self, df: pd.DataFrame, faire_col: str, metadata_col: str) -> pd.Series:
+        ## Updated for new structure
 
         if faire_col in self.drop_down_value_df['term_name'].values:
-            metadata_row = self.check_cv_word(value=metadata_row, faire_attribute=faire_col)
+            return df[metadata_col].apply(
+                lambda value: self.check_cv_word(
+                    value=value,
+                    faire_attribute=faire_col
+                )
+            )
         else:
-            return metadata_row
-
-        return metadata_row
+            return df[metadata_col]
     
-    def apply_static_mappings(self, faire_col: str, static_value) -> dict:
-        # returns static_value for row
-        # TODO: need to adjust this for controls that weren't necessarily collected in the wild (e.g. habitat_natural_articicial_0_1, 
-        # geo_loc_name?, env scales, etc.)
+    def apply_static_mappings(self, df: pd.DataFrame, faire_col: str, static_value: str) -> pd.Series:
+        # Updated for new structure
 
         # check controlled vocabulary if column uses controlled vocabulary
         if faire_col in self.drop_down_value_df['term_name'].values:
-            static_value = self.check_cv_word(value=static_value, faire_attribute=faire_col)
+            checked_value = self.check_cv_word(value=static_value, faire_attribute=faire_col)
+        else:
+            checked_value = static_value
         # elif faire_col == 'geo_loc_name':
         #     self.check_and_add_geo_loc(formatted_geo_loc=static_value, new_row=new_row, faire_col=faire_col)
-        return static_value
+        return pd.Series([checked_value] * len(df), index=df.index)
     
     def map_using_two_or_three_cols_if_one_is_na_use_other(self, metadata_row: pd.Series, desired_col_name: str, 
                                                   use_if_na_col_name: str, transform_use_col_to_date_format=False,

@@ -12,28 +12,29 @@ class TransformationRule:
     Represents a single transformation rule.
     """
     name: str
-    condition: Callable[[str, str]]
+    condition: Callable[[str, str], bool]
     transform: Callable
+    mapping_type: Optional[List[str]] # Which mapping type this rule applies to (exact, related, or constant)
     apply_mode: str = 'row' # 'row', 'column', or 'direct'
     also_update_source: bool = False
 
-    def matches(self, faire_col: str, metadata_col: str) -> bool:
+    def matches(self, faire_col: str, metadata_col: str, mapping_type) -> bool:
         """
         Check if this rule applies to the given columns.
         """
         try:
-            return self.condition(faire_col, metadata_col)
+            return self.condition(faire_col, metadata_col, mapping_type)
         except Exception as e:
             logger.warning(f"Error in condition check for rule '{self.name}': {e}")
 
 
-    def execute (self, df: pd.DataFrame, faire_col: str, metadata_col: str) -> pd.Series:
+    def execute(self, df: pd.DataFrame, faire_col: str, metadata_col: str, mapping_type) -> pd.Series:
         """
         Execute the transformation
         """
         try:
             if self.apply_mode == 'row':
-                return df.apply(lambda row: self.transform((row), axis=1))
+                return df.apply(lambda row: self.transform(row), axis=1)
             elif self.apply_mode == 'column':
                 return self.transform()
             else: # direct
@@ -50,6 +51,7 @@ class TransformationBuilder:
         self.name = name
         self._condition = None
         self._transform = None
+        self._mapping_type = None
         self._apply_mode = 'row'
         self._also_update_source = False
 
@@ -75,6 +77,13 @@ class TransformationBuilder:
         self._also_update_source = update
         return self
     
+    def for_mapping_type(self, mapping_type: str) -> 'TransformationBuilder':
+        """
+        Restrict this rule to specific mapping type
+        """
+        self._mapping_type = mapping_type
+        return self
+    
     def build(self) -> 'TransformationBuilder':
         """
         Build the transformation rule
@@ -86,6 +95,7 @@ class TransformationBuilder:
             name=self.name,
             condition=self._condition,
             transform=self._transform,
+            mapping_type=self._mapping_type,
             apply_mode=self._apply_mode,
             also_update_source=self._also_update_source
         )
@@ -98,7 +108,7 @@ class TransformationPipeline:
 
         self.source_df = source_df
         self.mapper = mapper
-        self.rules = List[TransformationRule] = []
+        self.rules: List[TransformationRule] = []
         self.results: Dict[str, pd.Series] = {}
 
     def register_rule(self, rule: TransformationRule) -> 'TransformationPipeline':
@@ -120,31 +130,34 @@ class TransformationPipeline:
     def execute(self, mapping_dict: Dict[str, str]) -> Dict[str, pd.Series]:
         """
         Executes all transformations based on the mapping dictionary.
+        mapping_dict is the nested mapping dictionary from sampleMapper (e.g. {'exact': 'faire_col': 'metadata_col'}, 'related': {faire_col: metadata_col}})
         """
         logger.info(f"Executing pipeline with {len(mapping_dict)} mappings")
 
-        for faire_col, metadata_col in mapping_dict.items():
-            matched = False
+        for mapping_type, mappings in mapping_dict.items():
+            logger.info(f"Processing '{mapping_type}' mappings ({len(mappings)} columns)")
+            for faire_col, metadata_col in mappings.items():
+                matched = False
 
-            # Find the first matching rule
-            for rule in self.rules:
-                if rule in self.rules:
-                    if rule.matches(faire_col, metadata_col):
-                        logger.debug(f"Applying rule '{rule.name}' to column '{faire_col}'")
+                # Find the first matching rule
+                for rule in self.rules:
+                    if rule in self.rules:
+                        if rule.matches(faire_col, metadata_col, mapping_type):
+                            logger.debug(f"Applying rule '{rule.name}' to column '{faire_col}' (type: {mapping_type})")
 
-                        result = rule.execute(self.source_df, faire_col, metadata_col)
-                        self.results[faire_col] = result
+                            result = rule.execute(self.source_df, faire_col, metadata_col, mapping_type)
+                            self.results[faire_col] = result
 
-                        # Optionally update the source dataframe
-                        if rule.also_update_source:
-                            self.source_df[faire_col] = result
-                            logger.debug(f"Updated source dataframe column '{faire_col}'")
+                            # Optionally update the source dataframe
+                            if rule.also_update_source:
+                                self.source_df[faire_col] = result
+                                logger.debug(f"Updated source dataframe column '{faire_col}'")
 
-                        matched = True
-                        break # stop after first match
+                            matched = True
+                            break # stop after first match
 
-            if not matched:
-                logger.warning(f"No rule matched for column '{faire_col}'")
+                if not matched:
+                    logger.warning(f"No rule matched for column '{faire_col}'")
 
         logger.info(f"Pipeline execution complete. {len(self.results)} columns transformed.")
         return self.results
