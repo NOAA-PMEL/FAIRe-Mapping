@@ -288,16 +288,29 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         return geo_loc
 
-    def find_geo_loc_by_lat_lon(self, metadata_row: pd.Series, metadata_lat_col: str, metadata_lon_col: str) -> str:
+    def find_geo_loc_by_lat_lon(self, metadata_row: pd.Series, metadata_cols: str) -> str:
         # World Seas IHO downloaded from: https://marineregions.org/downloads.php
+        """
+        Updated for new code structure where metadata_cols is a pipe separated string 
+        e.g. 'lon | lat', where lon comes first, followed by lat.
+        """
 
         print(
             f"Getting geo_loc_name for {metadata_row[self.sample_metadata_sample_name_column]}")
-        lat = metadata_row.get(metadata_lat_col)
-        lon = metadata_row.get(metadata_lon_col)
+        cols = [col.strip() for col in metadata_cols.split('|')]
+        if len(cols) != 2:
+            raise ValueError(f"Expected 2 columns separated by '|' with lat followed by lot, got: {metadata_cols}")
+        
+        lat = metadata_row.get(cols[1])
+        lon = metadata_row.get(cols[0])
+
+        # Handle missing values
+        if pd.isna(lat) or pd.isna(lon):
+            return None
 
         marine_regions = gpd.read_file(
             "/home/poseidon/zalmanek/FAIRe-Mapping/utils/World_Seas_IHO_v3/World_Seas_IHO_v3.shp")
+        
         # create a point object
         point = Point(lon, lat)
 
@@ -322,8 +335,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                         f'There is no geographic location in INSDC that matches {geo_loc_name}, check sea_name and try again')
                 else:
                     return geo_loc
-            # else:
-            #     raise ValueError(f"No sea is found at the lat/lon ({lat}/{lon}) of sample: {metadata_row[self.sample_metadata_sample_name_column]}")
+        # If no region contains the point return None
+        return None
 
     def calculate_env_local_scale(self, depth: float) -> str:
         # uses the depth to assign env_local_scale

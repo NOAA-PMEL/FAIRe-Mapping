@@ -1,4 +1,4 @@
-from faire_mapping.transformers.transformation_pipeline import TransformationPipeline, TransformationBuilder
+from faire_mapping.transformers.transformation_pipeline import TransformationPipeline, TransformationBuilder, TransformationRule
 from faire_mapping.transformers.rules import get_all_ome_default_rules
 from utils.sample_metadata_mapper import FaireSampleMetadataMapper
 from typing import Dict, List
@@ -35,7 +35,7 @@ class SampleMetadataTransformer:
         self.pipeline.register_rules(rules)
         logger.info(f"Registered {len(rules)} OME default transformation rules")
 
-    def add_custom_rule(self, rules: List[TransformationBuilder]) -> 'SampleMetadataTransformer':
+    def add_custom_rules(self, rules: List[TransformationBuilder]) -> 'SampleMetadataTransformer':
         """
         Add a custom rule to the pipeline
 
@@ -46,7 +46,10 @@ class SampleMetadataTransformer:
             Self for method chaining
         """
         for rule in rules:
-            self.pipeline.register_rule(rule.build())
+            if isinstance(rule, TransformationRule):
+                self.pipeline.register_rule(rule)
+            else:
+                self.pipeline.register_rule(rule.build())
         logger.info(f"Added {len(rules)} custom rules")
         return self
     
