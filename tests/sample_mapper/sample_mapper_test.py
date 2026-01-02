@@ -9,7 +9,8 @@ from faire_mapping.transformers.rules import (
     get_eventDate_iso8601_rule,
     get_date_duration_rule,
     get_depth_from_pressure,
-    get_minimum_depth_from_max_minus_1m
+    get_minimum_depth_from_max_minus_1m,
+    get_altitude_from_maxdepth_and_totdepthcol
 )
 
 def create_rc0083_sample_metadata():
@@ -180,7 +181,8 @@ def main() -> None:
         get_eventDate_iso8601_rule(sample_mapper),
         get_date_duration_rule(sample_mapper),
         get_depth_from_pressure(sample_mapper),
-        get_minimum_depth_from_max_minus_1m(sample_mapper)
+        get_minimum_depth_from_max_minus_1m(sample_mapper),
+        get_altitude_from_maxdepth_and_totdepthcol(sample_mapper)
                         ]
     transformer.add_custom_rules(additional_rules)
     sample_metadata_df = transformer.transform()

@@ -81,3 +81,44 @@ def get_minimum_depth_from_max_minus_1m(mapper: FaireSampleMetadataMapper):
             .build()
         )
 
+def get_altitude_from_maxdepth_and_totdepthcol(mapper: FaireSampleMetadataMapper):
+    """
+    Rule for calculating the altitude from the maximumDepthInMeters and tot_depth_col
+    Expects metadata_col to be 'maximumDepthInMeters | tot_depth_water_col.
+    """
+    def apply_altitude_calculation_from_maxdepth_and_totdepth(df, faire_col, metadata_col):
+            """
+            Apply altitude calculation using the mapper's calculate_altitude method.
+            """
+            metadata_cols = metadata_col.split(' | ')
+
+            if len(metadata_cols) != 2: 
+                logger.error(f"Expected 2 altitude related columns separated by '|' for altitude calculation with maximumDepthInMeters column first, followed by tot_dept_water_col column second, got: {metadata_col}")
+                raise ValueError(f"Altitude calculation requires format 'maximumDepthInMeters | tot_depth_water_col'")
+                 
+            max_depth_col = metadata_cols[0]
+            tot_depth_col = metadata_cols[1]
+            
+            # Apply the calculation to each row
+            return df.apply(
+                lambda row: mapper.calculate_altitude(
+                    metadata_row=row,
+                    depth_col=max_depth_col,
+                    tot_depth_col=tot_depth_col
+                ),
+                axis=1
+            )
+    return (
+            TransformationBuilder('altitude_from_depth_and_tot_depth')
+            .when(lambda f, m, mt: (
+                f == 'altitude' and
+                mt == 'related'
+            ))
+            .apply(
+                apply_altitude_calculation_from_maxdepth_and_totdepth,
+                mode='direct'
+            )
+            .for_mapping_type('related')
+            .build()
+        )
+

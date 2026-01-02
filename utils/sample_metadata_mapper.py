@@ -258,7 +258,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             min_depth = max_depth - 1
         else:
             min_depth = max_depth
-        return min_depth
+        return round(min_depth, 2)
 
 
     def format_geo_loc(self, metadata_row: str, geo_loc_metadata_col: str) -> dict:

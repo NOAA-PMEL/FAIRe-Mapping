@@ -163,7 +163,6 @@ class TransformationPipeline:
                             self.source_df[faire_col] = result
 
                         processed_columns.add(faire_col)
-                        break
 
         # Check for unprocess columns
         if 'related' in mapping_dict:

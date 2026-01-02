@@ -11,7 +11,7 @@ def get_exact_mappings_rule(mapper: FaireSampleMetadataMapper):
         TransformationBuilder('exact_mapping')
         .when(lambda f, m, mt: mt == 'exact')
         .apply(
-            lambda df, f, mt: mapper.apply_exact_mappings(df, f, mt),
+            lambda df, f, m: mapper.apply_exact_mappings(df, f, m),
             mode='direct'
         )
         .for_mapping_type('exact')
@@ -26,7 +26,7 @@ def get_constant_mappings_rule(mapper: FaireSampleMetadataMapper):
         TransformationBuilder('constant_mapping')
         .when(lambda f, m, mt: mt == 'constant')
         .apply(
-            lambda df, f, mt: mapper.apply_static_mappings(df, f, mt),
+            lambda df, f, m: mapper.apply_static_mappings(df, f, m),
             mode='direct'
         )
         .for_mapping_type('constant')

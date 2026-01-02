@@ -18,7 +18,8 @@ from .date_time_rules import(
 
 from .measurement_calculation_rules import(
     get_depth_from_pressure,
-    get_minimum_depth_from_max_minus_1m
+    get_minimum_depth_from_max_minus_1m,
+    get_altitude_from_maxdepth_and_totdepthcol
 )
 __all__ = [
     'get_all_ome_default_rules',
@@ -31,5 +32,6 @@ __all__ = [
     'get_eventDate_iso8601_rule',
     'get_date_duration_rule',
     'get_depth_from_pressure',
-    'get_minimum_depth_from_max_minus_1m'
+    'get_minimum_depth_from_max_minus_1m',
+    'get_altitude_from_maxdepth_and_totdepthcol'
 ]
