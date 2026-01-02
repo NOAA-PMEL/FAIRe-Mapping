@@ -178,11 +178,11 @@ def main() -> None:
         # get_geo_loc_name_by_lat_lon_rule(sample_mapper),
         # get_env_medium_for_coastal_waters_by_geo_loc_rule(sample_mapper),
         get_eventDate_iso8601_rule(sample_mapper),
-        get_date_duration_rule(sample_mapper),
-        get_depth_from_pressure(sample_mapper),
-        get_minimum_depth_from_max_minus_1m(sample_mapper)
+        get_depth_from_pressure(sample_mapper)
                         ]
     transformer.add_custom_rules(additional_rules)
+    transformer.insert_rule_after(after_rule_name='eventDate_to_iso8601', new_rule=get_date_duration_rule(sample_mapper))
+    transformer.insert_rule_after(after_rule_name='depth_from_pressure_and_lat', new_rule=get_minimum_depth_from_max_minus_1m(sample_mapper))
     sample_metadata_df = transformer.transform()
     sample_metadata_df.to_csv("/home/poseidon/zalmanek/FAIRe-Mapping/tests/sample_mapper/test.csv")
 

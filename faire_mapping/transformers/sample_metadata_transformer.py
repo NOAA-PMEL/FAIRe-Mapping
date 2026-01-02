@@ -63,7 +63,10 @@ class SampleMetadataTransformer:
             raise ValueError(f"Rule '{after_rule_name}' not found in pipeline")
         
         index = rule_names.index(after_rule_name)
-        self.pipeline.rules.insert(index + 1, new_rule.build())
+        if isinstance(new_rule, TransformationRule):
+            self.pipeline.rules.insert(index + 1, new_rule)
+        else:
+            self.pipeline.rules.insert(index + 1, new_rule.build())
         logger.info(f"Inserted rule after '{after_rule_name}")
         return self
     

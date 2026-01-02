@@ -132,35 +132,46 @@ class TransformationPipeline:
         Executes all transformations based on the mapping dictionary.
         mapping_dict is the nested mapping dictionary from sampleMapper (e.g. {'exact': 'faire_col': 'metadata_col'}, 'related': {faire_col: metadata_col}})
         """
-        logger.info(f"Executing pipeline with {len(mapping_dict)} mappings")
+        logger.info(f"Executing pipeline with {len(self.rules)} rules")
 
-        for mapping_type, mappings in mapping_dict.items():
-            logger.info(f"Processing '{mapping_type}' mappings ({len(mappings)} columns)")
-            for faire_col, metadata_col in mappings.items():
-                matched = False
+        processed_columns = set()
 
-                # Find the first matching rule
-                for rule in self.rules:
-                    if rule in self.rules:
-                        if rule.matches(faire_col, metadata_col, mapping_type):
-                            logger.debug(f"Applying rule '{rule.name}' to column '{faire_col}' (type: {mapping_type})")
+        # Iterate through rules in registration order
+        for rule in self.rules:
+            logger.debug(f"Checking rule: {rule.name}")
 
-                            result = rule.execute(self.source_df, faire_col, metadata_col, mapping_type)
-                            self.results[faire_col] = result
+            # For each rule, check all mappings to find matches
+            for mapping_type, mappings in mapping_dict.items():
+                # skip if rule doesn't apply to this mapping type
+                if rule.mapping_type is not None and mapping_type not in rule.mapping_type:
+                    continue
+        
+                for faire_col, metadata_col in mappings.items():
+                    # Skip if already processed
+                    if faire_col in processed_columns:
+                        continue
 
-                            # Optionally update the source dataframe
-                            if rule.also_update_source:
-                                self.source_df[faire_col] = result
-                                logger.debug(f"Updated source dataframe column '{faire_col}'")
+                    # Check if rule matches this column
+                    if rule.matches(faire_col, metadata_col, mapping_type):
+                        logger.info(f"Applying rule '{rule.name}' to column '{faire_col}'")
 
-                            matched = True
-                            break # stop after first match
+                        result = rule.execute(self.source_df, faire_col, metadata_col, mapping_type)
+                        self.results[faire_col] = result
 
-                if not matched:
-                    logger.warning(f"No rule matched for column '{faire_col}'")
+                        processed_columns.add(faire_col)
+                        break
+        # Check for unprocess columns
+        all_columns = set()
+        for mappings in mapping_dict.values():
+            all_columns.update(mappings.keys())
 
-        logger.info(f"Pipeline execution complete. {len(self.results)} columns transformed.")
+        unprocessed = all_columns - processed_columns
+        if unprocessed:
+            logger.warning(f"No rules matched for columns: {unprocessed}")
+
+        logger.infor(f"Pipeline exectuion complete. {len(self.results)} columns transformed.")
         return self.results
+                
     
     def get_results_df(self) -> pd.DataFrame:
         """
