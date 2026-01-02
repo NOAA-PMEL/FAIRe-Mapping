@@ -47,14 +47,15 @@ def get_env_medium_for_coastal_waters_by_geo_loc_rule(mapper: FaireSampleMetadat
     Expects metadata_col to be in fromat: 'default_value | 'coastal_value'
     Sets coastal_value if geo_loc_name contains 'Coastal Waters of Southeast Alaska,
     otherwise sets default value. Very specific to something Sean asked for for the RC0083
-    cruise data. 
+    cruise data. Wrote the function in here instead of in sample mapper because this is 
+    so specific.
     """
     def apply_env_medium(df, faire_col, metadata_col):
         """
         Apply env_medium transformation based on geo_loc_name.
         """
         # split the metadata column to get the two possible values
-        env_mediums = metadata_col.split('|').strip()
+        env_mediums = metadata_col.split(' | ')
 
         if len(env_mediums) != 2:
             logger.error(f"Expected 2 values separated by ' | ' for env_medium, got: {metadata_col}")
@@ -79,7 +80,7 @@ def get_env_medium_for_coastal_waters_by_geo_loc_rule(mapper: FaireSampleMetadat
             .when(lambda f, m, mt: (
                 f == 'env_medium' and
                 mt == 'related' and
-                '|' in mt
+                '|' in m
             ))
             .apply(apply_env_medium,
                    mode='direct'
