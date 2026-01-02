@@ -4,7 +4,8 @@ import pandas as pd
 import numpy as np
 from faire_mapping.transformers.sample_metadata_transformer import SampleMetadataTransformer
 from faire_mapping.transformers.rules import (
-    get_geo_loc_name_by_lat_lon_rule
+    get_geo_loc_name_by_lat_lon_rule,
+    get_env_medium_for_coastal_waters_by_geo_loc_rule
 )
 
 def create_rc0083_sample_metadata():
@@ -169,7 +170,8 @@ def main() -> None:
     sample_mapper = FaireSampleMetadataMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/projects/AK_Carbon/rc0083/config.yaml')
     transformer = SampleMetadataTransformer(sample_mapper=sample_mapper, ome_auto_setup=True)
     # transforer.insert_rule_before('biological_rep_relation', rule5)
-    additional_rules = [get_geo_loc_name_by_lat_lon_rule(sample_mapper)]
+    additional_rules = [get_geo_loc_name_by_lat_lon_rule(sample_mapper),
+                        get_env_medium_for_coastal_waters_by_geo_loc_rule(sample_mapper)]
     transformer.add_custom_rules(additional_rules)
     sample_metadata_df = transformer.transform()
     sample_metadata_df.to_csv("/home/poseidon/zalmanek/FAIRe-Mapping/tests/sample_mapper/test.csv")

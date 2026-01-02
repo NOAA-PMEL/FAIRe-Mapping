@@ -6,8 +6,9 @@ from .ome_sample_default_rules import (
     get_exact_mappings_rule
 )
 
-from .based_on_two_cols_rules import(
-    get_geo_loc_name_by_lat_lon_rule
+from .geography_rules import(
+    get_geo_loc_name_by_lat_lon_rule,
+    get_env_medium_for_coastal_waters_by_geo_loc_rule
 )
 
 __all__ = [
@@ -16,5 +17,6 @@ __all__ = [
     'get_biological_rep_relation_rule',
     'get_constant_mappings_rule',
     'get_exact_mappings_rule',
-    'get_geo_loc_name_by_lat_lon_rule'
+    'get_geo_loc_name_by_lat_lon_rule',
+    'get_env_medium_for_coastal_waters_by_geo_loc_rule'
 ]

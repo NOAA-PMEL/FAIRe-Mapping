@@ -11,12 +11,12 @@ class TransformationRule:
     """
     Represents a single transformation rule.
     """
-    name: str
-    condition: Callable[[str, str], bool]
-    transform: Callable
-    mapping_type: Optional[List[str]] # Which mapping type this rule applies to (exact, related, or constant)
-    apply_mode: str = 'row' # 'row', 'column', or 'direct'
-    also_update_source: bool = False
+    name: str # Human-readable identifier for the transformation rule
+    condition: Callable[[str, str], bool] # Function that determins if rule applies
+    transform: Callable # Functin that does the actual transformation
+    mapping_type: Optional[str] # Which mapping type this rule applies to (exact, related, or constant)
+    apply_mode: str = 'row' # 'row', 'column', or 'direct' (direct on whole data frame, row is by row, column on entire column)
+    also_update_source: bool = False # updates the original df, used if other rules depend on the output of a previous rule
 
     def matches(self, faire_col: str, metadata_col: str, mapping_type) -> bool:
         """
