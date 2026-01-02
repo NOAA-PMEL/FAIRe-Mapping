@@ -122,3 +122,70 @@ def get_altitude_from_maxdepth_and_totdepthcol(mapper: FaireSampleMetadataMapper
             .build()
         )
 
+def get_env_local_scale_by_depth(mapper: FaireSampleMetadataMapper):
+    """
+    Rule for calculating the env_local_scale from the depth
+    Expects metadata_col to be 'depth'.
+    """
+    def apply_env_local_scale_calculation_from_depth(df, faire_col, metadata_col):
+            """
+            Apply env_local_scale calculation using the mapper's calculate_env_local_scale method.
+            """
+            # Apply the calculation to each row
+            return df[metadata_col].apply(mapper.calculate_env_local_scale)
+    return (
+            TransformationBuilder('env_local_scale_from_depth')
+            .when(lambda f, m, mt: (
+                f == 'env_local_scale' and
+                mt == 'related'
+            ))
+            .apply(
+                apply_env_local_scale_calculation_from_depth,
+                mode='direct'
+            )
+            .for_mapping_type('related')
+            .build()
+        )
+
+def get_dna_yield_from_conc_and_vol(mapper: FaireSampleMetadataMapper):
+    """
+    Rule for calculating the dna_yield from the extraction_conc and samp_vol
+    Expects metadata_col to be 'extraction_con | samp_vol'.
+    Note that whatever col is put for the extraction_conc is not important as the 
+    pipeline standardizes the extraction_conc col in the extraciton, builder, but
+    this rule still asks that its placed in the metadata_col so it makes sense.
+    """
+    def apply_dna_yield_calculation(df, faire_col, metadata_col):
+            """
+            Apply dna_yield calculation using the mapper's calculate_dna_yield method.
+            """
+            metadata_cols = metadata_col.split(' | ')
+
+            if len(metadata_cols) != 2: 
+                logger.error(f"Expected 2 dna_yield related columns separated by '|' for dna_yield calculation with extraction_conc column first, followed by samp_vol column second, got: {metadata_col}")
+                raise ValueError(f"dna_yield calculation requires format 'extraction_conc | samp_vol'")
+                 
+            samp_vol_col = metadata_cols[1]
+            
+            # Apply the calculation to each row
+            return df.apply(
+                lambda row: mapper.calculate_dna_yield(
+                    metadata_row=row,
+                    sample_vol_metadata_col=samp_vol_col
+                ),
+                axis=1
+            )
+    return (
+            TransformationBuilder('dna_yield_from_conc_and_vol')
+            .when(lambda f, m, mt: (
+                f == 'dna_yield' and
+                mt == 'related'
+            ))
+            .apply(
+                apply_dna_yield_calculation,
+                mode='direct'
+            )
+            .for_mapping_type('related')
+            .build()
+        )
+

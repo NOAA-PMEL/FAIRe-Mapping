@@ -16,10 +16,11 @@ def get_eventDate_iso8601_rule(mapper: FaireSampleMetadataMapper):
         """
         return df[metadata_col].apply(mapper.convert_date_to_iso8601)
     
+    date_fields = ['eventDate', 'date_ext']
     return (
         TransformationBuilder('eventDate_to_iso8601')
         .when(lambda f, m, mt: 
-            f == 'eventDate' and 
+            f in date_fields and 
             mt == 'related')
         .apply(
             apply_date_conversion,

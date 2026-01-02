@@ -3,7 +3,7 @@ from .ome_sample_default_rules import (
     get_samp_category_rule,
     get_biological_rep_relation_rule,
     get_constant_mappings_rule,
-    get_exact_mappings_rule
+    get_exact_mappings_rule,
 )
 
 from .geography_rules import(
@@ -19,7 +19,9 @@ from .date_time_rules import(
 from .measurement_calculation_rules import(
     get_depth_from_pressure,
     get_minimum_depth_from_max_minus_1m,
-    get_altitude_from_maxdepth_and_totdepthcol
+    get_altitude_from_maxdepth_and_totdepthcol,
+    get_env_local_scale_by_depth,
+    get_dna_yield_from_conc_and_vol
 )
 __all__ = [
     'get_all_ome_default_rules',
@@ -33,5 +35,7 @@ __all__ = [
     'get_date_duration_rule',
     'get_depth_from_pressure',
     'get_minimum_depth_from_max_minus_1m',
-    'get_altitude_from_maxdepth_and_totdepthcol'
+    'get_altitude_from_maxdepth_and_totdepthcol',
+    'get_env_local_scale_by_depth',
+    'get_dna_yield_from_conc_and_vol'
 ]

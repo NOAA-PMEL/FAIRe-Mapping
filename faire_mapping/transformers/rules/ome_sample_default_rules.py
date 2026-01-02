@@ -59,3 +59,4 @@ def get_all_ome_default_rules(mapper: FaireSampleMetadataMapper) -> List:
     ]
     logger.info(f"Created {len(rules)} OME default rules")
     return rules
+
