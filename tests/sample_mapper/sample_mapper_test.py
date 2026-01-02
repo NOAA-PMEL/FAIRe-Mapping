@@ -12,7 +12,9 @@ from faire_mapping.transformers.rules import (
     get_minimum_depth_from_max_minus_1m,
     get_altitude_from_maxdepth_and_totdepthcol,
     get_env_local_scale_by_depth,
-    get_dna_yield_from_conc_and_vol
+    get_dna_yield_from_conc_and_vol,
+    get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col,
+    get_line_id_from_standardized_station
 )
 
 def create_rc0083_sample_metadata():
@@ -186,7 +188,9 @@ def main() -> None:
         get_minimum_depth_from_max_minus_1m(sample_mapper),
         get_altitude_from_maxdepth_and_totdepthcol(sample_mapper),
         get_env_local_scale_by_depth(sample_mapper),
-        get_dna_yield_from_conc_and_vol(sample_mapper)
+        get_dna_yield_from_conc_and_vol(sample_mapper),
+        get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col(sample_mapper),
+        get_line_id_from_standardized_station(sample_mapper)
                         ]
     transformer.add_custom_rules(additional_rules)
     sample_metadata_df = transformer.transform()

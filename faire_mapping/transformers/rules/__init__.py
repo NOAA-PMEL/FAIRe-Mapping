@@ -23,6 +23,14 @@ from .measurement_calculation_rules import(
     get_env_local_scale_by_depth,
     get_dna_yield_from_conc_and_vol
 )
+
+from .miscellaneous_rules import(
+    get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col
+)
+
+from .station_rules import(
+    get_line_id_from_standardized_station
+)
 __all__ = [
     'get_all_ome_default_rules',
     'get_samp_category_rule',
@@ -37,5 +45,7 @@ __all__ = [
     'get_minimum_depth_from_max_minus_1m',
     'get_altitude_from_maxdepth_and_totdepthcol',
     'get_env_local_scale_by_depth',
-    'get_dna_yield_from_conc_and_vol'
+    'get_dna_yield_from_conc_and_vol',
+    'get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col',
+    'get_line_id_from_standardized_station'
 ]
