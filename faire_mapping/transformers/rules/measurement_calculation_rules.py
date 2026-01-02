@@ -59,7 +59,6 @@ def get_minimum_depth_from_max_minus_1m(mapper: FaireSampleMetadataMapper):
             """
             Apply depth calculation using the mapper's convert_min_depth_from_minus_one_meter method.
             """
-            print(f"DEBUG: Looking for {metadata_col} in columns: {df.columns.tolist()}")
             # Apply the calculation to each row
             return df.apply(
                 lambda row: mapper.convert_min_depth_from_minus_one_meter(

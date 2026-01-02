@@ -158,18 +158,22 @@ class TransformationPipeline:
                         result = rule.execute(self.source_df, faire_col, metadata_col, mapping_type)
                         self.results[faire_col] = result
 
+                        # Update source column
+                        if rule.also_update_source:
+                            self.source_df[faire_col] = result
+
                         processed_columns.add(faire_col)
                         break
+
         # Check for unprocess columns
-        all_columns = set()
-        for mappings in mapping_dict.values():
-            all_columns.update(mappings.keys())
+        if 'related' in mapping_dict:
+            related_columns = set(mapping_dict['related'].keys())
+            unprocessed_related = related_columns - processed_columns
+        if unprocessed_related:
+            for col in unprocessed_related:
+                logger.warning(f"No rules matched for: {col}")
 
-        unprocessed = all_columns - processed_columns
-        if unprocessed:
-            logger.warning(f"No rules matched for columns: {unprocessed}")
-
-        logger.infor(f"Pipeline exectuion complete. {len(self.results)} columns transformed.")
+        logger.info(f"Pipeline exectuion complete. {len(self.results)} columns transformed.")
         return self.results
                 
     
