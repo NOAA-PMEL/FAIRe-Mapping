@@ -1,0 +1,6 @@
+from faire_mapping.mapping_builders.sample_extract_mapping_dict_builder import SampleExtractionMappingDictBuilder
+
+mapping_file_id = "1lnHUaAVj2ybyiruvBUY-vxtYpBM8xyAnsxHaC-y3W08"
+google_sheet_json_cred = "/home/poseidon/zalmanek/FAIRe-Mapping/credentials.json"
+sample_mapping_builder = SampleExtractionMappingDictBuilder(google_sheet_mapping_file_id=mapping_file_id, google_sheet_json_cred=google_sheet_json_cred)
+print(sample_mapping_builder.sample_mapping_dict)

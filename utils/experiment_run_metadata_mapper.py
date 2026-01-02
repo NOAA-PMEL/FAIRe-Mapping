@@ -2,6 +2,7 @@ from .faire_mapper import OmeFaireMapper
 from .lists import marker_to_assay_mapping, marker_to_shorthand_mapping, mismatch_sample_names_metadata_to_raw_data_files_dict, update_cruise_codes
 from .custom_exception import NoAcceptableAssayMatch
 from pathlib import Path
+from faire_mapping.utils import str_replace_for_samps
 import yaml
 import pandas as pd
 import os
@@ -157,7 +158,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             exp_df = exp_df[~exp_df[self.run_metadata_marker_col_name].str.contains(pattern, case=True, na=False)]
       
         # Fix sample names that mismatch from sequencing metatdata, to raw files, to asv counts in the metadata file
-        exp_df[self.run_metadata_sample_name_column] = exp_df[self.run_metadata_sample_name_column].apply(self.str_replace_for_samps)
+        exp_df[self.run_metadata_sample_name_column] = exp_df[self.run_metadata_sample_name_column].apply(str_replace_for_samps)
 
         # Change positive control sample names
         exp_df[self.run_metadata_sample_name_column] = exp_df.apply(
