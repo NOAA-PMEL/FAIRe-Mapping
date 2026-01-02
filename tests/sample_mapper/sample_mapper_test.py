@@ -8,7 +8,8 @@ from faire_mapping.transformers.rules import (
     get_env_medium_for_coastal_waters_by_geo_loc_rule,
     get_eventDate_iso8601_rule,
     get_date_duration_rule,
-    get_depth_from_pressure
+    get_depth_from_pressure,
+    get_minimum_depth_from_max_minus_1m
 )
 
 def create_rc0083_sample_metadata():
@@ -178,7 +179,8 @@ def main() -> None:
         # get_env_medium_for_coastal_waters_by_geo_loc_rule(sample_mapper),
         get_eventDate_iso8601_rule(sample_mapper),
         get_date_duration_rule(sample_mapper),
-        get_depth_from_pressure(sample_mapper)
+        get_depth_from_pressure(sample_mapper),
+        get_minimum_depth_from_max_minus_1m(sample_mapper)
                         ]
     transformer.add_custom_rules(additional_rules)
     sample_metadata_df = transformer.transform()

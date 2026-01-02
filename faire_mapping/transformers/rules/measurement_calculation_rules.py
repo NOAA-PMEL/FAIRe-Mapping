@@ -43,7 +43,41 @@ def get_depth_from_pressure(mapper: FaireSampleMetadataMapper):
             apply_depth_from_pressure_calculation,
             mode='direct'
         )
+        .update_source(True)
         .for_mapping_type('related')
         .build()
     )
+
+def get_minimum_depth_from_max_minus_1m(mapper: FaireSampleMetadataMapper):
+    """
+    Rule for calculating the minimumDepthInMeters from the maximumDepthInMeters
+    by subtracting 1 from the maximumDepthinMeters Expectes metadata_col to be the
+    maximumDepthInMeters col name. If relying on a calculationg for maximumDepthInMeters
+    then use the faire_col maximumDepthInMeters for metadata_col in mapping file.
+    """
+    def apply_mindepth_from_maxdepth_calculation(df, faire_col, metadata_col):
+            """
+            Apply depth calculation using the mapper's convert_min_depth_from_minus_one_meter method.
+            """
+            # Apply the calculation to each row
+            return df.apply(
+                lambda row: mapper.convert_min_depth_from_minus_one_meter(
+                    metadata_row=row,
+                    max_depth_col_name=metadata_col
+                ),
+                axis=1
+            )
+    return (
+            TransformationBuilder('mindepth_from_maxdepth_minus_1m')
+            .when(lambda f, m, mt: (
+                f == 'minimumDepthInMeters' and
+                mt == 'related'
+            ))
+            .apply(
+                apply_mindepth_from_maxdepth_calculation,
+                mode='direct'
+            )
+            .for_mapping_type('related')
+            .build()
+        )
 
