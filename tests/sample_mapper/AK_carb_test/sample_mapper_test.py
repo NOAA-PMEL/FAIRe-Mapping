@@ -194,7 +194,7 @@ def main() -> None:
                         ]
     transformer.add_custom_rules(additional_rules)
     sample_metadata_df = transformer.transform()
-    sample_metadata_df.to_csv("/home/poseidon/zalmanek/FAIRe-Mapping/tests/sample_mapper/test.csv")
+    sample_metadata_df.to_csv("/home/poseidon/zalmanek/FAIRe-Mapping/tests/sample_mapper/AK_carb_test/test.csv")
 
 
     

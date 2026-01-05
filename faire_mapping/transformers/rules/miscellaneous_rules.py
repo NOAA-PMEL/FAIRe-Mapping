@@ -54,3 +54,4 @@ def get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col(mapper: Fa
             .build()
         )
 
+

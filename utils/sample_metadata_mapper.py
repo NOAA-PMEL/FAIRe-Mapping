@@ -105,15 +105,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # stations/reference stations stuff
         self.station_name_reference_google_sheet_id = self.config_file['station_name_reference_google_sheet_id'] if 'station_name_reference_google_sheet_id' in self.config_file else None # Some projects won't have reference stations (RC0083)
         self.ref_station_builder = ReferenceStationBuilder(header=0, google_sheet_id=self.station_name_reference_google_sheet_id, json_creds_path=self.google_json_creds)
-
-    def add_biological_replicates(self, metadata_row: pd.Series, faire_missing_val: str) -> dict:
-
-        if self.sample_metadata_df_builder.replicates_dict.get(metadata_row.get(self.replicate_parent_sample_metadata_col)):
-            replicates = ' | '.join(self.replicates_dict.get(
-                metadata_row[self.replicate_parent_sample_metadata_col], None))
-            return replicates
-        else:
-            return faire_missing_val
         
     def add_biological_replicates_column(self, df: pd.DataFrame, faire_col: str, metadata_col: str) -> pd.Series:
         """
@@ -239,7 +230,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                 return "not applicable"
 
     def convert_wind_degrees_to_direction(self, degree_metadata_row: pd.Series) -> str:
-        # converts wind direction  to cardinal directions
+        # converts wind direction to cardinal directions
 
         if pd.isna(degree_metadata_row) or degree_metadata_row is None:
             return "missing: not collected"

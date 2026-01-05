@@ -31,6 +31,10 @@ from .miscellaneous_rules import(
 from .station_rules import(
     get_line_id_from_standardized_station
 )
+
+from .identifier_rules import(
+    get_material_samp_id__by_cruisecode_cast_btlnum
+)
 __all__ = [
     'get_all_ome_default_rules',
     'get_samp_category_rule',
@@ -47,5 +51,6 @@ __all__ = [
     'get_env_local_scale_by_depth',
     'get_dna_yield_from_conc_and_vol',
     'get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col',
-    'get_line_id_from_standardized_station'
+    'get_line_id_from_standardized_station',
+    'get_material_samp_id__by_cruisecode_cast_btlnum'
 ]
