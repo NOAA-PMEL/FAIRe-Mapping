@@ -8,9 +8,12 @@ from faire_mapping.transformers.rules import (
     get_fallback_col_mapping_rule,
     get_max_depth_with_pressure_fallback,
     get_minimum_depth_from_max_minus_1m,
-    get_env_local_scale_from_depth_rule,
+    get_env_local_scale_by_depth,
     get_date_duration_rule,
     get_tot_depth_water_col_from_lat_lon_or_exact_col,
+    get_condition_constant_rule,
+    get_altitude_from_maxdepth_and_totdepthcol,
+    get_wind_direction_from_wind_degrees,
 )
 
 def fix_station_errors(df: pd.DataFrame) -> pd.DataFrame:
@@ -235,9 +238,12 @@ def main() -> None:
         get_fallback_col_mapping_rule(sample_mapper, faire_field_name='pressure'),
         get_max_depth_with_pressure_fallback(mapper=sample_mapper, pressure_cols=['ctd_pressure', 'btl_pressure..decibar.'], lat_col='btl_latitude..degrees_north.', depth_cols=['Depth_m_notes']),
         get_minimum_depth_from_max_minus_1m(sample_mapper),
-        get_env_local_scale_from_depth_rule(sample_mapper),
+        get_env_local_scale_by_depth(sample_mapper),
         get_date_duration_rule(sample_mapper),
-        get_tot_depth_water_col_from_lat_lon_or_exact_col(sample_mapper)
+        get_tot_depth_water_col_from_lat_lon_or_exact_col(sample_mapper),
+        get_condition_constant_rule(mapper=sample_mapper, faire_col='tot_depth_water_col_method', ref_col='ctd_Water_Depth..dbar.'),
+        get_altitude_from_maxdepth_and_totdepthcol(sample_mapper),
+        get_wind_direction_from_wind_degrees(sample_mapper)
                         ]
     transformer.add_custom_rules(additional_rules)
     sample_metadata_df = transformer.transform()

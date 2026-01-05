@@ -119,31 +119,7 @@ def get_altitude_from_maxdepth_and_totdepthcol(mapper: FaireSampleMetadataMapper
                 mode='direct'
             )
             .for_mapping_type('related')
-            .build()
-        )
-
-def get_env_local_scale_by_depth(mapper: FaireSampleMetadataMapper):
-    """
-    Rule for calculating the env_local_scale from the depth
-    Expects metadata_col to be 'depth'.
-    """
-    def apply_env_local_scale_calculation_from_depth(df, faire_col, metadata_col):
-            """
-            Apply env_local_scale calculation using the mapper's calculate_env_local_scale method.
-            """
-            # Apply the calculation to each row
-            return df[metadata_col].apply(mapper.calculate_env_local_scale)
-    return (
-            TransformationBuilder('env_local_scale_from_depth')
-            .when(lambda f, m, mt: (
-                f == 'env_local_scale' and
-                mt == 'related'
-            ))
-            .apply(
-                apply_env_local_scale_calculation_from_depth,
-                mode='direct'
-            )
-            .for_mapping_type('related')
+            .update_source(True)
             .build()
         )
 
@@ -230,7 +206,31 @@ def get_tot_depth_water_col_from_lat_lon_or_exact_col(mapper: FaireSampleMetadat
                 mode='direct'
             )
             .for_mapping_type('related')
+            .update_source(True)
             .build()
         )
 
-
+def get_wind_direction_from_wind_degrees(mapper: FaireSampleMetadataMapper):
+    """
+    Rule for calculating calculating the wind direction from degrees.
+    Expects metadata_col to be 'wind_direction_in_degrees'.
+    """
+    def apply_wind_direction_calculation(df, faire_col, metadata_col):
+        """
+        Apply wind_direction calculation using the mapper's convert_wind_degrees_to_direction method.
+        """
+        # Apply the calculation to each row
+        return df[metadata_col].apply(mapper.convert_wind_degrees_to_direction)
+    return (
+            TransformationBuilder('wind_direction_from_degrees')
+            .when(lambda f, m, mt: (
+                f == 'wind_direction' and
+                mt == 'related'
+            ))
+            .apply(
+                apply_wind_direction_calculation,
+                mode='direct'
+            )
+            .for_mapping_type('related')
+            .build()
+        )

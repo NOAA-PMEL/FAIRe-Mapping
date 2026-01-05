@@ -182,6 +182,37 @@ def get_max_depth_with_pressure_fallback(mapper: FaireSampleMetadataMapper, pres
          .for_mapping_type('related')
          .build()
     )
+
+def get_condition_constant_rule(mapper: FaireSampleMetadataMapper, faire_col: str, ref_col: str):
+    """
+    Rule that assigns a constant value if a reference col value is NA.
+    Expects metadata_col format to be one value, the string to be applied if the ref_col value is not none
+    """
+    def apply_conditional_constant(df, faire_col, metadata_col):
+        constant_val = metadata_col
+
+        if ref_col not in df.columns:
+            logger.warning(f"Reference column '{ref_col}' not found in data frame")
+            raise ValueError(f"Reference column not found in df: {ref_col}, please check!")
+        
+        return df[ref_col].apply(
+            lambda val: constant_val if pd.isna(val) else 'missing: not provided'
+        )
+     
+    return (
+          TransformationBuilder('conditional_consant_if_not_na')
+            .when(lambda f, m, mt: (
+                f == faire_col and 
+                mt == 'related'
+            ))
+            .apply(
+                apply_conditional_constant,
+                mode='direct'
+            )
+            .for_mapping_type('related')
+            .build()
+     )
+
                     
 
 

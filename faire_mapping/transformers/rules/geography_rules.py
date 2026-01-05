@@ -121,17 +121,27 @@ def get_env_medium_for_coastal_waters_by_geo_loc_rule(mapper: FaireSampleMetadat
             .build()
     )
 
-def get_env_local_scale_from_depth_rule(mapper: FaireSampleMetadataMapper):
+def get_env_local_scale_by_depth(mapper: FaireSampleMetadataMapper):
     """
-    Rule for determining env_local_scale based on depth
+    Rule for calculating the env_local_scale from the depth
+    Expects metadata_col to be 'depth'.
     """
-    def apply_env_local_scale(df, faire_col, metadata_col):
-        return df[metadata_col].apply(mapper.calculate_env_local_scale)
-    
+    def apply_env_local_scale_calculation_from_depth(df, faire_col, metadata_col):
+            """
+            Apply env_local_scale calculation using the mapper's calculate_env_local_scale method.
+            """
+            # Apply the calculation to each row
+            return df[metadata_col].apply(mapper.calculate_env_local_scale)
     return (
-        TransformationBuilder('env_local_scale_from_depth')
-        .when(lambda f, m, mt: f == 'env_local_scale' and 'mt' == 'related')
-        .apply(apply_env_local_scale, mode='direct')
-        .for_mapping_type('related')
-        .build()
-    )
+            TransformationBuilder('env_local_scale_from_depth')
+            .when(lambda f, m, mt: (
+                f == 'env_local_scale' and
+                mt == 'related'
+            ))
+            .apply(
+                apply_env_local_scale_calculation_from_depth,
+                mode='direct'
+            )
+            .for_mapping_type('related')
+            .build()
+        )
