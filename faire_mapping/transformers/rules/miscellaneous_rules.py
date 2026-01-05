@@ -54,4 +54,134 @@ def get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col(mapper: Fa
             .build()
         )
 
+def get_fallback_col_mapping_rule(mapper: FaireSampleMetadataMapper, faire_field_name: str):
+     """
+     Rule for mapping with fallback columns.
+     Expects metadata_col to be in format 'fallback: primary_col | fallback_col | fallback_col2 ...'
+     Can optionally include transform flag for date times 'fallback: primary_col | fallbackcol | transform:true'
+     Calls the rule in the main.py file be specifyinf the faire_field_name it applies to (helps with ordering)
+     """
+     def apply_fallback_mapping_rule(df, faire_col, metadata_col):
+        """
+        Apply fallback logic using the mapper's map_using_two_or_three_cols_if_one_is_na_use_other method.
+        """
+        # Remove the 'fallback:' prefix
+        if not metadata_col.startswith('fallback:'):
+             return None
+        # Parse the metadata_col to extract column names and options
+        columns_part = metadata_col.replace('fallback:', '').strip()
+        parts = [part.strip() for part in columns_part.split('|')]
+
+        # Check if there's a transform flag
+        transform_to_datetime = False
+        columns = []
+        for part in parts:
+            if part.startswith('transform:'):
+                transform_to_datetime = part.split(':'[1].lower() == 'true')
+            else:
+                    columns.append(part)
+
+        if len(columns) < 2:
+             logger.error(f"Fallback mapping requires at least 2 columns separated by '|'")
+             raise ValueError(f"Fallback mapping requires format 'primary_col | fallback_col1 | [fallback_col2] | [transform: ture/false]'")
+        
+        desired_col = columns[0]
+        use_if_na_col = columns[1] if len(columns) > 1 else None
+        use_if_second_na_col = columns[2] if len(columns) > 2 else None
+
+        # Apply the fallback logic to each row
+        return df.apply(
+             lambda row: mapper.map_using_two_or_three_cols_if_one_is_na_use_other(
+                metadata_row=row,
+                desired_col_name=desired_col,
+                use_if_na_col_name=use_if_na_col,
+                transform_use_col_to_date_format=transform_to_datetime,
+                use_if_second_col_is_na=use_if_second_na_col
+             ),
+             axis=1
+        )
+     
+     return (
+        TransformationBuilder('fallback_column_mapping')
+            .when(lambda f, m, mt: (
+                m.startswith('fallback:') and
+                f == faire_field_name and
+                '|' in m and # contains pipe separator indicating fallback
+                mt == 'related'
+                ))
+            .apply(
+                apply_fallback_mapping_rule,
+                mode='direct'
+            )
+            .for_mapping_type('related')
+            .update_source(True)
+            .build()
+     )
+
+def get_max_depth_with_pressure_fallback(mapper: FaireSampleMetadataMapper, pressure_cols: list, lat_col: str, depth_cols: list):
+    """
+    Complex rule for maximumDepthInMeters with pressure fallback logic.
+    Will basically use two pressure columns to fallback to create pressure, then calculate depth from pressure, and
+    use the output of that, plus another depth column to create the maximumDepthInMeters (used in DY2206)
+    Configuration is passed as paramters instead of through mapping file
+    """
+    def apply_compmlse_depth_calculated(df, faire_col, metadata_col):
+        # Ignore metadata_col from mapping file, used passed configuration instead
+        # Step 1: Get pressure using fallback
+        pressure_series = df.apply(
+            lambda row: mapper.map_using_two_or_three_cols_if_one_is_na_use_other(
+            metadata_row=row,
+            desired_col_name=pressure_cols[0],
+            use_if_na_col_name=pressure_cols[1] if len(pressure_cols) > 1 else None,
+            transform_use_col_to_date_format=False,
+            use_if_second_col_is_na=pressure_cols[2] if len(pressure_cols)> 2 else None
+            ),
+        axis=1
+        )
+
+        # Add pressure to dataframe
+        df_with_pressure = df.copy()
+        df_with_pressure['_temp_pressure'] = pressure_series
+
+        # Step 2. Calculate depth from pressure
+        depth_from_pressure_series = df_with_pressure.apply(
+            lambda row: mapper.get_depth_from_pressure(
+            metadata_row=row,
+            press_col_name='_temp_pressure',
+            lat_col_name=lat_col
+            ),
+        axis=1
+        )
+
+        # Add calculated depth to dataframe
+        df_with_pressure['_temp_depth_from_pressure'] = depth_from_pressure_series
+
+        # Step 3 Use fallback with calculate depth and other depth columns
+        all_depth_options = ['_temp_depth_from_pressure'] + depth_cols
+
+        final_depth = df_with_pressure.apply(
+            lambda row: mapper.map_using_two_or_three_cols_if_one_is_na_use_other(
+                metadata_row=row,
+                desired_col_name=all_depth_options[0],
+                use_if_na_col_name=all_depth_options[1] if len(all_depth_options) > 1 else None,
+                transform_use_col_to_date_format=False,
+                use_if_second_col_is_na=all_depth_options[2] if len(all_depth_options) > 2 else None
+            ),
+            axis=1    
+        )
+        return final_depth
+
+    return (
+         TransformationBuilder('max_depth_with_pressure_fallback')
+         .when(lambda f, m, mt: (
+              f == 'maximumDepthInMeters' and 
+              mt == 'related'
+         ))
+         .apply(apply_compmlse_depth_calculated, mode='direct')
+         .update_source(True)
+         .for_mapping_type('related')
+         .build()
+    )
+                    
+
 

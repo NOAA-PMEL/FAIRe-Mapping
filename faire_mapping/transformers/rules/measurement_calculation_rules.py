@@ -51,7 +51,7 @@ def get_depth_from_pressure(mapper: FaireSampleMetadataMapper):
 def get_minimum_depth_from_max_minus_1m(mapper: FaireSampleMetadataMapper):
     """
     Rule for calculating the minimumDepthInMeters from the maximumDepthInMeters
-    by subtracting 1 from the maximumDepthinMeters Expectes metadata_col to be the
+    by subtracting 1 from the maximumDepthinMeters Expects metadata_col to be the
     maximumDepthInMeters col name. If relying on a calculationg for maximumDepthInMeters
     then use the faire_col maximumDepthInMeters for metadata_col in mapping file.
     """
@@ -188,4 +188,49 @@ def get_dna_yield_from_conc_and_vol(mapper: FaireSampleMetadataMapper):
             .for_mapping_type('related')
             .build()
         )
+
+def get_tot_depth_water_col_from_lat_lon_or_exact_col(mapper: FaireSampleMetadataMapper):
+    """
+    Rule for calculating the tot_depth_water_col for the latitude and longitude, can also map 
+    to an exact tot_depth_water_col optionally which will be prioritized to calculating it. 
+    Expects metadata_col to be in the format 'latitude_col | longitude_col | [exact_col_mapping_name]'
+    """
+    def apply_tot_depth_water_calculation(df, faire_col, metadata_col):
+            """
+            Apply tot_depth_water_col calculation using the mapper's get_tot_depth_water_col_from_lat_lon method.
+            """
+            metadata_cols = metadata_col.split(' | ')
+
+            if len(metadata_cols) < 2 and len(metadata_cols) > 3: 
+                logger.error(f"Expected at least 2 tot_depth_water_col related columns separated by '|' for tot_depth_water_col calculation in the format 'lat_col | lon_col | [exact_col]]: got: {metadata_col}")
+                raise ValueError(f"tot_depth_water_col calculation requires format latitude_col | longitude_col | [exact_col_mapping_name]'")
+                 
+            lat_col = metadata_cols[0]
+            lon_col = metadata_cols[1]
+            exact_col = metadata_cols[2] if len(metadata_cols) == 3 else None
+            
+            # Apply the calculation to each row
+            return df.apply(
+                lambda row: mapper.get_tot_depth_water_col_from_lat_lon(
+                    metadata_row=row,
+                    lat_col=lat_col,
+                    lon_col=lon_col,
+                    exact_map_col=exact_col
+                ),
+                axis=1
+            )
+    return (
+            TransformationBuilder('tot_depth_water_col_from_lat_lon_and_exact')
+            .when(lambda f, m, mt: (
+                f == 'tot_depth_water_col' and
+                mt == 'related'
+            ))
+            .apply(
+                apply_tot_depth_water_calculation,
+                mode='direct'
+            )
+            .for_mapping_type('related')
+            .build()
+        )
+
 

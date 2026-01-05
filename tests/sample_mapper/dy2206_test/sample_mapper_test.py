@@ -3,8 +3,14 @@ import pandas as pd
 import numpy as np
 from faire_mapping.transformers.sample_metadata_transformer import SampleMetadataTransformer
 from faire_mapping.transformers.rules import (
-    get_geo_loc_name_by_lat_lon_rule,
     get_material_samp_id__by_cruisecode_cast_btlnum,
+    get_formatted_geo_loc_by_name,
+    get_fallback_col_mapping_rule,
+    get_max_depth_with_pressure_fallback,
+    get_minimum_depth_from_max_minus_1m,
+    get_env_local_scale_from_depth_rule,
+    get_date_duration_rule,
+    get_tot_depth_water_col_from_lat_lon_or_exact_col,
 )
 
 def fix_station_errors(df: pd.DataFrame) -> pd.DataFrame:
@@ -224,9 +230,14 @@ def main() -> None:
     transformer = SampleMetadataTransformer(sample_mapper=sample_mapper, ome_auto_setup=True)
     # transforer.insert_rule_before('biological_rep_relation', rule5)
     additional_rules = [
-        # get_geo_loc_name_by_lat_lon_rule(sample_mapper),
-        # get_env_medium_for_coastal_waters_by_geo_loc_rule(sample_mapper),
         get_material_samp_id__by_cruisecode_cast_btlnum(sample_mapper),
+        get_formatted_geo_loc_by_name(sample_mapper),
+        get_fallback_col_mapping_rule(sample_mapper, faire_field_name='pressure'),
+        get_max_depth_with_pressure_fallback(mapper=sample_mapper, pressure_cols=['ctd_pressure', 'btl_pressure..decibar.'], lat_col='btl_latitude..degrees_north.', depth_cols=['Depth_m_notes']),
+        get_minimum_depth_from_max_minus_1m(sample_mapper),
+        get_env_local_scale_from_depth_rule(sample_mapper),
+        get_date_duration_rule(sample_mapper),
+        get_tot_depth_water_col_from_lat_lon_or_exact_col(sample_mapper)
                         ]
     transformer.add_custom_rules(additional_rules)
     sample_metadata_df = transformer.transform()

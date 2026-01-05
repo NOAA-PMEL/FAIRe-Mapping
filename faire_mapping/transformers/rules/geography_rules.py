@@ -41,6 +41,38 @@ def get_geo_loc_name_by_lat_lon_rule(mapper: FaireSampleMetadataMapper):
         .build()
     )
 
+def get_formatted_geo_loc_by_name(mapper: FaireSampleMetadataMapper):
+    """
+    Rule for formatting the geo_loc_name if a location is given.
+    Requires the metadata_col to be the name of the metadata column with the location
+    """
+    def apply_formatted_geo_loc_by_loc(df, faire_col, metadata_col):
+            """
+            Apply geo_loc_name by using the mapper's format_geo_loc method.
+            """
+            # Apply the calculation to each row
+            return df.apply(
+                lambda row: mapper.format_geo_loc(
+                    metadata_row=row,
+                    geo_loc_metadata_col=metadata_col
+                ),
+                axis=1
+            )
+    
+    return (
+            TransformationBuilder('geo_loc_name_by_name')
+            .when(lambda f, m, mt: (
+                f == 'geo_loc_name' and
+                mt == 'related'
+            ))
+            .apply(
+                apply_formatted_geo_loc_by_loc,
+                mode='direct'
+            )
+            .for_mapping_type('related')
+            .build()
+        )
+
 def get_env_medium_for_coastal_waters_by_geo_loc_rule(mapper: FaireSampleMetadataMapper):
     """
     Rule for setting env_medium based on geo_loc_name.
@@ -87,4 +119,19 @@ def get_env_medium_for_coastal_waters_by_geo_loc_rule(mapper: FaireSampleMetadat
             )
             .for_mapping_type('related')
             .build()
+    )
+
+def get_env_local_scale_from_depth_rule(mapper: FaireSampleMetadataMapper):
+    """
+    Rule for determining env_local_scale based on depth
+    """
+    def apply_env_local_scale(df, faire_col, metadata_col):
+        return df[metadata_col].apply(mapper.calculate_env_local_scale)
+    
+    return (
+        TransformationBuilder('env_local_scale_from_depth')
+        .when(lambda f, m, mt: f == 'env_local_scale' and 'mt' == 'related')
+        .apply(apply_env_local_scale, mode='direct')
+        .for_mapping_type('related')
+        .build()
     )

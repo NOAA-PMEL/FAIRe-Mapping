@@ -8,7 +8,9 @@ from .ome_sample_default_rules import (
 
 from .geography_rules import(
     get_geo_loc_name_by_lat_lon_rule,
-    get_env_medium_for_coastal_waters_by_geo_loc_rule
+    get_formatted_geo_loc_by_name,
+    get_env_medium_for_coastal_waters_by_geo_loc_rule,
+    get_env_local_scale_from_depth_rule
 )
 
 from .date_time_rules import(
@@ -21,11 +23,14 @@ from .measurement_calculation_rules import(
     get_minimum_depth_from_max_minus_1m,
     get_altitude_from_maxdepth_and_totdepthcol,
     get_env_local_scale_by_depth,
-    get_dna_yield_from_conc_and_vol
+    get_dna_yield_from_conc_and_vol,
+    get_tot_depth_water_col_from_lat_lon_or_exact_col
 )
 
 from .miscellaneous_rules import(
-    get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col
+    get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col,
+    get_fallback_col_mapping_rule,
+    get_max_depth_with_pressure_fallback
 )
 
 from .station_rules import(
@@ -42,7 +47,9 @@ __all__ = [
     'get_constant_mappings_rule',
     'get_exact_mappings_rule',
     'get_geo_loc_name_by_lat_lon_rule',
+    'get_formatted_geo_loc_by_name',
     'get_env_medium_for_coastal_waters_by_geo_loc_rule',
+    'get_env_local_scale_from_depth_rule',
     'get_eventDate_iso8601_rule',
     'get_date_duration_rule',
     'get_depth_from_pressure',
@@ -50,7 +57,10 @@ __all__ = [
     'get_altitude_from_maxdepth_and_totdepthcol',
     'get_env_local_scale_by_depth',
     'get_dna_yield_from_conc_and_vol',
+    'get_tot_depth_water_col_from_lat_lon_or_exact_col',
     'get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col',
+    'get_fallback_col_mapping_rule',
+    'get_max_depth_with_pressure_fallback',
     'get_line_id_from_standardized_station',
     'get_material_samp_id__by_cruisecode_cast_btlnum'
 ]
