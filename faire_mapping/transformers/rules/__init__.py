@@ -35,7 +35,9 @@ from .miscellaneous_rules import(
 )
 
 from .station_rules import(
-    get_line_id_from_standardized_station
+    get_line_id_from_standardized_station,
+    get_standardized_station_id_from_nonstandardized_station_name,
+    get_stations_within_5km_of_lat_lon
 )
 
 from .identifier_rules import(
@@ -64,5 +66,7 @@ __all__ = [
     'get_max_depth_with_pressure_fallback',
     'get_condition_constant_rule',
     'get_line_id_from_standardized_station',
+    'get_standardized_station_id_from_nonstandardized_station_name',
+    'get_stations_within_5km_of_lat_lon',
     'get_material_samp_id__by_cruisecode_cast_btlnum'
 ]

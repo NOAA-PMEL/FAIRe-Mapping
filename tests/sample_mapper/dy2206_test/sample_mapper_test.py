@@ -13,7 +13,14 @@ from faire_mapping.transformers.rules import (
     get_tot_depth_water_col_from_lat_lon_or_exact_col,
     get_condition_constant_rule,
     get_altitude_from_maxdepth_and_totdepthcol,
+    get_condition_constant_rule,
     get_wind_direction_from_wind_degrees,
+    get_eventDate_iso8601_rule,
+    get_dna_yield_from_conc_and_vol,
+    get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col,
+    get_standardized_station_id_from_nonstandardized_station_name,
+    get_stations_within_5km_of_lat_lon,
+    get_line_id_from_standardized_station,
 )
 
 def fix_station_errors(df: pd.DataFrame) -> pd.DataFrame:
@@ -137,7 +144,7 @@ def create_dy2206_sample_metadata():
             # specify where tot_Depth_water_col came from (some measured, some calculated)
             tot_depth_water_method_info = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('tot_depth_water_col_method')
             sample_metadata_results['tot_depth_water_col_method'] = sample_mapper.sample_metadata_df['ctd_Water_Depth..dbar.'].apply(
-                lambda row: tot_depth_water_method_info if pd.notna(row) else None
+                lambda row: tot_depth_water_method_info if pd.isna(row) else None
             )
 
             sample_metadata_results['tot_depth_water_col'] = tot_depth_water_col
@@ -155,10 +162,10 @@ def create_dy2206_sample_metadata():
         elif faire_col == 'date_ext':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(sample_mapper.convert_date_to_iso8601)
 
-        elif faire_col == 'extract_id':
-            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(
-                sample_mapper.create_extract_id
-            )
+        # elif faire_col == 'extract_id':
+        #     sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(
+        #         sample_mapper.create_extract_id
+        #     )
             
         elif faire_col == 'dna_yield':
             metadata_cols = metadata_col.split(' | ')
@@ -230,6 +237,7 @@ def main() -> None:
     # sample_metadata = create_dy2206_sample_metadata()
 
     sample_mapper = FaireSampleMetadataMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2206/config.yaml')
+    sample_mapper.sample_metadata_df_builder.sample_metadata_df = fix_station_errors(df=sample_mapper.sample_metadata_df_builder.sample_metadata_df)
     transformer = SampleMetadataTransformer(sample_mapper=sample_mapper, ome_auto_setup=True)
     # transforer.insert_rule_before('biological_rep_relation', rule5)
     additional_rules = [
@@ -237,13 +245,20 @@ def main() -> None:
         get_formatted_geo_loc_by_name(sample_mapper),
         get_fallback_col_mapping_rule(sample_mapper, faire_field_name='pressure'),
         get_max_depth_with_pressure_fallback(mapper=sample_mapper, pressure_cols=['ctd_pressure', 'btl_pressure..decibar.'], lat_col='btl_latitude..degrees_north.', depth_cols=['Depth_m_notes']),
+        get_condition_constant_rule(mapper=sample_mapper, faire_col='DepthInMeters_method', ref_col='Depth_m_notes'),
         get_minimum_depth_from_max_minus_1m(sample_mapper),
         get_env_local_scale_by_depth(sample_mapper),
         get_date_duration_rule(sample_mapper),
         get_tot_depth_water_col_from_lat_lon_or_exact_col(sample_mapper),
         get_condition_constant_rule(mapper=sample_mapper, faire_col='tot_depth_water_col_method', ref_col='ctd_Water_Depth..dbar.'),
         get_altitude_from_maxdepth_and_totdepthcol(sample_mapper),
-        get_wind_direction_from_wind_degrees(sample_mapper)
+        get_wind_direction_from_wind_degrees(sample_mapper),
+        get_eventDate_iso8601_rule(sample_mapper),
+        get_dna_yield_from_conc_and_vol(sample_mapper),
+        get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col(sample_mapper),
+        get_standardized_station_id_from_nonstandardized_station_name(sample_mapper),
+        get_stations_within_5km_of_lat_lon(sample_mapper),
+        get_line_id_from_standardized_station(sample_mapper)
                         ]
     transformer.add_custom_rules(additional_rules)
     sample_metadata_df = transformer.transform()
