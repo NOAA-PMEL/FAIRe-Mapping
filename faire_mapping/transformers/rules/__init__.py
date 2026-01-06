@@ -55,6 +55,11 @@ from .extraction_rules import(
     get_well_position_from_well_field
 )
 
+from .samp_store_rules import(
+    get_samp_store_dur_from_samp_name,
+    get_samp_store_loc_from_samp_name,
+    get_samp_store_temp_from_samp_name
+)
 __all__ = [
     'get_all_ome_default_rules',
     'get_samp_category_rule',
@@ -86,4 +91,7 @@ __all__ = [
     'get_neg_cont_type_from_ome_sample_name',
     'get_well_number_from_well_field',
     'get_well_position_from_well_field'
+    'get_samp_store_dur_from_samp_name',
+    'get_samp_store_loc_from_samp_name',
+    'get_samp_store_temp_from_samp_name'
 ]

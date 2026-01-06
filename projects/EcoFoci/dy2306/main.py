@@ -173,7 +173,7 @@ def create_dy2306_sample_metadata():
                 sample_mapper.get_samp_store_loc_by_samp_store_dur
             )
             sample_metadata_results['samp_store_temp'] = sample_mapper.sample_metadata_df[metadata_col].apply(
-                sample_mapper.get_samp_sore_temp_by_samp_store_dur
+                sample_mapper.get_samp_store_temp_by_samp_store_dur
             )
         
         # eventDate needs to be proecessed before prepped_samp_store_dur

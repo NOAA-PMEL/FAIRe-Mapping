@@ -463,7 +463,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         else:
             raise ValueError(f"samp_store_loc not able to be calculated by {self.samp_dur_info['dur_units']}, add functionality to get_samp_store_loc_by_samp_store_dur method")
 
-    def get_samp_sore_temp_by_samp_store_dur(self, sample_name: pd.Series) -> str:
+    def get_samp_store_temp_by_samp_store_dur(self, sample_name: pd.Series) -> str:
         samp_stor_dur = int(self.samp_store_dur_builder.samp_store_dur_dict.get(sample_name, ''))
 
         if self.samp_dur_info['dur_units'] == 'hour':
