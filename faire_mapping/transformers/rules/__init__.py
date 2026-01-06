@@ -49,6 +49,11 @@ from .controls_rules import(
     get_neg_cont_type_from_ome_sample_name
 )
 
+from .extraction_rules import(
+    get_well_number_from_well_field,
+    get_well_position_from_well_field
+)
+
 __all__ = [
     'get_all_ome_default_rules',
     'get_samp_category_rule',
@@ -76,5 +81,7 @@ __all__ = [
     'get_stations_within_5km_of_lat_lon',
     'get_material_samp_id_by_cruisecode_cast_btlnum',
     'apply_pps_materialSampleID_by_cast_and_cruise_prefix',
-    'get_neg_cont_type_from_ome_sample_name'
+    'get_neg_cont_type_from_ome_sample_name',
+    'get_well_number_from_well_field',
+    'get_well_position_from_well_field'
 ]
