@@ -82,7 +82,7 @@ def get_stations_within_5km_of_lat_lon(mapper: FaireSampleMetadataMapper):
 
             if len(metadata_cols) < 3: 
                 logger.error(f"Expected at least 3 values related to getting stations within 5 km faire_standardized_station_col | lat_col | lon_col got: {metadata_col}")
-                raise ValueError(f"tot_depth_water_col calculation requires format latitude_col | longitude_col | [exact_col_mapping_name]'")
+                raise ValueError(f"stations_within_5km check requires format 'faire_standardized_station_col (station_id) | lat_col | lon_col'")
                  
             station_col = metadata_cols[0]
             lat_col = metadata_cols[1]
@@ -98,7 +98,7 @@ def get_stations_within_5km_of_lat_lon(mapper: FaireSampleMetadataMapper):
                 axis=1
             )
     return (
-            TransformationBuilder('station_id_from_nonstandard_station_name')
+            TransformationBuilder('stations_within_5km')
             .when(lambda f, m, mt: (
                 f == 'station_ids_within_5km_of_lat_lon' and
                 mt == 'related'

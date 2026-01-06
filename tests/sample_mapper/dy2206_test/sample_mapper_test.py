@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from faire_mapping.transformers.sample_metadata_transformer import SampleMetadataTransformer
 from faire_mapping.transformers.rules import (
-    get_material_samp_id__by_cruisecode_cast_btlnum,
+    get_material_samp_id_by_cruisecode_cast_btlnum,
     get_formatted_geo_loc_by_name,
     get_fallback_col_mapping_rule,
     get_max_depth_with_pressure_fallback,
@@ -241,7 +241,7 @@ def main() -> None:
     transformer = SampleMetadataTransformer(sample_mapper=sample_mapper, ome_auto_setup=True)
     # transforer.insert_rule_before('biological_rep_relation', rule5)
     additional_rules = [
-        get_material_samp_id__by_cruisecode_cast_btlnum(sample_mapper),
+        get_material_samp_id_by_cruisecode_cast_btlnum(sample_mapper),
         get_formatted_geo_loc_by_name(sample_mapper),
         get_fallback_col_mapping_rule(sample_mapper, faire_field_name='pressure'),
         get_max_depth_with_pressure_fallback(mapper=sample_mapper, pressure_cols=['ctd_pressure', 'btl_pressure..decibar.'], lat_col='btl_latitude..degrees_north.', depth_cols=['Depth_m_notes']),
