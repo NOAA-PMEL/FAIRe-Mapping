@@ -123,7 +123,7 @@ def get_altitude_from_maxdepth_and_totdepthcol(mapper: FaireSampleMetadataMapper
             .build()
         )
 
-def get_dna_yield_from_conc_and_vol(mapper: FaireSampleMetadataMapper):
+def get_dna_yield_from_conc_and_vol(mapper: FaireSampleMetadataMapper, extraction_blank: bool = False):
     """
     Rule for calculating the dna_yield from the extraction_conc and samp_vol
     Expects metadata_col to be 'extraction_con | samp_vol'.
@@ -147,7 +147,8 @@ def get_dna_yield_from_conc_and_vol(mapper: FaireSampleMetadataMapper):
             return df.apply(
                 lambda row: mapper.calculate_dna_yield(
                     metadata_row=row,
-                    sample_vol_metadata_col=samp_vol_col
+                    sample_vol_metadata_col=samp_vol_col,
+                    extraction_blank=extraction_blank
                 ),
                 axis=1
             )

@@ -140,11 +140,11 @@ def create_rc0083_sample_metadata():
     print(df)
 
     # # Step 4: fill in NA with missing not collected or not applicable because they are samples and adds NC to rel_cont_id
-    # sample_df = sample_mapper.fill_empty_sample_values_and_finalize_sample_df(df = pd.DataFrame(sample_metadata_results))
+    sample_df = sample_mapper.fill_empty_sample_values_and_finalize_sample_df(df = pd.DataFrame(sample_metadata_results))
     
-    # # Step 5: fill NC data frame if there is - DO THIS ONLY IF negative controls were sequenced! They were not for SKQ21
-    # # nc_df = sample_mapper.fill_nc_metadata()
-    # controls_df = sample_mapper.finish_up_controls_df(final_sample_df=sample_df)
+    # Step 5: fill NC data frame if there is - DO THIS ONLY IF negative controls were sequenced! They were not for SKQ21
+    # nc_df = sample_mapper.fill_nc_metadata()
+    controls_df = sample_mapper.finish_up_controls_df(final_sample_df=sample_df)
     # nucl_acid_ext_map_cols = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('nucl_acid_ext').split(' | ')
     # nucl_acid_ext_modify_map_cols = sample_mapper.mapping_dict[sample_mapper.related_mapping].get('nucl_acid_ext_modify').split(' | ')
     # controls_df['nucl_acid_ext'] = nucl_acid_ext_map_cols[1]
@@ -194,6 +194,12 @@ def main() -> None:
                         ]
     transformer.add_custom_rules(additional_rules)
     sample_metadata_df = transformer.transform()
+
+    sample_df = sample_mapper.fill_empty_sample_values_and_finalize_sample_df(df = sample_metadata_df)
+    
+    # Step 5: fill NC data frame if there is - DO THIS ONLY IF negative controls were sequenced! They were not for SKQ21
+    # nc_df = sample_mapper.fill_nc_metadata()
+    controls_df = sample_mapper.finish_up_controls_df(final_sample_df=sample_df)
     sample_metadata_df.to_csv("/home/poseidon/zalmanek/FAIRe-Mapping/tests/sample_mapper/AK_carb_test/test.csv")
 
 

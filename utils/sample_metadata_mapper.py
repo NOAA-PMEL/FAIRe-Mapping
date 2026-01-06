@@ -20,8 +20,10 @@ from faire_mapping import (ExtractionMetadataBuilder,
                            ReferenceStationBuilder, 
                            SampleStoreBuilder, 
                            ExtractionBlankMappingDictBuilder, 
-                           SampleExtractionMappingDictBuilder, 
+                           SampleExtractionMappingDictBuilder,
+                           NcMappingDictBuilder,
                            extract_insdc_geographic_locations)
+
 
 # TODO: Turn nucl_acid_ext for DY20/12 into a BeBOP and change in extraction spreadsheet. Link to spreadsheet: https://docs.google.com/spreadsheets/d/1iY7Z8pNsKXHqsp6CsfjvKn2evXUPDYM2U3CVRGKUtX8/edit?gid=0#gid=0
 # TODO: continue update pos_df - add not applicable: sample to user defined fields, also add pos_cont_type
@@ -64,6 +66,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.sample_metadata_bottle_no_col_name = self.config_file[
             'sample_metadata_bottle_no_col_name']
         self.nc_samp_mat_process = self.config_file['nc_samp_mat_process']
+        self.nc_prepped_samp_store_dur = self.config_file['nc_prepped_samp_store_dur']
         self.vessel_name = self.config_file['vessel_name']
         self.faire_template_file = self.config_file['faire_template_file']
         self.google_sheet_mapping_file_id = self.config_file['google_sheet_mapping_file_id']
@@ -83,8 +86,15 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         #Instantiate mapping dict builder
         self.sample_extract_mapping_builder = SampleExtractionMappingDictBuilder(google_sheet_mapping_file_id=self.google_sheet_mapping_file_id, google_sheet_json_cred=self.google_json_creds)
 
-
-        self.extraction_standardizer = ExtractionMetadataBuilder(extractions_info=self.config_file['extractions'],
+        self.nc_mapping_builder = NcMappingDictBuilder(google_sheet_mapping_file_id=self.google_sheet_mapping_file_id,
+                                                  google_sheet_json_cred=self.google_json_creds,
+                                                  sample_mapping_builder=self.sample_extract_mapping_builder,
+                                                  nc_samp_mat_process=self.nc_samp_mat_process,
+                                                  nc_prepped_samp_stor_dur=self.nc_prepped_samp_store_dur,
+                                                  vessel_name=self.vessel_name)
+        self.extract_blank_mapping_builder = ExtractionBlankMappingDictBuilder(google_sheet_mapping_file_id=self.google_sheet_mapping_file_id, google_sheet_json_cred=self.google_json_creds)
+        
+        self.extraction_metadata_builder = ExtractionMetadataBuilder(extractions_info=self.config_file['extractions'],
                                                               google_sheet_json_cred=self.config_file['json_creds'],
                                                               sample_extract_mapping_builder=self.sample_extract_mapping_builder,
                                                               unwanted_cruise_code=self.unwanted_cruise_code,
@@ -94,10 +104,11 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.sample_metadata_df_builder = SampleMetadataBuilder(sample_name_metadata_col_name=self.sample_metadata_sample_name_column,
                                                                   sample_metadata_file_neg_control_col_name=self.sample_metadata_file_neg_control_col_name,
                                                                   sample_metadata_cast_no_col_name=self.sample_metadata_cast_no_col_name,
-                                                                  extraction_df=self.extraction_standardizer.extraction_df,
+                                                                  extraction_df=self.extraction_metadata_builder.extraction_df,
                                                                   csv_path=self.config_file['sample_metadata_file'],
                                                                   unwanted_cruise_code=self.unwanted_cruise_code,
                                                                   desired_cruise_code=self.desired_cruise_code)
+        
         # self.sample_metadata_df = self.filter_metadata_dfs()[0]
         # self.nc_df = self.filter_metadata_dfs()[1]
         
@@ -201,10 +212,14 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         except:
             None
     
-    def calculate_dna_yield(self, metadata_row: pd.Series, sample_vol_metadata_col: str) -> float:
+    def calculate_dna_yield(self, metadata_row: pd.Series, sample_vol_metadata_col: str, extraction_blank: bool = False) -> float:
         # calculate the dna yield based on the concentration (ng/uL) and the sample_volume (mL)
-        concentration = str(metadata_row[self.extraction_standardizer.EXTRACT_CONC_COL])
-        sample_vol = str(metadata_row[sample_vol_metadata_col]).replace('~','')
+        concentration = str(metadata_row[self.extraction_metadata_builder.EXTRACT_CONC_COL])
+        
+        if extraction_blank: # common column created in extraction builder
+            sample_vol = str(metadata_row[self.extraction_metadata_builder.EXTRACT_BLANK_VOL_WE_DNA_EXT_COL]).replace('~','')
+        else: # for all other samples will be whatever col is sepcified.
+            sample_vol = str(metadata_row[sample_vol_metadata_col]).replace('~','')
         
         if concentration == '' or concentration == None or concentration == 'nan':
             return 'not applicable'
@@ -661,77 +676,35 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     
     def fill_nc_metadata(self) -> pd.DataFrame:
         # Fills the negative control data frame
+        from faire_mapping.transformers.sample_metadata_transformer import SampleMetadataTransformer
+        from faire_mapping.transformers.rules import (
+            get_date_duration_rule,
+            get_eventDate_iso8601_rule,
+            get_neg_cont_type_from_ome_sample_name,
+            get_dna_yield_from_conc_and_vol,
+            get_well_number_from_well_field,
+            get_well_position_from_well_field)
 
-        nc_mapping_dict = self.create_nc_mapping_dict()
 
-        nc_results = {}
-        # add exact mappings
-        for faire_col, metadata_col in nc_mapping_dict[self.exact_mapping].items():
-            nc_results[faire_col] = self.nc_df[metadata_col].apply(
-                lambda row: self.apply_exact_mappings(metadata_row=row, faire_col=faire_col))
-
-        # Step 2: Add constant mappings
-        for faire_col, static_value in nc_mapping_dict[self.constant_mapping].items():
-            nc_results[faire_col] = self.apply_static_mappings(
-                faire_col=faire_col, static_value=static_value)
-
-        # Step 3. Add related mappings
-        # Step 3: Add related mappings
-        for faire_col, metadata_col in nc_mapping_dict[self.related_mapping].items():
-            # Add samp_category
-            if faire_col == self.faire_sample_category_name_col and metadata_col == self.sample_metadata_sample_name_column:
-                nc_results[faire_col] = self.nc_df.apply(
-                    lambda row: self.add_samp_category_by_sample_name(
-                        metadata_row=row, faire_col=faire_col, metadata_col=metadata_col),
-                    axis=1
-                )
-
-            elif faire_col == 'prepped_samp_store_dur':
-                if metadata_col != 'missing: not collected':
-                    date_col_names = metadata_col.split(' | ')
-                    nc_results[faire_col] = self.nc_df.apply(
-                        lambda row: self.calculate_date_duration(
-                            metadata_row=row, start_date_col=date_col_names[0], end_date_col=date_col_names[1]),
-                        axis=1
-                    )
-                else:
-                    # if metadata_col = "missing: not collected, then will be value"
-                    nc_results[faire_col] = metadata_col
-
-            elif faire_col == 'date_ext':
-                nc_results[faire_col] = self.nc_df[metadata_col].apply(
-                    self.convert_date_to_iso8601)
-
-            elif faire_col == self.faire_neg_cont_type_name_col:
-                nc_results[faire_col] = self.nc_df[metadata_col].apply(
-                    self.add_neg_cont_type)
-
-            elif faire_col == 'dna_yield':
-                vol_col = self.sample_extract_mapping_builder.sample_mapping_dict[self.exact_mapping].get('samp_vol_we_dna_ext')
-                nc_results[faire_col] = self.nc_df.apply(
-                        lambda row: self.calculate_dna_yield(metadata_row=row, sample_vol_metadata_col=vol_col),
-                        axis = 1
-                    )
-            elif faire_col == 'extract_well_number':
-                nc_results[faire_col] = self.nc_df.apply(
-                    lambda row: self.get_well_number_from_well_field(metadata_row=row, well_col=metadata_col),
-                    axis=1
-                )
+        nc_transformer = SampleMetadataTransformer(sample_mapper=self, ome_auto_setup=True, nc_transformer=True)
+        additional_rules = [get_date_duration_rule(self),
+                            get_eventDate_iso8601_rule(self),
+                            get_neg_cont_type_from_ome_sample_name(self),
+                            get_dna_yield_from_conc_and_vol(self),
+                            get_well_number_from_well_field(self),
+                            get_well_position_from_well_field(self)]
         
-            elif faire_col == 'extract_well_position':
-                nc_results[faire_col] = self.nc_df.apply(
-                    lambda row: self.get_well_position_from_well_field(metadata_row=row, well_col=metadata_col),
-                    axis = 1 
-                )
+        nc_transformer.add_custom_rules(additional_rules)
+        print("\nNegative Controls Mapping:\n")
+        nc_metadata_df = nc_transformer.transform()
 
+       
         # First concat with sample_faire_template to get rest of columns,
         # # and add user_defined columnsthen
         # Fill na and empty values with not applicable: control sample
         try:
-            nc_results_df = pd.DataFrame(nc_results)
-
             # compare columns in df to nc_faire_fields list and if value is missing, fill with missing: not provided
-            nc_results_updated = nc_results_df.reindex(columns=nc_faire_field_cols, fill_value="missing: not collected")
+            nc_results_updated = nc_metadata_df.reindex(columns=nc_faire_field_cols, fill_value="missing: not collected")
             nc_results_updated = nc_results_updated.fillna("missing: not collected")
             nc_df = pd.concat(
                 [self.sample_faire_template_df, nc_results_updated])
@@ -764,44 +737,36 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         return neg_controls_df
 
     def fill_extraction_blanks_metadata(self) -> pd.DataFrame:
+        from faire_mapping.transformers.sample_metadata_transformer import SampleMetadataTransformer
+        from faire_mapping.transformers.rules import (
+            get_exact_mappings_rule,
+            get_constant_mappings_rule,
+            get_eventDate_iso8601_rule,
+            get_dna_yield_from_conc_and_vol,
+            get_well_number_from_well_field,
+            get_well_position_from_well_field)
 
-        extracton_blanks_mapping_builder = ExtractionBlankMappingDictBuilder(google_sheet_mapping_file_id=self.google_sheet_mapping_file_id)
+        if not self.extraction_metadata_builder.extraction_blanks_df.empty:
+            blanks_transformer = SampleMetadataTransformer(sample_mapper=self, ome_auto_setup=False, extract_blank_transformer=True)
+            additional_rules = [get_exact_mappings_rule(self),
+                                get_constant_mappings_rule(self),
+                                get_eventDate_iso8601_rule(self),
+                                get_dna_yield_from_conc_and_vol(self, extraction_blank=True),
+                                get_well_number_from_well_field(self),
+                                get_well_position_from_well_field(self)]
+        
+            blanks_transformer.add_custom_rules(additional_rules)
+            print("\nExtraction Blank Mapping:\n")
+            blanks_metadata_df = blanks_transformer.transform()
 
-        extract_blank_results = {}
-
-        if not self.extraction_standardizer.extraction_blanks_df.empty:
-
-            extract_blank_results[self.faire_sample_name_col] = self.extraction_standardizer.extraction_blanks_df[self.extraction_standardizer.EXTRACT_SAMP_NAME_COL]
-            extract_blank_results[self.faire_sample_category_name_col] = "negative control"
-            extract_blank_results[self.faire_neg_cont_type_name_col] = "extraction negative"
-            extract_blank_results['habitat_natural_artificial_0_1'] = 1
-
-            # Add mappings from mappings dict which is just mapping from extractionMetadata sheet
-            # add exact mappings
-            for faire_col, metadata_col in extracton_blanks_mapping_builder.extraction_blanks_mapping_dict[self.exact_mapping].items():
-                extract_blank_results[faire_col] = self.extraction_standardizer.extraction_blanks_df[metadata_col].apply(
-                    lambda row: self.apply_exact_mappings(metadata_row=row, faire_col=faire_col))
-
-            # Step 2: Add constant mappings
-            for faire_col, static_value in extracton_blanks_mapping_builder.extraction_blanks_mapping_dict[self.constant_mapping].items():
-                extract_blank_results[faire_col] = self.apply_static_mappings(
-                    faire_col=faire_col, static_value=static_value)
-
-            # Step 3: Add related mappings
-            for faire_col, metadata_col in extracton_blanks_mapping_builder.extraction_blanks_mapping_dict[self.related_mapping].items():
-                if faire_col == 'date_ext':
-                    extract_blank_results[faire_col] = self.extraction_standardizer.extraction_blanks_df[metadata_col].apply(
-                        self.convert_date_to_iso8601)
-                if faire_col == 'dna_yield':
-                    extract_blank_results[faire_col] = self.extraction_standardizer.extraction_blanks_df.apply(
-                        lambda row: self.calculate_dna_yield(metadata_row=row, sample_vol_metadata_col=self.extraction_standardizer.EXTRACT_BLANK_VOL_WE_DNA_EXT_COL),
-                        axis = 1
-                    )
-                if faire_col == 'samp_vol_we_dna_ext':
-                    extract_blank_results[faire_col] = self.extraction_standardizer.extraction_blanks_df[self.extraction_standardizer.EXTRACT_BLANK_VOL_WE_DNA_EXT_COL]
+            blanks_metadata_df[self.faire_sample_name_col] = self.extraction_metadata_builder.extraction_blanks_df[self.extraction_metadata_builder.EXTRACT_SAMP_NAME_COL]
+            blanks_metadata_df[self.faire_sample_category_name_col] = "negative control"
+            blanks_metadata_df[self.faire_neg_cont_type_name_col] = "extraction negative"
+            blanks_metadata_df['habitat_natural_artificial_0_1'] = 1
+            blanks_metadata_df['samp_vol_we_dna_ext'] = self.extraction_metadata_builder.extraction_blanks_df[self.extraction_metadata_builder.EXTRACT_BLANK_VOL_WE_DNA_EXT_COL]
 
             extract_blanks_df = pd.concat(
-                [self.sample_faire_template_df, pd.DataFrame(extract_blank_results)])
+                [self.sample_faire_template_df, blanks_metadata_df])
 
             return extract_blanks_df
 
@@ -829,7 +794,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             current_samp = row[self.faire_sample_name_col]
             related_blanks = []
 
-            for extraction_blank, associated_samples in self.extraction_standardizer.extraction_blank_rel_cont_dict.items():
+            for extraction_blank, associated_samples in self.extraction_metadata_builder.extraction_blank_rel_cont_dict.items():
                 if current_samp in associated_samples:
                     related_blanks.append(extraction_blank)
 

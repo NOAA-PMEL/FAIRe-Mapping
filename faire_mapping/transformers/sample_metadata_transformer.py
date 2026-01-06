@@ -14,15 +14,33 @@ class SampleMetadataTransformer:
     """
     Transformer for sample metadata using the transformation pipeline
     """
-    def __init__(self, sample_mapper: FaireSampleMetadataMapper, ome_auto_setup: bool = True):
+    def __init__(self, sample_mapper: FaireSampleMetadataMapper, ome_auto_setup: bool = True, nc_transformer: bool = False, extract_blank_transformer: bool = False):
         """
         Initialize the transformer
         """
         self.mapper = sample_mapper
-        self.pipeline = TransformationPipeline(
-            source_df=sample_mapper.sample_metadata_df_builder.sample_metadata_df,
-            mapper=sample_mapper
-        )
+        # For regular sample df
+        if not nc_transformer and not extract_blank_transformer:
+            self.pipeline = TransformationPipeline(
+                source_df=sample_mapper.sample_metadata_df_builder.sample_metadata_df,
+                mapper=sample_mapper
+            )
+            self.mapping_dict=self.mapper.sample_extract_mapping_builder.sample_mapping_dict
+        # For nc_df
+        elif nc_transformer:
+            self.pipeline = TransformationPipeline(
+                source_df=sample_mapper.sample_metadata_df_builder.nc_metadata_df,
+                mapper=sample_mapper
+            )
+            self.mapping_dict=self.mapper.nc_mapping_builder.nc_mapping_dict
+        elif extract_blank_transformer:
+            self.pipeline = TransformationPipeline(
+                source_df=sample_mapper.extraction_metadata_builder.extraction_blanks_df,
+                mapper=sample_mapper
+            )
+            self.mapping_dict=self.mapper.extract_blank_mapping_builder.extraction_blanks_mapping_dict
+
+        
 
         if ome_auto_setup:
             self._ome_setup_default_rules()
@@ -94,7 +112,7 @@ class SampleMetadataTransformer:
         logger.info("Starting sample metadata transformation")
 
         # Get the related mapping dictionary
-        mapping = self.mapper.sample_extract_mapping_builder.sample_mapping_dict
+        mapping = self.mapping_dict
 
         # Execute the pipeline
         self.pipeline.execute(mapping)
