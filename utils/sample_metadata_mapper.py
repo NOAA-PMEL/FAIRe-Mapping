@@ -15,8 +15,13 @@ from shapely.geometry import Point
 from .custom_exception import NoInsdcGeoLocError
 from .lists import nc_faire_field_cols
 from geopy.distance import geodesic
-from faire_mapping.scrapers import extract_insdc_geographic_locations
-from faire_mapping import ExtractionMetadataBuilder, SampleMetadataBuilder, ReferenceStationBuilder, SampleStoreBuilder, ExtractionBlankMappingDictBuilder, SampleExtractionMappingDictBuilder, extract_insdc_geographic_locations
+from faire_mapping import (ExtractionMetadataBuilder, 
+                           SampleMetadataBuilder, 
+                           ReferenceStationBuilder, 
+                           SampleStoreBuilder, 
+                           ExtractionBlankMappingDictBuilder, 
+                           SampleExtractionMappingDictBuilder, 
+                           extract_insdc_geographic_locations)
 
 # TODO: Turn nucl_acid_ext for DY20/12 into a BeBOP and change in extraction spreadsheet. Link to spreadsheet: https://docs.google.com/spreadsheets/d/1iY7Z8pNsKXHqsp6CsfjvKn2evXUPDYM2U3CVRGKUtX8/edit?gid=0#gid=0
 # TODO: continue update pos_df - add not applicable: sample to user defined fields, also add pos_cont_type
