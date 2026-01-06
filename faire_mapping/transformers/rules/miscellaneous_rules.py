@@ -213,6 +213,30 @@ def get_condition_constant_rule(mapper: FaireSampleMetadataMapper, faire_col: st
             .build()
      )
 
-                    
+def switch_sign_of_lat_or_lon_deg(mapper: FaireSampleMetadataMapper):
+    """
+    Rule for switching the sign of a latitude of longitude value. E.g. if it is
+    negative and should be positive, or vice versa
+    Expects metadata_col to be 'lat_or_lon_col'.
+    """
+    def apply_lat_lon_sign_switch(df, faire_col, metadata_col):
+        """
+        Apply the sign switch of the latitude of longitude value using the mapper's switch_lat_lon_degree_to_neg method.
+        """
+        # Apply the calculation to each row
+        return df[metadata_col].apply(mapper.switch_lat_lon_degree_to_neg)
+    return (
+            TransformationBuilder('switch_lat_or_lon')
+            .when(lambda f, m, mt: (
+                f in ['decimalLongitude', 'decimalLatitude'] and
+                mt == 'related'
+            ))
+            .apply(
+                apply_lat_lon_sign_switch,
+                mode='direct'
+            )
+            .for_mapping_type('related')
+            .build()
+        )                 
 
 

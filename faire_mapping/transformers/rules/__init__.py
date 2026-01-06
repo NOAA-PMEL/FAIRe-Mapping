@@ -31,7 +31,8 @@ from .miscellaneous_rules import(
     get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col,
     get_fallback_col_mapping_rule,
     get_max_depth_with_pressure_fallback,
-    get_condition_constant_rule
+    get_condition_constant_rule,
+    switch_sign_of_lat_or_lon_deg
 )
 
 from .station_rules import(
@@ -76,6 +77,7 @@ __all__ = [
     'get_fallback_col_mapping_rule',
     'get_max_depth_with_pressure_fallback',
     'get_condition_constant_rule',
+    'switch_sign_of_lat_or_lon_deg',
     'get_line_id_from_standardized_station',
     'get_standardized_station_id_from_nonstandardized_station_name',
     'get_stations_within_5km_of_lat_lon',
