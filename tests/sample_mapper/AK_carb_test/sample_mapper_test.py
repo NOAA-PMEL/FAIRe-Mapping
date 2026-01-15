@@ -176,31 +176,26 @@ def main() -> None:
 
     # sample_metadata = create_rc0083_sample_metadata()
 
-    sample_mapper = FaireSampleMetadataMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/projects/AK_Carbon/rc0083/config.yaml')
-    transformer = SampleMetadataTransformer(sample_mapper=sample_mapper, ome_auto_setup=True)
-    # transforer.insert_rule_before('biological_rep_relation', rule5)
     additional_rules = [
         # get_geo_loc_name_by_lat_lon_rule(sample_mapper),
         # get_env_medium_for_coastal_waters_by_geo_loc_rule(sample_mapper),
-        get_eventDate_iso8601_rule(sample_mapper),
-        get_date_duration_rule(sample_mapper),
-        get_depth_from_pressure(sample_mapper),
-        get_minimum_depth_from_max_minus_1m(sample_mapper),
-        get_altitude_from_maxdepth_and_totdepthcol(sample_mapper),
-        get_env_local_scale_by_depth(sample_mapper),
-        get_dna_yield_from_conc_and_vol(sample_mapper),
-        get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col(sample_mapper),
-        get_line_id_from_standardized_station(sample_mapper)
+        get_eventDate_iso8601_rule,
+        get_date_duration_rule,
+        get_depth_from_pressure,
+        get_minimum_depth_from_max_minus_1m,
+        get_altitude_from_maxdepth_and_totdepthcol,
+        get_env_local_scale_by_depth,
+        get_dna_yield_from_conc_and_vol,
+        get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col,
+        get_line_id_from_standardized_station
                         ]
-    transformer.add_custom_rules(additional_rules)
-    sample_metadata_df = transformer.transform()
 
-    sample_df = sample_mapper.fill_empty_sample_values_and_finalize_sample_df(df = sample_metadata_df)
-    
-    # Step 5: fill NC data frame if there is - DO THIS ONLY IF negative controls were sequenced! They were not for SKQ21
-    # nc_df = sample_mapper.fill_nc_metadata()
-    controls_df = sample_mapper.finish_up_controls_df(final_sample_df=sample_df)
-    sample_metadata_df.to_csv("/home/poseidon/zalmanek/FAIRe-Mapping/tests/sample_mapper/AK_carb_test/test.csv")
+    sample_mapper = FaireSampleMetadataMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/projects/AK_Carbon/rc0083/config.yaml',
+                                              additiona_rules=additional_rules,
+                                              ome_auto_setup=True)
+
+    df = sample_mapper.finalize_samp_metadata_df()
+    df.to_csv("/home/poseidon/zalmanek/FAIRe-Mapping/tests/sample_mapper/AK_carb_test/test.csv")
 
 
     

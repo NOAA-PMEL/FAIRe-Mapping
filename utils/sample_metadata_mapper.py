@@ -53,11 +53,18 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                                              "pos_cont_type": "not applicable: sample group"}
     gebco_file = "/home/poseidon/zalmanek/FAIRe-Mapping/utils/GEBCO_2024.nc"
 
-    def __init__(self, config_yaml: yaml):
+    def __init__(self, config_yaml: yaml, additiona_rules:list = None, ome_auto_setup=True):
         # TODO: used to have exp_metadata_df: pd.Series as init, but removed because of abstracting out sequencing yaml. See all associated commented out portions
         # May need to move this part into a separate class that combines after all sample_metadata is generated for each cruise
         super().__init__(config_yaml)
 
+        # LoOCAL IMPORT: prevents circular dependence
+        from faire_mapping.transformers.sample_metadata_transformer import SampleMetadataTransformer
+
+        self.additional_rules = additiona_rules # list of SampleMetadataTransformer rules
+        self.ome_auto_setup = ome_auto_setup # bool
+
+        # Config file stuff
         self.sample_metadata_sample_name_column = self.config_file[
             'sample_metadata_sample_name_column']
         self.sample_metadata_file_neg_control_col_name = self.config_file[
@@ -73,7 +80,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         self.unwanted_cruise_code = self.config_file['cruise_code_fixes']['unwanted_cruise_code'] if 'cruise_code_fixes' in self.config_file else None
         self.desired_cruise_code = self.config_file['cruise_code_fixes']['desired_cruise_code'] if 'cruise_code_fixes' in self.config_file else None
         self.google_json_creds = self.config_file['json_creds']
-
         self.samp_dur_info = self.config_file['samp_store_dur_sheet_info'] if 'samp_store_dur_sheet_info' in self.config_file else None
 
         # Sample storage duration info
@@ -109,6 +115,15 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                                                                   unwanted_cruise_code=self.unwanted_cruise_code,
                                                                   desired_cruise_code=self.desired_cruise_code)
         
+        # Set up Transformation stuff and rules
+        self.transformer = SampleMetadataTransformer(
+            sample_mapper=self,
+            ome_auto_setup=self.ome_auto_setup
+        )
+        if self.additional_rules:
+            activated_rules = [rule(self) for rule in self.additional_rules]
+            self.transformer.add_custom_rules(activated_rules)
+        
         # self.sample_metadata_df = self.filter_metadata_dfs()[0]
         # self.nc_df = self.filter_metadata_dfs()[1]
         
@@ -121,7 +136,28 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # stations/reference stations stuff
         self.station_name_reference_google_sheet_id = self.config_file['station_name_reference_google_sheet_id'] if 'station_name_reference_google_sheet_id' in self.config_file else None # Some projects won't have reference stations (RC0083)
         self.ref_station_builder = ReferenceStationBuilder(header=0, google_sheet_id=self.station_name_reference_google_sheet_id, json_creds_path=self.google_json_creds)
-        
+
+    def finalize_samp_metadata_df(self) -> pd.DataFrame:
+        """
+        The orchestrator method for for transforming the sample metadata, the negative control metadata, and the blank metadata
+        into a final FAIRe formatted data frame.
+        """
+        # 1. Transform sample metadata (no controls), filling empty values with missing: not collected
+        sample_df = self.transform()
+        sample_df = self.fill_empty_sample_values_and_finalize_sample_df(df=sample_df)
+
+        # 2. Transform and finish up the controls_df (which includes field blanks and extraction blanks)
+        controls_df = self.finish_up_controls_df(final_sample_df=sample_df)
+
+        # 3. Concat the sample_df, controls_df with the sample_metadata_template to format
+        faire_sample_df = pd.concat([self.sample_faire_template_df, sample_df, controls_df])
+
+        return faire_sample_df
+    
+    def transform(self):
+        df = self.transformer.transform()
+        return df  
+    
     def add_biological_replicates_column(self, df: pd.DataFrame, faire_col: str, metadata_col: str) -> pd.Series:
         """
         Add biological replicates for all samples
@@ -270,7 +306,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         else:
             min_depth = max_depth
         return round(min_depth, 2)
-
 
     def format_geo_loc(self, metadata_row: str, geo_loc_metadata_col: str) -> dict:
         # TODO: add if statement for Arctic OCean? SKQ21-12S?
@@ -821,3 +856,4 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             return pos_condition_const
         else:
             return neg_condition_const
+        
