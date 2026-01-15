@@ -34,7 +34,7 @@ class ExtractionBlankMappingDictBuilder(BaseMappingBuilder):
         if self.FAIRE_SAMP_VOL_WE_DNA_EXT_COL_NAME in mapping_dict[self.EXACT_MAPPING]:
             mapping_col = mapping_dict[self.EXACT_MAPPING][self.FAIRE_SAMP_VOL_WE_DNA_EXT_COL_NAME]
             del mapping_dict[self.EXACT_MAPPING][self.FAIRE_SAMP_VOL_WE_DNA_EXT_COL_NAME]
-            mapping_dict[self.RELATED_MAPPING][self.FAIRE_SAMP_VOL_WE_DNA_EXT_COL_NAME] = mapping_col
+            mapping_dict[self.EXACT_MAPPING][self.FAIRE_SAMP_VOL_WE_DNA_EXT_COL_NAME] = "extraction_blank_vol_dna_ext" # this is the name of the column for extraction volumes we created in the extraction_metadata_builder.py file
 
 
         # If pool_dna_num in exact mapping automatically make constant mapping of 1 (may need to change if blanks are ever pooled for some reason)

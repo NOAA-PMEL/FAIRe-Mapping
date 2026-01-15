@@ -25,8 +25,8 @@ from faire_mapping import (ExtractionMetadataBuilder,
                            extract_insdc_geographic_locations)
 
 
-# TODO: Turn nucl_acid_ext for DY20/12 into a BeBOP and change in extraction spreadsheet. Link to spreadsheet: https://docs.google.com/spreadsheets/d/1iY7Z8pNsKXHqsp6CsfjvKn2evXUPDYM2U3CVRGKUtX8/edit?gid=0#gid=0
-# TODO: continue update pos_df - add not applicable: sample to user defined fields, also add pos_cont_type
+# TODO: nucl_acid_ext/modify for fill_nc_metadata and fill_blank_metadata is by keyword if it is related (will most of the time be exact, but may need to fix this in the future if its not by keyword rule)
+
 
 class FaireSampleMetadataMapper(OmeFaireMapper):
 
@@ -143,8 +143,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         into a final FAIRe formatted data frame.
         """
         # 1. Transform sample metadata (no controls), filling empty values with missing: not collected
+        # Also fix too low depths (at the request of Sean - they should not be less than 3 m)
         sample_df = self.transform()
         sample_df = self.fill_empty_sample_values_and_finalize_sample_df(df=sample_df)
+        sample_df = self.fix_too_low_depths(df=sample_df)
 
         # 2. Transform and finish up the controls_df (which includes field blanks and extraction blanks)
         controls_df = self.finish_up_controls_df(final_sample_df=sample_df)
@@ -718,7 +720,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             get_neg_cont_type_from_ome_sample_name,
             get_dna_yield_from_conc_and_vol,
             get_well_number_from_well_field,
-            get_well_position_from_well_field)
+            get_well_position_from_well_field,
+            get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col)
 
 
         nc_transformer = SampleMetadataTransformer(sample_mapper=self, ome_auto_setup=True, nc_transformer=True)
@@ -727,7 +730,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                             get_neg_cont_type_from_ome_sample_name(self),
                             get_dna_yield_from_conc_and_vol(self),
                             get_well_number_from_well_field(self),
-                            get_well_position_from_well_field(self)]
+                            get_well_position_from_well_field(self),
+                            get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col(self)]
         
         nc_transformer.add_custom_rules(additional_rules)
         print("\nNegative Controls Mapping:\n")
@@ -779,7 +783,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             get_eventDate_iso8601_rule,
             get_dna_yield_from_conc_and_vol,
             get_well_number_from_well_field,
-            get_well_position_from_well_field)
+            get_well_position_from_well_field,
+            get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col)
 
         if not self.extraction_metadata_builder.extraction_blanks_df.empty:
             blanks_transformer = SampleMetadataTransformer(sample_mapper=self, ome_auto_setup=False, extract_blank_transformer=True)
@@ -788,7 +793,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                                 get_eventDate_iso8601_rule(self),
                                 get_dna_yield_from_conc_and_vol(self, extraction_blank=True),
                                 get_well_number_from_well_field(self),
-                                get_well_position_from_well_field(self)]
+                                get_well_position_from_well_field(self),
+                                get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col(self)]
         
             blanks_transformer.add_custom_rules(additional_rules)
             print("\nExtraction Blank Mapping:\n")
