@@ -607,7 +607,6 @@ class ProjectMapper(OmeFaireMapper):
 
         col_index = 0
         for assay, bebops in project_pcr_library_prep_mapping_dict.items():
-            print(project_pcr_library_prep_mapping_dict)
             if assay in assays_in_proj:
                 # Get pcr be bop_dict
                 pcr_owner = bebops['pcr_bebop']['owner']
