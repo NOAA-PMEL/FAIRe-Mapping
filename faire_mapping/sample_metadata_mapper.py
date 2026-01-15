@@ -12,7 +12,7 @@ import gsw
 from shapely.geometry import Point
 # from geopy.distance import geodesic
 # from bs4 import BeautifulSoup
-from .custom_exception import NoInsdcGeoLocError
+from faire_mapping.custom_exception import NoInsdcGeoLocError
 from .lists import nc_faire_field_cols
 from geopy.distance import geodesic
 from faire_mapping import (ExtractionMetadataBuilder, 

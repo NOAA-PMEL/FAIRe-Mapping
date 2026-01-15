@@ -11,7 +11,7 @@ import yaml
 import re
 import numpy as np
 from .custom_exception import ControlledVocabDoesNotExistError
-from .lists import faire_int_cols
+from faire_mapping.constants import faire_int_cols
 import gspread #library that makes it easy for us to interact with the sheet
 from google.oauth2.service_account import Credentials
 # import requests
