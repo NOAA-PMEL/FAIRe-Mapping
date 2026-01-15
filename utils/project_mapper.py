@@ -72,9 +72,15 @@ class ProjectMapper(OmeFaireMapper):
 
         self.pcr_library_dict = {}
 
-    def process_whole_project_and_save_to_excel(self):
-
-        sample_metadata_df, experiment_run_metadata_df = self.process_sample_run_data()
+    def process_whole_project_and_save_to_excel(self, sample_metadata_df: pd.DataFrame=None, experiment_run_metadata_df: pd.DataFrame=None):
+        """
+        Takes the sample_metadata_df and experiment_run_metadata_df from teh self.process_sample_run_data() and saves as csvs and excel files.
+        Do not have to provide the sample_metadata_df or the experiment_run_metadata_df if ready to do the whole project at once. However, if any 
+        tweaking to the dataframes needs to happen before saving, call  process_sample_run_data first, then add the outputs as inputs into this method 
+        and call this method.
+        """
+        if sample_metadata_df is None and experiment_run_metadata_df is None:
+            sample_metadata_df, experiment_run_metadata_df = self.process_sample_run_data()
 
         data_dir = os.path.dirname(self.final_faire_template_path)
 
