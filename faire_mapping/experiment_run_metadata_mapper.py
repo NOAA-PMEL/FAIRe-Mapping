@@ -471,51 +471,6 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             else:
                 self.asv_samp_name_dict[marker][sample_name] = updated_sample_name
 
-    def _create_count_asv_dict_for_merged_asvs(self, single_asv_df: pd.DataFrame, merged_asv_df: pd.DataFrame, marker: str):
-        # Creates the count asv dict for merged  asvs per marker. So the output_read_count will be from the origin run asv table and the 
-        # output_otu_num will come from the merged tsv
-        # Get the output_read_count from the single file
-        for sample_name in single_asv_df.columns:
-            
-            # fix sample names if they mismatch in metadata for asv counts look up
-            sample_name = self._fix_sample_names_for_asv_lookup(sample_name)
-        
-            # sum the column values for output read count
-            output_read_count = single_asv_df[sample_name].sum()
-
-            # update sample names to match rest of data
-            updated_sample_name = self._clean_asv_samp_names(sample_name=sample_name, marker=marker)
-            
-            # store output_read_count in the nested dictionary
-            self.asv_data_dict[marker][updated_sample_name] = {'output_read_count': output_read_count.item()}
-
-            # Add sample names to dictionary (for curating otu tables)
-            if marker not in self.asv_samp_name_dict:
-                self.asv_samp_name_dict[marker] = {sample_name: updated_sample_name}
-            else:
-                self.asv_samp_name_dict[marker][sample_name] = updated_sample_name
-
-        
-        # Get the output_otu_num from the merged file
-        for sample_name in merged_asv_df.columns:
-            # fix sample names if they mismatch in metadata for asv counts look up
-            sample_name = self._fix_sample_names_for_asv_lookup(sample_name)
-            
-            # get the output_otu_num which is the total number asvs for each sample (non zero count number)
-            non_zero_output_asv_num = (merged_asv_df[sample_name] > 0).sum()
-
-             # update sample names to match rest of data
-            updated_sample_name = self._clean_asv_samp_names(sample_name=sample_name, marker=marker)
-
-            # store output_otu_num in the nested dictionary
-            try:
-                # will fail if tryingto add samples from other runs (e.g. Run3 positive sample because have not been added to the dictionary)
-                self.asv_data_dict[marker][updated_sample_name]['output_otu_num'] = non_zero_output_asv_num.item()
-            except:
-                # If it didn't exist in the dictionary then it will add the output_read_count of 0 and then add the ouptut_otu_num
-                self.asv_data_dict[marker][updated_sample_name] = {'output_read_count': 0,
-                                                                   'output_otu_num': non_zero_output_asv_num.item()}
-
     def _create_count_asv_dict(self, revamp_blast: bool = True) -> dict:
         # TODO: add functionality of revamp_bast is not True?
         # Create  a nested dictionary of marker, sample names and counts
@@ -523,19 +478,11 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         # if revamp_blast is True will run _count_otu_tax_assigned_using_REVAMP_blast_based_tax to add the otu_num_tax_assigned
 
         for marker, asv_tsv_file_s in self.asv_counts_tsvs_for_run.items():
-            if isinstance(asv_tsv_file_s, str):
-                asv_tsv_file = asv_tsv_file_s
-                # Initialize marker in the nested dictionary
-                self.asv_data_dict[marker] = {}
-                asv_df = self._read_asv_counts_tsv(asv_tsv_file=asv_tsv_file)
-                self._create_count_asv_dict_for_non_merged_asvs(asv_df=asv_df, marker=marker)
-                
-            elif isinstance(asv_tsv_file_s, dict):
-                # Initialize marker in the nested dictionary
-                self.asv_data_dict[marker] = {}
-                singular_asv_df = self._read_asv_counts_tsv(asv_tsv_file=asv_tsv_file_s['secondary_path']) # for calculating output_read_count on the run database level
-                merged_asv_df = self._read_asv_counts_tsv(asv_tsv_file=asv_tsv_file_s['merged']) # for calculating output_otu_num (will include merged numbers from other runs - not necessary for NCBI)
-                self._create_count_asv_dict_for_merged_asvs(single_asv_df=singular_asv_df, merged_asv_df=merged_asv_df, marker=marker)
+            asv_tsv_file = asv_tsv_file_s
+            # Initialize marker in the nested dictionary
+            self.asv_data_dict[marker] = {}
+            asv_df = self._read_asv_counts_tsv(asv_tsv_file=asv_tsv_file)
+            self._create_count_asv_dict_for_non_merged_asvs(asv_df=asv_df, marker=marker)
 
         # Since getting the otu_num_tax_assigned depends on which version of the taxonomy we are using for the submission
         # if revamp_blast == True then use the ASVs_counts_mergedOnTaxonomy.tsv file to get this info.
