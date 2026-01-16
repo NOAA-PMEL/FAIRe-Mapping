@@ -11,12 +11,8 @@ revamp_blast: True # if using the revamp blast-based taxonomy assignment then se
 ignore_markers: # Add Metabarcoding Marker name EXACTLY from run_sample_metadata_file if not submitting info for that marker
 merged: True
 asv_counts_tsvs_for_run: #dloop left out because Sean said dLoop did not work for Run2, keys match metabarcoding marker in metadata spreadsheet
-  'Machida18S': 
-    secondary_path: /home/poseidon/mcallister/eDNA_bioinformatics/Orphans/DysonNorseman20_EcoFOCI_OSUruns/OSU867_DY20_Vents_lane1/Machida18S_REVAMP_out/dada2/ASVs_counts.tsv
-    merged: /home/poseidon/mcallister/eDNA_bioinformatics/Run3/01_REVAMP/Machida18S_REVAMP_MERGE_NEW/dada2/ASVs_counts.tsv
-  'Parada16S': 
-    secondary_path: /home/poseidon/mcallister/eDNA_bioinformatics/Orphans/DysonNorseman20_EcoFOCI_OSUruns/OSU867_DY20_Vents_lane1/Parada16S_REVAMP_out/dada2/ASVs_counts.tsv
-    merged: /home/poseidon/mcallister/eDNA_bioinformatics/Run3_rerun/01_REVAMP/Parada16S_REVAMP_merged/dada2/ASVs_counts.tsv
+  'Machida18S': /home/poseidon/mcallister/eDNA_bioinformatics/Orphans/DysonNorseman20_EcoFOCI_OSUruns/OSU867_DY20_Vents_lane1/Machida18S_REVAMP_out/dada2/ASVs_counts.tsv
+  'Parada16S': /home/poseidon/mcallister/eDNA_bioinformatics/Orphans/DysonNorseman20_EcoFOCI_OSUruns/OSU867_DY20_Vents_lane1/Parada16S_REVAMP_out/dada2/ASVs_counts.tsv
 otu_num_tax_assigned_files_for_run: # The files used to calculate the otu_num_tax_assigned - Sean said it depends on the version of taxonomy we are using
   'Machida18S': /home/poseidon/mcallister/eDNA_bioinformatics/Run3_rerun/01_REVAMP/Parada16S_REVAMP_merged/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
   'Parada16S': /home/poseidon/mcallister/eDNA_bioinformatics/Run3_rerun/01_REVAMP/Parada16S_REVAMP_merged/ASV2Taxonomy/ASVs_counts_mergedOnTaxonomy.tsv
