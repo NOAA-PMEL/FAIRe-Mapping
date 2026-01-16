@@ -11,7 +11,7 @@ import yaml
 import re
 import numpy as np
 from .custom_exception import ControlledVocabDoesNotExistError
-from .lists import faire_int_cols
+from faire_mapping.constants import faire_int_cols
 import gspread #library that makes it easy for us to interact with the sheet
 from google.oauth2.service_account import Credentials
 # import requests
@@ -73,71 +73,16 @@ class OmeFaireMapper:
         
         return pd.read_excel(file_path, sheet_name=sheet_name, header=header)
     
-    def load_csv_as_df(self, file_path: Path, header=0, sep=',') -> pd. DataFrame:
-        # Load csv files as a data frame
+    # def load_csv_as_df(self, file_path: Path, header=0, sep=',') -> pd. DataFrame:
+    #     # Load csv files as a data frame
 
-        return pd.read_csv(file_path, header=header, sep=sep)
-    
-    def load_google_sheet_as_df(self, google_sheet_id: str, sheet_name: str, header: int) -> pd.DataFrame:
-
-        scopes = ['https://www.googleapis.com/auth/spreadsheets.readonly']
-
-        creds = Credentials.from_service_account_file(self.google_sheet_json_cred, scopes=scopes)
-        client = gspread.authorize(creds)
-
-        sheet = client.open_by_key(google_sheet_id)
-        worksheet = sheet.worksheet(sheet_name)
-        
-        # Get all values
-        values = worksheet.get_all_values()
-        headers = values[header]
-        data_rows = values[header+1:]
-        df = pd.DataFrame(data_rows, columns=headers)
-        
-        return df
+    #     return pd.read_csv(file_path, header=header, sep=sep)
     
     def load_beBop_yaml_terms(self, path_to_bebop: str):
         # read BeBOP yaml terms
         with open(path_to_bebop, 'r', encoding='utf-8') as f:
             post = frontmatter.load(f)
             return post
-        
-    def str_replace_for_samps(self, samp_name: pd.Series) -> str:
-        # Fixes sample names in the data frame
-        # if sample is part of the DY2012 cruise, will replace any str of DY20 with DY2012
-        samp_name = str(samp_name)
-        if '_' in samp_name and 'pool' not in samp_name: # osu samp names have _ that needs to be . For example, E62_1B_DY20. Pooled samples keep the underscore
-            samp_name = samp_name.replace('_', '.')
-        if '.DY20' in samp_name:
-           samp_name = samp_name.replace('.DY20', '.DY20-12')
-        if '(P10 D2)' in samp_name:
-            samp_name = samp_name.replace(' (P10 D2)', '') # for E1875.OC0723 (P10 D2) in Run2
-        if '.IB.NO20' in samp_name: # for E265.1B.NO20 sample - in metadata was E265.1B.NO20
-            return samp_name.replace('.IB.NO20', '.1B.NO20-01')
-        if 'E.2139.' in samp_name:
-            return samp_name.replace('E.2139.', 'E2139.') # For E239 QiavacTest, had a . between E and number in metadata
-        if 'E687' in samp_name:
-            return samp_name.replace('E687', 'E687.WCOA21')
-        if '.NC' in samp_name: # If an E was put in front of an NC sample (this happends in some of the extractions e.g. the SKQ21 extractions), will remove the E
-            samp_name = samp_name.replace('E.', '')
-        if '*' in samp_name:
-            samp_name = samp_name.replace('*','')
-        if '.SKQ2021' in samp_name:
-            samp_name = samp_name.replace('.SKQ2021', '.SKQ21-15S')
-        if '.NO20' in samp_name:
-            samp_name = samp_name.replace('.NO20', '.NO20-01')
-        if 'Mid.NC.SKQ21' in samp_name:
-            samp_name = samp_name.replace('Mid.NC.SKQ21', 'MID.NC.SKQ21-15S')
-        if '.DY2206' in samp_name:
-            samp_name = samp_name.replace('.DY2206', '.DY22-06')
-        if '.DY2209' in samp_name:
-            samp_name =  samp_name.replace('.DY2209', '.DY22-09')
-        if '.DY2306' in samp_name:
-            samp_name =  samp_name.replace('.DY2306', '.DY23-06')
-        if 'E2030.NC' == samp_name:
-            samp_name = 'E2030.NC.SKQ23-12S'
-
-        return samp_name
     
     def extract_controlled_vocab(self, faire_attribute: str) -> list:
         
@@ -166,26 +111,30 @@ class OmeFaireMapper:
                 new_value = ' | '.join(value)
                 return new_value
     
-    def apply_exact_mappings(self, metadata_row, faire_col):
+    def apply_exact_mappings(self, df: pd.DataFrame, faire_col: str, metadata_col: str) -> pd.Series:
+        ## Updated for new structure
 
         if faire_col in self.drop_down_value_df['term_name'].values:
-            metadata_row = self.check_cv_word(value=metadata_row, faire_attribute=faire_col)
+            return df[metadata_col].apply(
+                lambda value: self.check_cv_word(
+                    value=value,
+                    faire_attribute=faire_col
+                )
+            )
         else:
-            return metadata_row
-
-        return metadata_row
+            return df[metadata_col]
     
-    def apply_static_mappings(self, faire_col: str, static_value) -> dict:
-        # returns static_value for row
-        # TODO: need to adjust this for controls that weren't necessarily collected in the wild (e.g. habitat_natural_articicial_0_1, 
-        # geo_loc_name?, env scales, etc.)
+    def apply_static_mappings(self, df: pd.DataFrame, faire_col: str, static_value: str) -> pd.Series:
+        # Updated for new structure
 
         # check controlled vocabulary if column uses controlled vocabulary
         if faire_col in self.drop_down_value_df['term_name'].values:
-            static_value = self.check_cv_word(value=static_value, faire_attribute=faire_col)
+            checked_value = self.check_cv_word(value=static_value, faire_attribute=faire_col)
+        else:
+            checked_value = static_value
         # elif faire_col == 'geo_loc_name':
         #     self.check_and_add_geo_loc(formatted_geo_loc=static_value, new_row=new_row, faire_col=faire_col)
-        return static_value
+        return pd.Series([checked_value] * len(df), index=df.index)
     
     def map_using_two_or_three_cols_if_one_is_na_use_other(self, metadata_row: pd.Series, desired_col_name: str, 
                                                   use_if_na_col_name: str, transform_use_col_to_date_format=False,

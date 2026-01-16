@@ -1,6 +1,6 @@
-from .faire_mapper import OmeFaireMapper
-from .analysis_metadata_mapper import AnalysisMetadataMapper
-from .lists import marker_shorthand_to_pos_cont_gblcok_name, project_pcr_library_prep_mapping_dict
+from faire_mapping.faire_mapper import OmeFaireMapper
+from faire_mapping.analysis_metadata_mapper import AnalysisMetadataMapper
+from faire_mapping.constants import marker_shorthand_to_pos_cont_gblcok_name, project_pcr_library_prep_mapping_dict
 from datetime import date, datetime
 import pandas as pd
 import requests
