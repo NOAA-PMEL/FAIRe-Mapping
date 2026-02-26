@@ -1,5 +1,5 @@
 
-from utils.sample_metadata_mapper import FaireSampleMetadataMapper
+from faire_mapping.sample_metadata_mapper import FaireSampleMetadataMapper
 import pandas as pd
 import numpy as np
 from faire_mapping.transformers.sample_metadata_transformer import SampleMetadataTransformer

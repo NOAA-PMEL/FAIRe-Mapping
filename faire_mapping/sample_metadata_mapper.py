@@ -13,7 +13,7 @@ from shapely.geometry import Point
 # from geopy.distance import geodesic
 # from bs4 import BeautifulSoup
 from faire_mapping.custom_exception import NoInsdcGeoLocError
-from .lists import nc_faire_field_cols
+from faire_mapping.constants import nc_faire_field_cols
 from geopy.distance import geodesic
 from faire_mapping import (ExtractionMetadataBuilder, 
                            SampleMetadataBuilder, 
@@ -51,7 +51,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     faire_tot_depth_water_col_method_col_name = 'tot_depth_water_col_method'
     not_applicable_to_samp_faire_col_dict = {"neg_cont_type": "not applicable: sample group",
                                              "pos_cont_type": "not applicable: sample group"}
-    gebco_file = "/home/poseidon/zalmanek/FAIRe-Mapping/utils/GEBCO_2024.nc"
+    gebco_file = "/home/poseidon/zalmanek/FAIRe-Mapping/faire_mapping/GEBCO_2024.nc"
 
     def __init__(self, config_yaml: yaml, additiona_rules:list = None, ome_auto_setup=True):
         # TODO: used to have exp_metadata_df: pd.Series as init, but removed because of abstracting out sequencing yaml. See all associated commented out portions
@@ -124,10 +124,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             activated_rules = [rule(self) for rule in self.additional_rules]
             self.transformer.add_custom_rules(activated_rules)
         
-        # self.sample_metadata_df = self.filter_metadata_dfs()[0]
-        # self.nc_df = self.filter_metadata_dfs()[1]
-        
-        
+         
         self.sample_faire_template_df = self.load_faire_template_as_df(
             file_path=self.config_file['faire_template_file'], sheet_name=self.sample_mapping_sheet_name, header=self.faire_sheet_header).dropna()
 
@@ -154,7 +151,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # 3. Concat the sample_df, controls_df with the sample_metadata_template to format
         faire_sample_df = pd.concat([self.sample_faire_template_df, sample_df, controls_df])
 
-        return faire_sample_df
+        # 4. Add rel_cont_id
+        final_faire_samp_df_with_rel_cont_id = self.add_rel_cont_id_to_final_df(final_samp_df=faire_sample_df)
+
+        return final_faire_samp_df_with_rel_cont_id
     
     def transform(self):
         df = self.transformer.transform()
@@ -200,7 +200,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # TODO: double check logic for negative controls: blanks = extraction negatives, .NC = field negatives. Waiting on Zack and Sean's run metadata?
         # TODO: create add_pos_con_type for positive controls (same as neg_cont_type is handled)
         # Adds the FAIRe samp_category based on strings in the Sample Name and the Negative Control column
-
         pos_control_str = 'POSITIVE'
 
         # If Negative Control column of the metadata is True. Try because metadata_file_neg_control_col_name will not be present if positive control
@@ -230,7 +229,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # Creates a material sample id in the format of "M2-PPS-0423_Port1" Where the cruise name _ cast
         # "M2-PPS-0423" is the prefix and not the cruise name because tehcnically the PPs was part of a cruise (e.g. DY2306)
         # the cast will have 'Event1" so need to extract the 1
-        cast_val = metadata_row[cast_or_event_col]
+        cast_val = str(metadata_row[cast_or_event_col])
         port_num = cast_val.replace('Event','')
         return f"{prefix}_Port{port_num.strip()}"
 
@@ -251,7 +250,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             None
     
     def calculate_dna_yield(self, metadata_row: pd.Series, sample_vol_metadata_col: str, extraction_blank: bool = False) -> float:
-        # calculate the dna yield based on the concentration (ng/uL) and the sample_volume (mL)
+        # calculate the dna yield based on the concentration (ng/uL) and the sample_volume (mL).
         concentration = str(metadata_row[self.extraction_metadata_builder.EXTRACT_CONC_COL])
         
         if extraction_blank: # common column created in extraction builder
@@ -273,8 +272,12 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             return 'not applicable'
 
     def calculate_altitude(self, metadata_row: pd.Series, depth_col: str, tot_depth_col: str) -> float:
-        # Calculates the altitude by subtracting the depth from the tot_depth_col
-        depth = metadata_row[depth_col]
+        # Calculates the altitude by subtracting the depth from the tot_depth_col. 'depth_col' can be the name
+        # of the depth_col or just an int (for PPS vals)
+        try:
+            depth = int(depth_col)
+        except KeyError:
+            depth = metadata_row[depth_col]
         tot_depth_water_col = metadata_row[tot_depth_col]
 
         return round((tot_depth_water_col - depth), 2)
@@ -456,7 +459,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         else:
             # if start date or end date is NA will return missing: not collected
-            return "missing: not collected "
+            return "missing: not collected"
 
     def get_tot_depth_water_col_from_lat_lon(self, metadata_row: pd.Series, lat_col: float, lon_col: float, exact_map_col: str = None) -> float:
 
@@ -631,6 +634,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         unit_str = '_unit'
         woce_cols = [col for col in df.columns if col.endswith('WOCE_flag')]
         woce_str = 'WOCE_flag'
+        standard_dev_cols = [col for col in df.columns if col.endswith('standard_deviation')]
+        standard_dev_str = 'standard_deviation'
 
         # method has some exceptions
         method_cols = [col for col in df.columns if col.endswith('method') and col != 'samp_collect_method']
@@ -639,8 +644,9 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         updated_df_for_unit = self.update_companion_cols(df=df, companion_col_list=unit_cols, str_to_remove_for_main_col=unit_str)
         updated_df_for_woce = self.update_companion_cols(df=updated_df_for_unit, companion_col_list=woce_cols, str_to_remove_for_main_col=woce_str)
         updated_df_for_method = self.update_companion_cols(df=updated_df_for_woce, companion_col_list=method_cols, str_to_remove_for_main_col=method_str)
+        updated_df_for_std = self.update_companion_cols(df=updated_df_for_method, companion_col_list=standard_dev_cols, str_to_remove_for_main_col=standard_dev_str)
 
-        return updated_df_for_method
+        return updated_df_for_std
     
     def update_companion_cols(self, df: pd.DataFrame, companion_col_list: list, str_to_remove_for_main_col: str) -> pd.DataFrame:
             # iterates through a list of unit columns or WOCE flag columns and updates df
@@ -768,7 +774,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             neg_controls_df[col] = 'not applicable: control sample'
         neg_controls_df = self.fill_empty_sample_values_and_finalize_sample_df(
             df=neg_controls_df, default_message='not applicable: control sample')
-        
+    
         # repalce any just "not applicable" values with "not applicable: control sample"
         # Hard time figuring out why some would pop up as just "not applicable"
         neg_controls_df = neg_controls_df.replace("not applicable", "not applicable: control sample")
@@ -814,44 +820,31 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         else:
             return None
 
-    def add_nc_rel_cont_id_to_samp_df(self, final_sample_df: pd.DataFrame) -> pd.DataFrame:
-        # Adds the .NC samples to the rel_cont_id of all other samples.
-        # get list of nc samples. Uses metadatA_sample_name_column because this happens before nc_df is transformed
-        nc_samps = self.nc_df[self.sample_metadata_sample_name_column].tolist()
-        
-        for idx, row in final_sample_df.iterrows():
+    def add_rel_cont_id_to_final_df(self, final_samp_df: pd.DataFrame):
+        """
+        Fills in the rel_cont_id for samples.
+        """
+        # Get all Negative control samples
+        nc_samples = final_samp_df[final_samp_df[self.faire_sample_name_col].str.contains('.NC', na=False, regex=False)][self.faire_sample_name_col].unique().tolist()
+
+        for idx, row in final_samp_df.iterrows():
             if 'NC' not in row[self.faire_sample_name_col] and 'blank' not in row[self.faire_sample_name_col].lower():
-                final_sample_df.at[idx, 'rel_cont_id'] = ' | '.join(nc_samps)
-
-        
-
-        return final_sample_df
-    
-    def add_extraction_blanks_to_rel_cont_id(self, final_sample_df: pd.DataFrame):
-
-        final_sample_df = self.add_nc_rel_cont_id_to_samp_df(final_sample_df=final_sample_df)
-
-        for idx, row in final_sample_df.iterrows():
-            current_samp = row[self.faire_sample_name_col]
-            related_blanks = []
-
-            for extraction_blank, associated_samples in self.extraction_metadata_builder.extraction_blank_rel_cont_dict.items():
-                if current_samp in associated_samples:
-                    related_blanks.append(extraction_blank)
-
-            # get already existing rel_cont_id and add to blanks related ids
-            if row['rel_cont_id']:
-                related_ids = row['rel_cont_id'].split(' | ')
-                all_related_ids = related_ids + related_blanks
-            else:
-                all_related_ids = related_blanks
+                # sample_df_with_nc.at[idx, 'rel_cont_id'] = ' | '.join(nc_samples)
             
-            # remove any "not applicable" if there are other ids in all_related_ids
-            final_sample_df.at[idx, self.faire_rel_cont_id_col_name] = ' | '.join(all_related_ids)
-              
-       
-        return final_sample_df
-   
+                current_samp = row[self.faire_sample_name_col]
+                related_blanks = []
+                related_blanks.extend(nc_samples)
+
+                for extraction_blank, associated_samples in self.extraction_metadata_builder.extraction_blank_rel_cont_dict.items():
+                    if current_samp in associated_samples:
+                        related_blanks.append(extraction_blank)
+                
+                # remove any "not applicable" if there are other ids in all_related_ids
+                final_samp_df.at[idx, self.faire_rel_cont_id_col_name] = ' | '.join(related_blanks)
+
+        print(final_samp_df[self.faire_rel_cont_id_col_name])
+        return final_samp_df
+    
     def add_constant_value_based_on_str_in_col(self, metadata_row: pd.Series, col_name: str, str_condition: str, pos_condition_const: str, neg_condition_const: str) -> str:
         # Adds a constant value based on a str being present in a column. col_value is the column value where the str will or won't be present, 
         # str_condition is the str that might be present to test against

@@ -1,5 +1,5 @@
 from faire_mapping.transformers.transformation_pipeline import TransformationBuilder
-from utils.sample_metadata_mapper import FaireSampleMetadataMapper
+from faire_mapping.sample_metadata_mapper import FaireSampleMetadataMapper
 import logging
 import pandas as pd
 
@@ -85,6 +85,8 @@ def get_altitude_from_maxdepth_and_totdepthcol(mapper: FaireSampleMetadataMapper
     """
     Rule for calculating the altitude from the maximumDepthInMeters and tot_depth_col
     Expects metadata_col to be 'maximumDepthInMeters | tot_depth_water_col.
+    Where maximumDepthInMeters can be the name of the depth_col (old name or if created using FAIRe),
+    or can be just an integer (for pps where depth is a constant)
     """
     def apply_altitude_calculation_from_maxdepth_and_totdepth(df, faire_col, metadata_col):
             """
@@ -126,7 +128,7 @@ def get_altitude_from_maxdepth_and_totdepthcol(mapper: FaireSampleMetadataMapper
 def get_dna_yield_from_conc_and_vol(mapper: FaireSampleMetadataMapper, extraction_blank: bool = False):
     """
     Rule for calculating the dna_yield from the extraction_conc and samp_vol
-    Expects metadata_col to be 'extraction_con | samp_vol'.
+    Expects metadata_col to be 'extraction_conc | samp_vol'.
     Note that whatever col is put for the extraction_conc is not important as the 
     pipeline standardizes the extraction_conc col in the extraciton, builder, but
     this rule still asks that its placed in the metadata_col so it makes sense.

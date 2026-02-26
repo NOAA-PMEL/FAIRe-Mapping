@@ -1,5 +1,5 @@
 from faire_mapping.transformers.transformation_pipeline import TransformationBuilder
-from utils.sample_metadata_mapper import FaireSampleMetadataMapper
+from faire_mapping.sample_metadata_mapper import FaireSampleMetadataMapper
 import logging
 import pandas as pd
 
@@ -59,7 +59,7 @@ def get_fallback_col_mapping_rule(mapper: FaireSampleMetadataMapper, faire_field
      Rule for mapping with fallback columns.
      Expects metadata_col to be in format 'fallback: primary_col | fallback_col | fallback_col2 ...'
      Can optionally include transform flag for date times 'fallback: primary_col | fallbackcol | transform:true'
-     Calls the rule in the main.py file be specifyinf the faire_field_name it applies to (helps with ordering)
+     Calls the rule in the main.py file be specifying the faire_field_name it applies to (helps with ordering)
      """
      def apply_fallback_mapping_rule(df, faire_col, metadata_col):
         """
@@ -117,6 +117,63 @@ def get_fallback_col_mapping_rule(mapper: FaireSampleMetadataMapper, faire_field
             .update_source(True)
             .build()
      )
+
+def get_fallback_col_constant_mapping_rule(mapper: FaireSampleMetadataMapper, faire_field_name: str):
+    """
+    Used when the metadata col this function is associated with used the fallback feature (the 
+    map_using_two_or_three_cols_if_one_is_na_use_other function). If that col has a corresponding unit col, say,
+    and the units are different depending on which column was mapped to the main column, then this fucntion would
+    be used to apply the units. Used in PPS_OCNM21-23 for diss_oxygen_unit.
+    
+    Expects metadata_col to be in format 'fallback_constant: primary_col_name | primary_col_constant_val | secondary_col_name | secondary_col_constant_val'
+    """
+    def apply_fallback_constant_mapping_rule(df, faire_col, metadata_col):
+        """
+        Apply fallback logic using the mapper's map_constant_based_on_presence_of_cols method.
+        """
+        # Remove the 'fallback:' prefix
+        if not metadata_col.startswith('fallback_constant:'):
+             return None
+        # Parse the metadata_col to extract column names and options
+        columns_part = metadata_col.replace('fallback_constant:', '').strip()
+        parts = [part.strip() for part in columns_part.split('|')]
+
+        if len(parts) < 4:
+             logger.error(f"Fallback constant mapping requires at least 4 values separated by '|'")
+             raise ValueError(f"Fallback constant mapping requires format 'fallback_constant: primary_col_name | primary_col_constant_val | secondary_col_name | secondary_col_constant_val'")
+        
+        primary_col_name = parts[0]
+        primary_constant_val = parts[1]
+        secondary_col_name = parts[2]
+        secondary_constant_val = parts[3]
+
+        # Apply the fallback logic to each row
+        return df.apply(
+             lambda row: mapper.map_constant_based_on_presence_of_cols(
+                metadata_row=row,
+                primary_col_name=primary_col_name,
+                primary_col_present_constant_val=primary_constant_val,
+                secondary_col_name=secondary_col_name,
+                secondary_col_present_constant_val=secondary_constant_val
+             ),
+             axis=1
+        )
+     
+    return (
+        TransformationBuilder('fallback_constant_column_mapping')
+            .when(lambda f, m, mt: (
+                m.startswith('fallback_constant:') and
+                f == faire_field_name and
+                '|' in m and # contains pipe separator indicating fallback
+                mt == 'related'
+                ))
+            .apply(
+                apply_fallback_constant_mapping_rule,
+                mode='direct'
+            )
+            .for_mapping_type('related')
+            .build()
+    )
 
 def get_max_depth_with_pressure_fallback(mapper: FaireSampleMetadataMapper, pressure_cols: list, lat_col: str, depth_cols: list):
     """

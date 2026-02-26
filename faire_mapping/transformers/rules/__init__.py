@@ -30,6 +30,7 @@ from .measurement_calculation_rules import(
 from .miscellaneous_rules import(
     get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col,
     get_fallback_col_mapping_rule,
+    get_fallback_col_constant_mapping_rule,
     get_max_depth_with_pressure_fallback,
     get_condition_constant_rule,
     switch_sign_of_lat_or_lon_deg
@@ -80,6 +81,7 @@ __all__ = [
     'get_wind_direction_from_wind_degrees',
     'get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col',
     'get_fallback_col_mapping_rule',
+    'get_fallback_col_constant_mapping_rule',
     'get_max_depth_with_pressure_fallback',
     'get_condition_constant_rule',
     'switch_sign_of_lat_or_lon_deg',

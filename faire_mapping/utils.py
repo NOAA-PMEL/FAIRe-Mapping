@@ -2,6 +2,7 @@ import pandas as pd
 import gspread #library that makes it easy for us to interact with the sheet
 from google.oauth2.service_account import Credentials
 from datetime import datetime
+import re
 
 # TODO: outline keys that need to be present in the google_sheet_json_cred (see credentials.json to speicify how it should look)
 def load_google_sheet_as_df(google_sheet_id: str, sheet_name: str, header: int, google_sheet_json_cred: str) -> pd.DataFrame:
@@ -40,7 +41,7 @@ def fix_cruise_code_in_samp_names(df: pd.DataFrame, unwanted_cruise_code: str, d
                 df.loc[mask, sample_name_col] = df.loc[mask, sample_name_col].str.replace(
                 unwanted_cruise_code, 
                 desired_cruise_code
-                )
+                )    
         elif not unwanted_cruise_code: # If not unwanted cruise code, just append desired cruise code onto saple name
              df[sample_name_col] = df[sample_name_col].apply(lambda x: x if str(x).endswith(desired_cruise_code) else str(x) + desired_cruise_code)
         else: # everything else just replaces with the desired cruise code
