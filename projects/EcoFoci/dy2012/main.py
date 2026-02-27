@@ -1,7 +1,26 @@
 import pandas as pd
 import sys
 sys.path.append("../../..")
-from utils.sample_metadata_mapper import FaireSampleMetadataMapper
+from faire_mapping.sample_metadata_mapper import FaireSampleMetadataMapper
+from faire_mapping.transformers.rules import (
+    get_material_samp_id_by_cruisecode_cast_btlnum,
+    get_wind_direction_from_wind_degrees,
+    get_geo_loc_name_by_lat_lon_rule,
+    get_date_duration_rule,
+    get_eventDate_iso8601_rule,
+    get_well_position_from_well_field,
+    get_well_number_from_well_field,
+    get_dna_yield_from_conc_and_vol,
+    get_depth_from_pressure,
+    get_minimum_depth_from_max_minus_1m,
+    get_altitude_from_maxdepth_and_totdepthcol,
+    get_env_local_scale_by_depth,
+    get_standardized_station_id_from_nonstandardized_station_name,
+    get_stations_within_5km_of_lat_lon,
+    get_line_id_from_standardized_station,
+)
+
+from functools import partial
 
 # metadata was swapped
 def swap_e27_e28_sample_metadata(df: pd.DataFrame) -> pd.DataFrame:
@@ -53,7 +72,21 @@ def fix_stations(df: pd.DataFrame)  -> pd.DataFrame:
 
     return df
 
+def add_nc_dates(df: pd.DataFrame) -> pd.DataFrame:
+    sample_dates_dict = {
+        'E24.NC.DY20-12': '2020-09-05T02:50:00Z',
+        'E41.NC.DY20-12': '2020-09-09T22:31:00Z',
+        'E56.NC.DY20-12': '2020-09-13T08:32:00Z',
+        'E73.NC.DY20-12': '2020-09-18T08:11:00Z'
+    }
+
+    df['eventDate'] = df['samp_name'].map(sample_dates_dict).fillna(df['eventDate'])
+
+    return df
+
+### ARCHIVED FUNCTION ##### UPDATED TO NEW METHODS IN main() #########
 def create_dy2012_sample_metadata():
+    # ARCHIVED: OLD CODE ####################
 
     # initiate mapper
     sample_mapper = FaireSampleMetadataMapper(config_yaml='config.yaml')
@@ -84,11 +117,11 @@ def create_dy2012_sample_metadata():
                 lambda row: sample_mapper.add_biological_replicates(metadata_row=row, faire_missing_val='not applicable'),
                 axis=1
             )
-        elif faire_col == 'materialSampleID' or faire_col == 'sample_derived_from':
-            sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
-                lambda row: sample_mapper.add_material_sample_id(metadata_row=row, cruise_code='DY20-12'),
-                axis=1
-            )
+        # elif faire_col == 'materialSampleID' or faire_col == 'sample_derived_from':
+        #     sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df.apply(
+        #         lambda row: sample_mapper.add_material_sample_id(metadata_row=row, cruise_code='DY20-12'),
+        #         axis=1
+            # )
         elif faire_col == 'wind_direction':
             sample_metadata_results[faire_col] = sample_mapper.sample_metadata_df[metadata_col].apply(sample_mapper.convert_wind_degrees_to_direction)
         
@@ -209,7 +242,39 @@ def create_dy2012_sample_metadata():
 
 def main() -> None:
 
-    faire_sample_outputs = create_dy2012_sample_metadata()
+    # faire_sample_outputs = create_dy2012_sample_metadata()
+    additional_rules = [
+        get_material_samp_id_by_cruisecode_cast_btlnum,
+        get_wind_direction_from_wind_degrees,
+        get_geo_loc_name_by_lat_lon_rule,
+        get_date_duration_rule,
+        get_eventDate_iso8601_rule,
+        get_well_position_from_well_field,
+        get_well_number_from_well_field,
+        get_dna_yield_from_conc_and_vol,
+        get_depth_from_pressure,
+        get_minimum_depth_from_max_minus_1m,
+        get_altitude_from_maxdepth_and_totdepthcol,
+        get_env_local_scale_by_depth,
+        get_standardized_station_id_from_nonstandardized_station_name,
+        get_stations_within_5km_of_lat_lon,
+        get_line_id_from_standardized_station,
+                        ]
+
+    sample_mapper = FaireSampleMetadataMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2012/config.yaml',
+                                              additiona_rules=additional_rules,
+                                              ome_auto_setup=True)
+    # Fix stations prior to transformations
+    sample_mapper.sample_metadata_df_builder.sample_metadata_df = fix_stations(df=sample_mapper.sample_metadata_df_builder.sample_metadata_df)
+
+    df = sample_mapper.finalize_samp_metadata_df()
+
+    # custom fixes
+    swap_samps_sample_df = swap_e27_e28_sample_metadata(df=df)
+    swap_samps_sample_df['recordedBy'] = swap_samps_sample_df['recordedBy'].str.replace('and', ' | ', regex=False)
+    updated_nc_dates_df = add_nc_dates(df=swap_samps_sample_df)
+    
+    sample_mapper.save_final_df_as_csv(final_df=updated_nc_dates_df, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2012/data/dy2012_faire.csv')
 
 
 if __name__ == "__main__":

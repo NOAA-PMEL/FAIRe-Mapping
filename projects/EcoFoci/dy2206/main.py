@@ -1,8 +1,28 @@
-import sys
-sys.path.append("../../..")
-
-from utils.sample_metadata_mapper import FaireSampleMetadataMapper
+from faire_mapping.sample_metadata_mapper import FaireSampleMetadataMapper
 import pandas as pd
+from faire_mapping.transformers.rules import (
+    get_material_samp_id_by_cruisecode_cast_btlnum,
+    get_formatted_geo_loc_by_name,
+    get_fallback_col_mapping_rule,
+    get_max_depth_with_pressure_fallback,
+    get_minimum_depth_from_max_minus_1m,
+    get_env_local_scale_by_depth,
+    get_date_duration_rule,
+    get_tot_depth_water_col_from_lat_lon_or_exact_col,
+    get_condition_constant_rule,
+    get_altitude_from_maxdepth_and_totdepthcol,
+    get_condition_constant_rule,
+    get_wind_direction_from_wind_degrees,
+    get_eventDate_iso8601_rule,
+    get_dna_yield_from_conc_and_vol,
+    get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col,
+    get_standardized_station_id_from_nonstandardized_station_name,
+    get_stations_within_5km_of_lat_lon,
+    get_line_id_from_standardized_station,
+)
+
+from functools import partial
+
 
 def fix_station_errors(df: pd.DataFrame) -> pd.DataFrame:
     # swap stations that were incorrectly written down (discussions with Shannon)
@@ -14,6 +34,23 @@ def fix_station_errors(df: pd.DataFrame) -> pd.DataFrame:
 
     return df
 
+def add_nc_dates(df: pd.DataFrame, sample_mapper: FaireSampleMetadataMapper) -> pd.DataFrame:
+    sample_dates_dict = {
+        'E1157.NC.DY22-06': '2022-05-13T01:59:00Z',
+        'E1147.NC.DY22-06': '2022-05-11T13:30:00Z',
+        'E1170.NC.DY22-06': '2022-05-17T23:00:00Z'
+    }
+
+    iso_dict = {}
+    for key, val in sample_dates_dict.items():
+        iso_date = sample_mapper.convert_date_to_iso8601(date=val)
+        iso_dict[key] = iso_date
+
+    df['eventDate'] = df['samp_name'].map(iso_dict).fillna(df['eventDate'])
+
+    return df
+
+### ARCHIVED - OLD CODE! HAS BEEN UPDATED TO NEW FORMAT ######## SEE main() #########
 def create_dy2206_sample_metadata():
     
     # initiate mapper
@@ -215,7 +252,41 @@ def create_dy2206_sample_metadata():
 def main() -> None:
 
     # create sample metadata - experiment metadata needed first
-    sample_metadata = create_dy2206_sample_metadata()
+    # sample_metadata = create_dy2206_sample_metadata()
+
+    additional_rules = [
+        get_material_samp_id_by_cruisecode_cast_btlnum,
+        get_formatted_geo_loc_by_name,
+        partial(get_fallback_col_mapping_rule, faire_field_name='pressure'),
+        partial(get_max_depth_with_pressure_fallback, pressure_cols=['ctd_pressure', 'btl_pressure..decibar.'], lat_col='btl_latitude..degrees_north.', depth_cols=['Depth_m_notes']),
+        partial(get_condition_constant_rule, faire_col='DepthInMeters_method', ref_col='Depth_m_notes'),
+        get_minimum_depth_from_max_minus_1m,
+        get_env_local_scale_by_depth,
+        get_date_duration_rule,
+        get_tot_depth_water_col_from_lat_lon_or_exact_col,
+        partial(get_condition_constant_rule, faire_col='tot_depth_water_col_method', ref_col='ctd_Water_Depth..dbar.'),
+        get_altitude_from_maxdepth_and_totdepthcol,
+        get_wind_direction_from_wind_degrees,
+        get_eventDate_iso8601_rule,
+        get_dna_yield_from_conc_and_vol,
+        get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col,
+        get_standardized_station_id_from_nonstandardized_station_name,
+        get_stations_within_5km_of_lat_lon,
+        get_line_id_from_standardized_station
+                        ]
+    
+    sample_mapper = FaireSampleMetadataMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2206/config.yaml',
+                                              additiona_rules=additional_rules,
+                                              ome_auto_setup=True)
+    
+    sample_mapper.sample_metadata_df_builder.sample_metadata_df = fix_station_errors(df=sample_mapper.sample_metadata_df_builder.sample_metadata_df)
+    
+    df = sample_mapper.finalize_samp_metadata_df()
+
+    # Customize
+    updated_nc_dates_df = add_nc_dates(df=df, sample_mapper=sample_mapper)
+    
+    df = sample_mapper.save_final_df_as_csv(final_df=updated_nc_dates_df, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2206/data/dy2206_faire.csv')
                 
 
 if __name__ == "__main__":

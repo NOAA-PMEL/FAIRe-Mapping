@@ -42,9 +42,14 @@ class NcMappingDictBuilder(BaseMappingBuilder):
         # change values that will be differenct for NC's
         nc_mapping_dict[self.CONSTANT_MAPPING][self.FAIRE_HABITAT_NAT_ART_COL_NAME] = self.HABITAT_ARTIFICIAL_VALUE
         nc_mapping_dict[self.CONSTANT_MAPPING][self.FAIRE_SAMP_MAT_PROCESS_COL_NAME] = self.nc_samp_mat_process
-        nc_mapping_dict[self.CONSTANT_MAPPING][self.FAIRE_PREPPED_SAMP_STORE_DUR_COL_NAME] = self.nc_prepped_samp_store_dur
         nc_mapping_dict[self.CONSTANT_MAPPING][self.FAIRE_SAMP_STORE_DUR_COL_NAME] = self.SAMP_STORE_DUR_VALUE
         nc_mapping_dict[self.CONSTANT_MAPPING][self.FAIRE_SAMP_STORE_TEMP_COL_NAME] = self.SAMP_STORE_TEMP_VALUE
         nc_mapping_dict[self.CONSTANT_MAPPING][self.FAIRE_SAMP_STORE_LOC_COL_NAME] = self.vessel_name
+
+        # If there are two values for prepped_samp_store_dur use related mapping, if not change to constant
+        if '|' in self.nc_prepped_samp_store_dur:
+            nc_mapping_dict[self.RELATED_MAPPING][self.FAIRE_PREPPED_SAMP_STORE_DUR_COL_NAME] = self.nc_prepped_samp_store_dur
+        else:
+            nc_mapping_dict[self.CONSTANT_MAPPING][self.FAIRE_PREPPED_SAMP_STORE_DUR_COL_NAME] = self.nc_prepped_samp_store_dur
 
         return nc_mapping_dict

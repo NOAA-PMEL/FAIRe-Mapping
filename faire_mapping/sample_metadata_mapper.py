@@ -222,7 +222,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         
         # cruise code can be a column with the cruise code or the cruise code hardcoded
         try:
-            cruise_code = metadata_row.get(cruise_code)
+            cruise_code = metadata_row[cruise_code]
         except KeyError:
             cruise_code = cruise_code
 
@@ -373,7 +373,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             return None
 
         marine_regions = gpd.read_file(
-            "/home/poseidon/zalmanek/FAIRe-Mapping/utils/World_Seas_IHO_v3/World_Seas_IHO_v3.shp")
+            "/home/poseidon/zalmanek/FAIRe-Mapping/faire_mapping/World_Seas_IHO_v3/World_Seas_IHO_v3.shp")
         
         # create a point object
         point = Point(lon, lat)

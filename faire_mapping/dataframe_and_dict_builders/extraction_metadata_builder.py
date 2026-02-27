@@ -147,7 +147,7 @@ class ExtractionMetadataBuilder:
             for col in df.columns:
                 if col in old_cols:
                     df = df.rename(columns={col: new_col})
-
+  
         return df
     
     def extraction_avg_aggregation(self, extractions_df: pd.DataFrame):

@@ -293,6 +293,7 @@ def switch_sign_of_lat_or_lon_deg(mapper: FaireSampleMetadataMapper):
                 mode='direct'
             )
             .for_mapping_type('related')
+            .update_source(True)
             .build()
         )                 
 

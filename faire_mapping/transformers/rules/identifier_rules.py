@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 def get_material_samp_id_by_cruisecode_cast_btlnum(mapper: FaireSampleMetadataMapper):
     """
     Rule for creating the materialSampleID by the cruise_code + cast_no + bottle_no
-    Requires the metadata_col to be the cruise code (hardocoded) or the name of the column that has the cruise
+    Requires the metadata_col to be the cruise code (hardcoded) or the name of the column that has the cruise
     code. (the cast no and bottle no, will be taken from the config file)
     """
     def apply_materialSampleID_by_cruise_code(df, faire_col, metadata_col):
