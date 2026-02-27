@@ -195,7 +195,7 @@ def main() -> None:
                                               ome_auto_setup=True)
 
     df = sample_mapper.finalize_samp_metadata_df()
-    df.to_csv("/home/poseidon/zalmanek/FAIRe-Mapping/tests/sample_mapper/AK_carb_test/test.csv")
+    df = sample_mapper.save_final_df_as_csv(final_df=df, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/tests/sample_mapper/AK_carb_test/test.csv')
 
 
     

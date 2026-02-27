@@ -8,7 +8,8 @@ logger = logging.getLogger(__name__)
 def get_material_samp_id_by_cruisecode_cast_btlnum(mapper: FaireSampleMetadataMapper):
     """
     Rule for creating the materialSampleID by the cruise_code + cast_no + bottle_no
-    Requires the metadata_col to be the cruise code. (the cast no and bottle no, will be taken from the config file)
+    Requires the metadata_col to be the cruise code (hardocoded) or the name of the column that has the cruise
+    code. (the cast no and bottle no, will be taken from the config file)
     """
     def apply_materialSampleID_by_cruise_code(df, faire_col, metadata_col):
             """
@@ -44,6 +45,7 @@ def get_pps_material_samp_id_by_code_prefix_and_cast(mapper: FaireSampleMetadata
     Rule for creating the PPS materialSampleID by the cruise_code prefex + cast_no.
     E.g. M2-PPS-0423_Port1
     Expects metadata_col to be 'Cast_col. (or event col) | cruise_prefix'
+    cruise_prefix can be hardcoded string or the name of the cruise_prefix column (OCNMS pps had various cruise prefixes)
     """
     def apply_pps_materialSampleID_by_cast_and_cruise_prefix(df, faire_col, metadata_col):
             """

@@ -206,6 +206,7 @@ class ExtractionMetadataBuilder:
         """
         Get extraction blank df (applicable to RC0083 cruise)
         """
+        self.extraction_blank_rel_cont_dict = {} # clear before buildilng - ran into caching issue from previous runs
         blank_df = pd.DataFrame(columns=self.extraction_df.columns)
 
         grouped = self.extraction_df.groupby(

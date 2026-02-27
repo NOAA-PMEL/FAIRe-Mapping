@@ -4,24 +4,14 @@ import numpy as np
 from faire_mapping.transformers.sample_metadata_transformer import SampleMetadataTransformer
 from faire_mapping.transformers.rules import (
     get_pps_material_samp_id_by_code_prefix_and_cast,
-    # get_formatted_geo_loc_by_name,
-    get_fallback_col_mapping_rule,
-    get_fallback_col_constant_mapping_rule,
-    # get_max_depth_with_pressure_fallback,
-    # get_minimum_depth_from_max_minus_1m,
-    # get_env_local_scale_by_depth,
     get_date_duration_rule,
     get_tot_depth_water_col_from_lat_lon_or_exact_col,
-    # get_condition_constant_rule,
     get_altitude_from_maxdepth_and_totdepthcol,
-    get_condition_constant_rule,
-    # get_wind_direction_from_wind_degrees,
     get_eventDate_iso8601_rule,
     get_dna_yield_from_conc_and_vol,
-    # get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col,
     get_standardized_station_id_from_nonstandardized_station_name,
     get_stations_within_5km_of_lat_lon,
-    # get_line_id_from_standardized_station,
+    get_line_id_from_standardized_station,
 )
 
 from functools import partial
@@ -33,6 +23,26 @@ deploy_recover_dict = {
         'TH042-PPS-0822': ('2022-08-22', '2022-09-20'),
         'TH042-PPS-0623': ('2023-06-15', '2023-07-26')
     }
+
+cruise_id_short_to_long_dict = {
+    "CE042-PPS-0821": "CE042-PPS-0821-0921 OME Automated Sampler",
+    "TH042-PPS-0821": "TH042-PPS-0821-0921 OME Automated Sampler",
+    "TH042-PPS-0622": "TH042-PPS-0622-0722 OME Automated Sampler",
+    "TH042-PPS-0822": "TH042-PPS-0822-0922 OME Automated Sampler",
+    "TH042-PPS-0623": "TH042-PPS-0623-0723 OME Automated Sampler"
+}
+
+def fix_recorded_by(df: pd.DataFrame) -> pd.DataFrame:
+    """Make pipe separate"""
+    df['recordedBy'] = df['recordedBy'].str.replace('and', ' | ', regex=False).str.replace('nM', 'n M').str.replace('yN', 'y N').str.replace('tG', 't G').str.replace('nB', 'n B')
+    return df
+
+def get_expedition_name(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Map the expedition name based on short cruise codes
+    """
+    df['expedition_name'] = df['expedition_id'].map(cruise_id_short_to_long_dict).fillna('not_applicable: control sample')
+    return df
         
 def get_stationed_sample_dur(mapper: FaireSampleMetadataMapper, df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -69,21 +79,14 @@ def main() -> None:
 
     additional_rules = [
         get_pps_material_samp_id_by_code_prefix_and_cast,
-        # partial(get_max_depth_with_pressure_fallback, pressure_cols=['ctd_pressure', 'btl_pressure..decibar.'], lat_col='btl_latitude..degrees_north.', depth_cols=['Depth_m_notes']),
-        # partial(get_condition_constant_rule, faire_col='DepthInMeters_method', ref_col='Depth_m_notes'),
-        # get_minimum_depth_from_max_minus_1m,
-        # get_env_local_scale_by_depth,
         get_date_duration_rule,
         get_tot_depth_water_col_from_lat_lon_or_exact_col,
-        # partial(get_condition_constant_rule, faire_col='tot_depth_water_col_method', ref_col='ctd_Water_Depth..dbar.'),
         get_altitude_from_maxdepth_and_totdepthcol,
-        # get_wind_direction_from_wind_degrees,
         get_eventDate_iso8601_rule,
         get_dna_yield_from_conc_and_vol,
-        # get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col,
         get_standardized_station_id_from_nonstandardized_station_name,
         get_stations_within_5km_of_lat_lon,
-        # get_line_id_from_standardized_station
+        get_line_id_from_standardized_station,
                         ]
     
     sample_mapper = FaireSampleMetadataMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/projects/OCNMS/pps_ocnms21-23/config.yaml',
@@ -97,8 +100,10 @@ def main() -> None:
     df['samp_collect_notes'] = df['expedition_id'].apply(fill_samp_collect_notes)
     # Add stationed_samp_dur custom
     df = get_stationed_sample_dur(mapper=sample_mapper, df=df)
+    df = get_expedition_name(df=df)
+    df = fix_recorded_by(df=df)
 
-    df.to_csv("/home/poseidon/zalmanek/FAIRe-Mapping/projects/OCNMS/pps_ocnms21-23/data/pps_ocnms21-23_farie.csv")
+    df = sample_mapper.save_final_df_as_csv(final_df=df, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path="/home/poseidon/zalmanek/FAIRe-Mapping/projects/OCNMS/pps_ocnms21-23/data/pps_ocnms21-23_farie.csv")
                 
 
 if __name__ == "__main__":

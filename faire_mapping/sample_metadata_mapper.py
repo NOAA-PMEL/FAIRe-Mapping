@@ -215,9 +215,16 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     def add_material_sample_id(self, metadata_row, cruise_code: str) -> str:
         # Formats MaterialSampleID to be numerical (discussed with Sean) - double check if this needs to be updated for three digit cast numbers
         # can also be used for sample_derived_from if no other in between parent samples
+        
         cast_int = int(metadata_row.get(self.sample_metadata_cast_no_col_name))
         btl_int = int(metadata_row.get(
             self.sample_metadata_bottle_no_col_name))
+        
+        # cruise code can be a column with the cruise code or the cruise code hardcoded
+        try:
+            cruise_code = metadata_row.get(cruise_code)
+        except KeyError:
+            cruise_code = cruise_code
 
         formatted_cast = f'{cast_int:02d}'
         formatted_btl = f'{btl_int:02d}'
@@ -229,9 +236,15 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # Creates a material sample id in the format of "M2-PPS-0423_Port1" Where the cruise name _ cast
         # "M2-PPS-0423" is the prefix and not the cruise name because tehcnically the PPs was part of a cruise (e.g. DY2306)
         # the cast will have 'Event1" so need to extract the 1
-        cast_val = str(metadata_row[cast_or_event_col])
-        port_num = cast_val.replace('Event','')
-        return f"{prefix}_Port{port_num.strip()}"
+        cast_val = str(metadata_row[cast_or_event_col]).strip()
+        port_num = int(float(cast_val.replace('Event','')))
+
+        # Prefix can the the name of the metadata column or a hard coded prefix
+        try:
+            prefix = str(metadata_row[prefix])
+        except KeyError:
+            prefix=prefix
+        return f"{prefix}_Port{port_num}"
 
     def get_well_number_from_well_field(self, metadata_row: pd.Series, well_col: str) -> int:
         # Gets the well number from a row that has a value like G1 -> 1
@@ -276,7 +289,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # of the depth_col or just an int (for PPS vals)
         try:
             depth = int(depth_col)
-        except KeyError:
+        except ValueError:
             depth = metadata_row[depth_col]
         tot_depth_water_col = metadata_row[tot_depth_col]
 
@@ -824,6 +837,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         """
         Fills in the rel_cont_id for samples.
         """
+   
         # Get all Negative control samples
         nc_samples = final_samp_df[final_samp_df[self.faire_sample_name_col].str.contains('.NC', na=False, regex=False)][self.faire_sample_name_col].unique().tolist()
 
@@ -842,7 +856,6 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                 # remove any "not applicable" if there are other ids in all_related_ids
                 final_samp_df.at[idx, self.faire_rel_cont_id_col_name] = ' | '.join(related_blanks)
 
-        print(final_samp_df[self.faire_rel_cont_id_col_name])
         return final_samp_df
     
     def add_constant_value_based_on_str_in_col(self, metadata_row: pd.Series, col_name: str, str_condition: str, pos_condition_const: str, neg_condition_const: str) -> str:

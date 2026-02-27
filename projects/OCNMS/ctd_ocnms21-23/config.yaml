@@ -1,0 +1,44 @@
+#################### CTD_OCNMS21-23 Sample Metadata config.yaml ######################
+# Metadata file related 
+sample_metadata_file: /home/poseidon/zalmanek/PMEL-OME-OCNMS/Brynn_OCNMS_data_reorganized/FinalOME_Merge_OCNMS23to23CTD_fixed.csv
+sample_metadata_sample_name_column: 'FINAL Sample NAME' # The name of the column in the metadata spreadsheet that lists the sample names
+sample_metadata_file_neg_control_col_name: 'Negative_control' # Name of the column in the metadata spreadsheet for the boolean Negative Control
+sample_metadata_cast_no_col_name: 'Biological_Replicate' # only for removing CTD from Cast col if its there - not applicable to this, won't be used. I used Biological Replicate because the cast is all 1 and this column as all 1s. I did not want to write another piece of code to accomodate this one-off use case. May write later.
+sample_metadata_bottle_no_col_name: 'Rosette_position' # for materialSampleID for normal CTD samples
+vessel_name: R/V Storm Petrel
+
+# Extraction sheet related
+extractions:
+  - extraction_metadata_google_sheet_id: 1SsOr7dJYkano5pRdr8D7V5MUR4KY37H-x1qrJQof3zY
+    extraction_name: OCNMS21-23 # the name of the extraction performed (for the extract_id)
+    extraction_cruise_key: #the name in the SampleName column of the extractions sheet to filter for the specific cruise. Can be a list if there are multiple
+      - OC0821
+      - OC1021
+      - OC0622
+      - OC0722
+      - OC0822
+      - OC0922
+      - OC0623
+      - OC0723
+    extraction_sample_name_col: 'FINAL Sample NAME'
+    extraction_conc_col_name: 'Qubit Conc.  (ng/μL)' #to calculate average of extraction concentration
+    extraction_date_col_name: 'Extraction Date (Local)'
+    extraction_metadata_sheet_name: 'Sheet1'
+    extraction_blank_vol_we_dna_ext: 1000 # The volume or mass of blanks extracted if there are blanks extracted
+    extraction_set_grouping_col_name: 'Extraction Set' # The name of the column that groups the samples together if they were extracted together
+  
+# mapping file related #
+google_sheet_mapping_file_id: 1tNyASVpLNq6UBJoHOKGsYhUDhfxVEAwsmjPdDTkBbwU
+nc_samp_mat_process:  'Water samples were filtered through a 0.22 micron sterivex filter using a peristaltic pump with tubing attached to the outlet end of the sterivex.' # mapping for negative controls for nc_samp_mapt_process
+nc_prepped_samp_store_dur: 'placeholder' # which columns the NC prepped samp_store_dur map to (will most likely be different than rest of samples because no ctd or bottle dates for NC)
+# No negative controls for CTD OCNMS the nc_ fields are just placeholders.
+
+# Station reference file
+station_name_reference_google_sheet_id: 1XvI2oAvRkKtPJHdT8L9aPkpKKaxk3cBOwQFzMhxBlv4
+
+# FAIRe template related
+faire_template_file: /home/poseidon/zalmanek/FAIRe-Mapping/faire_template.xlsx
+final_faire_template_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/OCNMS/ctd_ocnms21-23/data/ctd_ocnms21-23_faire.xlsx
+
+# path to json creds file for google sheets
+json_creds: /home/poseidon/zalmanek/FAIRe-Mapping/credentials.json

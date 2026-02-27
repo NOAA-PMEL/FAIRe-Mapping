@@ -236,8 +236,14 @@ class OmeFaireMapper:
                             dt_obj = datetime.strptime(date, "%Y-%m-%d %H:%M:%S%z")
                             has_time_component = True
                         except ValueError:
-                            # Failed both time formats, raise error
-                            raise ValueError(f"Unsupported dash-separated date/time format: {date}")
+                            try:
+                            # Try usin dateutil library
+                                from dateutil import parser
+                                dt_obj=parser.parse(date)
+                                return dt_obj.strftime("%Y-%m-%dT%H:%M:%SZ")
+                            except ValueError:
+                                # Failed both time formats, raise error
+                                raise ValueError(f"Unsupported dash-separated date/time format: {date}")
             else:
                 # 2.3. Date-only format (e.g., 2024-04-10)
                 dt_obj = datetime.strptime(date, "%Y-%m-%d")
