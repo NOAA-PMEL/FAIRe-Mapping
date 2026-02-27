@@ -145,12 +145,11 @@ class TransformationPipeline:
                 # skip if rule doesn't apply to this mapping type
                 if rule.mapping_type is not None and mapping_type not in rule.mapping_type:
                     continue
-        
                 for faire_col, metadata_col in mappings.items():
                     # Skip if already processed
                     if faire_col in processed_columns:
                         continue
-
+    
                     # Check if rule matches this column
                     if rule.matches(faire_col, metadata_col, mapping_type):
                         logger.info(f"Applying rule '{rule.name}' to column '{faire_col}'")

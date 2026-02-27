@@ -97,7 +97,10 @@ class ExtractionMetadataBuilder:
 
             # Update column names
             extraction_df = self.standardize_extraction_df_col_names(df=extraction_df)
-            extraction_df[self.EXTRACT_CRUISE_KEY_COL] = extraction.get(self.EXTRACT_INFO_EXTRACTION_CRUISE_KEY)
+            if isinstance(extraction.get(self.EXTRACT_INFO_EXTRACTION_CRUISE_KEY), list):
+                extraction_df[self.EXTRACT_CRUISE_KEY_COL] = extraction_df[self.EXTRACT_SAMP_NAME_COL].apply(lambda x: self.find_matching_cruise_key(x, extraction))
+            else:
+                extraction_df[self.EXTRACT_CRUISE_KEY_COL] = extraction.get(self.EXTRACT_INFO_EXTRACTION_CRUISE_KEY)
             extraction_df[self.EXTRACT_BLANK_VOL_WE_DNA_EXT_COL] = extraction.get(self.EXTRACT_INFO_EXTRACTION_BLANK_VOL_WE_DNA_EXT_KEY)
             extraction_df[self.EXTRACT_NAME_COL] = extraction.get(self.EXTRACT_INFO_EXTRACTION_NAME_KEY)
 
@@ -108,6 +111,12 @@ class ExtractionMetadataBuilder:
         final_extraction_df = pd.concat(extraction_dfs)
         
         return final_extraction_df
+    
+    def find_matching_cruise_key(self, sample_name, extraction):
+        cruise_list = extraction.get(self.EXTRACT_INFO_EXTRACTION_CRUISE_KEY)
+        for key in cruise_list:
+            if key in sample_name:
+                return key
     
     def create_extract_old_new_col_master_mapping_dict(self) -> dict:
         """
@@ -197,6 +206,7 @@ class ExtractionMetadataBuilder:
         """
         Get extraction blank df (applicable to RC0083 cruise)
         """
+        self.extraction_blank_rel_cont_dict = {} # clear before buildilng - ran into caching issue from previous runs
         blank_df = pd.DataFrame(columns=self.extraction_df.columns)
 
         grouped = self.extraction_df.groupby(

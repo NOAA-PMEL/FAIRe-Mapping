@@ -164,6 +164,22 @@ class OmeFaireMapper:
             elif pd.notna(metadata_row[use_if_second_col_is_na]) and metadata_row[use_if_second_col_is_na] != '':
                 return self.convert_date_to_iso8601(date=metadata_row[use_if_second_col_is_na])
             
+    def map_constant_based_on_presence_of_cols(self, metadata_row: pd.Series, primary_col_name: str,
+                                               primary_col_present_constant_val: str, secondary_col_name: str, 
+                                               secondary_col_present_constant_val: str) -> str:
+        """
+        Used when the metadata col this function is associated with used the fallback feature (the 
+        map_using_two_or_three_cols_if_one_is_na_use_other function). If that col has a corresponding unit col, say,
+        and the units are different depending on which column was mapped to the main column, then this fucntion would
+        be used to apply the units. 
+        """
+        if pd.notna(metadata_row[primary_col_name]):
+            return primary_col_present_constant_val
+        elif pd.notna(metadata_row[secondary_col_name]):
+            return secondary_col_present_constant_val
+        else:
+            return "not applicable"
+            
                   
     def convert_date_to_iso8601(self, date: str) -> datetime:
         # converts strings from 2021/11/08 00:00:00 to iso8601 format  to 2021-11-08T00:00:00Z
@@ -215,8 +231,19 @@ class OmeFaireMapper:
                         dt_obj = datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
                         has_time_component = True
                     except ValueError:
-                        # Failed both time formats, raise error
-                        raise ValueError(f"Unsupported dash-separated date/time format: {date}")
+                        try:
+                            # %z handles the +00:00 or +0000 part
+                            dt_obj = datetime.strptime(date, "%Y-%m-%d %H:%M:%S%z")
+                            has_time_component = True
+                        except ValueError:
+                            try:
+                            # Try usin dateutil library
+                                from dateutil import parser
+                                dt_obj=parser.parse(date)
+                                return dt_obj.strftime("%Y-%m-%dT%H:%M:%SZ")
+                            except ValueError:
+                                # Failed both time formats, raise error
+                                raise ValueError(f"Unsupported dash-separated date/time format: {date}")
             else:
                 # 2.3. Date-only format (e.g., 2024-04-10)
                 dt_obj = datetime.strptime(date, "%Y-%m-%d")

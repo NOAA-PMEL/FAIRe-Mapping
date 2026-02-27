@@ -1,5 +1,5 @@
 from faire_mapping.transformers.transformation_pipeline import TransformationBuilder
-from utils.sample_metadata_mapper import FaireSampleMetadataMapper
+from faire_mapping.sample_metadata_mapper import FaireSampleMetadataMapper
 import logging
 import pandas as pd
 import numpy as np

@@ -1,6 +1,6 @@
 from faire_mapping.transformers.transformation_pipeline import TransformationPipeline, TransformationBuilder, TransformationRule
 from faire_mapping.transformers.rules import get_all_ome_default_rules
-from utils.sample_metadata_mapper import FaireSampleMetadataMapper
+from faire_mapping.sample_metadata_mapper import FaireSampleMetadataMapper
 from typing import Dict, List
 import pandas as pd
 import logging

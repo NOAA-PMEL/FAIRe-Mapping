@@ -1,5 +1,5 @@
 from faire_mapping.transformers.transformation_pipeline import TransformationBuilder
-from utils.sample_metadata_mapper import FaireSampleMetadataMapper
+from faire_mapping.sample_metadata_mapper import FaireSampleMetadataMapper
 import logging
 import pandas as pd
 
@@ -59,10 +59,11 @@ def get_date_duration_rule(mapper: FaireSampleMetadataMapper):
             axis=1
         )
     
+    date_fields = ['prepped_samp_store_dur', 'eventDurationValue']
     return (
         TransformationBuilder('date_duration_calculation')
         .when(lambda f, m, mt: (
-            f == 'prepped_samp_store_dur' and
+            f in date_fields and
             '|' in m and
             mt == 'related'
         ))
