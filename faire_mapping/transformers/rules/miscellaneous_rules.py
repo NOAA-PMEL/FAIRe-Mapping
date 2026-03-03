@@ -25,6 +25,9 @@ def get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col(mapper: Fa
             word = metadata_cols[1]
             neg_condition = metadata_cols[2]
             pos_condition = metadata_cols[3]
+
+            if df.empty:
+                return pd.Series(dtype=object)
             
             # Apply the calculation to each row
             return df.apply(

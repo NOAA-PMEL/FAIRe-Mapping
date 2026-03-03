@@ -1,7 +1,20 @@
 import pandas as pd
-import sys
-sys.path.append("../../..")
-from utils.sample_metadata_mapper import FaireSampleMetadataMapper
+from faire_mapping.sample_metadata_mapper import FaireSampleMetadataMapper
+from faire_mapping.transformers.rules import (
+    get_pps_material_samp_id_by_code_prefix_and_cast,
+    get_eventDate_iso8601_rule,
+    get_formatted_geo_loc_by_name,
+    get_date_duration_rule,
+    get_tot_depth_water_col_from_lat_lon_or_exact_col,
+    get_altitude_from_maxdepth_and_totdepthcol,
+    get_standardized_station_id_from_nonstandardized_station_name,
+    get_stations_within_5km_of_lat_lon,
+    get_line_id_from_standardized_station,
+    get_env_local_scale_by_depth,
+    get_date_ext_iso8601_rule,
+    get_dna_yield_from_conc_and_vol,
+    get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col,
+)
 
 #TODO: Still need to flush out mapping file - quite different from others. Shannon will look at it.
 def create_m2_pps_0423_sample_metadata():
@@ -171,7 +184,30 @@ def create_m2_pps_0423_sample_metadata():
  
 def main() -> None:
 
-    sample_metadata = create_m2_pps_0423_sample_metadata()
+    # sample_metadata = create_m2_pps_0423_sample_metadata()
+    additional_rules = [
+        get_pps_material_samp_id_by_code_prefix_and_cast,
+        get_formatted_geo_loc_by_name,
+        get_eventDate_iso8601_rule,
+        get_env_local_scale_by_depth,
+        get_date_duration_rule,
+        get_tot_depth_water_col_from_lat_lon_or_exact_col,
+        get_standardized_station_id_from_nonstandardized_station_name,
+        get_stations_within_5km_of_lat_lon,
+        get_line_id_from_standardized_station,
+        get_altitude_from_maxdepth_and_totdepthcol,
+        get_date_ext_iso8601_rule,
+        get_dna_yield_from_conc_and_vol,
+        get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col,
+    ]
+
+    sample_mapper = FaireSampleMetadataMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/m2_pps_0423/config.yaml',
+                                              additiona_rules=additional_rules,
+                                              ome_auto_setup=True)
+
+    df = sample_mapper.finalize_samp_metadata_df()
+    
+    sample_mapper.save_final_df_as_csv(final_df=df , sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/m2_pps_0423/data/m2_pps_0423_faire.csv')
 
 if __name__ == "__main__":
     main()

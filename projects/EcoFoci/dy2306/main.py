@@ -16,14 +16,10 @@ from faire_mapping.transformers.rules import (
     get_dna_yield_from_conc_and_vol,
     get_date_ext_iso8601_rule,
     get_fallback_col_constant_mapping_rule,
-
-    switch_sign_of_lat_or_lon_deg,
     get_standardized_station_id_from_nonstandardized_station_name,
     get_stations_within_5km_of_lat_lon,
     get_line_id_from_standardized_station,
     get_env_local_scale_by_depth,
-    get_wind_direction_from_wind_degrees,
-    get_depth_from_pressure,
     get_dna_yield_from_conc_and_vol,
 )
 from functools import partial
@@ -52,6 +48,8 @@ def fix_stations(df: pd.DataFrame)  -> pd.DataFrame:
 def add_nc_dates(df: pd.DataFrame, sample_mapper: FaireSampleMetadataMapper) -> pd.DataFrame:
     sample_dates_dict = {
         'E1717.NC.DY23-06': '2023-04-24T08:51:00Z',
+        'E1771.NC.DY23-06': '2023-04-28T03:01:00Z',
+        'E1819.NC.DY23-6': '2023-05-06T20:31:00Z        '
     }
 
     iso_dict = {}
@@ -72,6 +70,7 @@ def drop_blank_alask_set_7(df: pd.DataFrame) -> pd.DataFrame:
 
     return df_filtered
 
+####### ARCHIVED ###### OLD SCRIPT AND WAY OF DOING THINGS! ###################
 def create_dy2306_sample_metadata():
     
     # initiate mapper
