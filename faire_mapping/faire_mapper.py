@@ -152,7 +152,10 @@ class OmeFaireMapper:
                 return metadata_row[use_if_na_col_name]
             else:
                 try:
-                    return metadata_row[use_if_second_col_is_na]
+                    if use_if_second_col_is_na is not None:
+                        return metadata_row[use_if_second_col_is_na]
+                    else:
+                        return ''
                 except:
                     return ''
 
@@ -161,8 +164,10 @@ class OmeFaireMapper:
                 return self.convert_date_to_iso8601(date=metadata_row[desired_col_name])
             elif pd.notna(metadata_row[use_if_na_col_name]) and metadata_row[use_if_na_col_name] != '':
                 return self.convert_date_to_iso8601(date=metadata_row[use_if_na_col_name])
-            elif pd.notna(metadata_row[use_if_second_col_is_na]) and metadata_row[use_if_second_col_is_na] != '':
+            elif use_if_second_col_is_na is not None and pd.notna(metadata_row[use_if_second_col_is_na]) and metadata_row[use_if_second_col_is_na] != '':
                 return self.convert_date_to_iso8601(date=metadata_row[use_if_second_col_is_na])
+            else:
+                return ''
             
     def map_constant_based_on_presence_of_cols(self, metadata_row: pd.Series, primary_col_name: str,
                                                primary_col_present_constant_val: str, secondary_col_name: str, 

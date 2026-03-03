@@ -20,6 +20,7 @@ from faire_mapping.transformers.rules import (
     get_altitude_from_maxdepth_and_totdepthcol,
     get_dna_yield_from_conc_and_vol,
     get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col,
+    get_date_ext_iso8601_rule,
 )
 from functools import partial
 
@@ -256,6 +257,7 @@ def main() -> None:
         get_altitude_from_maxdepth_and_totdepthcol,
         get_dna_yield_from_conc_and_vol,
         get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col,
+        get_date_ext_iso8601_rule,
                         ]
     
     sample_mapper = FaireSampleMetadataMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2209/config.yaml',

@@ -732,6 +732,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     
     def fill_nc_metadata(self) -> pd.DataFrame:
         # Fills the negative control data frame
+        from functools import partial
         from faire_mapping.transformers.sample_metadata_transformer import SampleMetadataTransformer
         from faire_mapping.transformers.rules import (
             get_date_duration_rule,
@@ -740,17 +741,28 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             get_dna_yield_from_conc_and_vol,
             get_well_number_from_well_field,
             get_well_position_from_well_field,
-            get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col)
+            get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col,
+            get_fallback_col_mapping_rule,
+            get_date_ext_iso8601_rule)
 
+        eventDate_mapping = self.nc_mapping_builder.nc_mapping_dict.get('related', {}).get('eventDate', '')
 
+        # 2. Decide the rule
+        # Check if the mapping value contains 'fallback:' Had to add this for dy23-06
+        if 'fallback:' in str(eventDate_mapping):
+            event_date_rule = get_fallback_col_mapping_rule(self, faire_field_name='eventDate')
+        else:
+            event_date_rule = get_eventDate_iso8601_rule(self)
+        
         nc_transformer = SampleMetadataTransformer(sample_mapper=self, ome_auto_setup=True, nc_transformer=True)
         additional_rules = [get_date_duration_rule(self),
-                            get_eventDate_iso8601_rule(self),
+                            event_date_rule,
                             get_neg_cont_type_from_ome_sample_name(self),
                             get_dna_yield_from_conc_and_vol(self),
                             get_well_number_from_well_field(self),
                             get_well_position_from_well_field(self),
-                            get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col(self)]
+                            get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col(self),
+                            get_date_ext_iso8601_rule(self)]
         
         nc_transformer.add_custom_rules(additional_rules)
         print("\nNegative Controls Mapping:\n")

@@ -12,6 +12,7 @@ from faire_mapping.transformers.rules import (
     get_standardized_station_id_from_nonstandardized_station_name,
     get_stations_within_5km_of_lat_lon,
     get_line_id_from_standardized_station,
+    get_date_ext_iso8601_rule,
 )
 
 from functools import partial
@@ -87,6 +88,7 @@ def main() -> None:
         get_standardized_station_id_from_nonstandardized_station_name,
         get_stations_within_5km_of_lat_lon,
         get_line_id_from_standardized_station,
+        get_date_ext_iso8601_rule
                         ]
     
     sample_mapper = FaireSampleMetadataMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/projects/OCNMS/pps_ocnms21-23/config.yaml',

@@ -16,11 +16,35 @@ def get_eventDate_iso8601_rule(mapper: FaireSampleMetadataMapper):
         """
         return df[metadata_col].apply(mapper.convert_date_to_iso8601)
     
-    date_fields = ['eventDate', 'date_ext']
     return (
         TransformationBuilder('eventDate_to_iso8601')
         .when(lambda f, m, mt: 
-            f in date_fields and 
+            f == 'eventDate' and 
+            mt == 'related')
+        .apply(
+            apply_date_conversion,
+            mode='direct'
+        )
+        .for_mapping_type('related')
+        .update_source(True)
+        .build()
+    )
+
+def get_date_ext_iso8601_rule(mapper: FaireSampleMetadataMapper):
+    """
+    Rule for converting eventData to ISO8601 format.
+    Handles various date formats and converts them to standardized ISO8601
+    """
+    def apply_date_conversion(df, faire_col, metadata_col):
+        """
+        Apply date conversion using the mapper's convert_date_to_iso8601 method
+        """
+        return df[metadata_col].apply(mapper.convert_date_to_iso8601)
+    
+    return (
+        TransformationBuilder('eventDate_to_iso8601')
+        .when(lambda f, m, mt: 
+            f == 'date_ext' and 
             mt == 'related')
         .apply(
             apply_date_conversion,

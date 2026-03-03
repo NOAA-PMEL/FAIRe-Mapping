@@ -75,9 +75,11 @@ def get_fallback_col_mapping_rule(mapper: FaireSampleMetadataMapper, faire_field
         # Check if there's a transform flag
         transform_to_datetime = False
         columns = []
+    
         for part in parts:
             if part.startswith('transform:'):
-                transform_to_datetime = part.split(':'[1].lower() == 'true')
+                key, value = part.split(':')
+                transform_to_datetime = (value.lower() == 'true')
             else:
                     columns.append(part)
 
