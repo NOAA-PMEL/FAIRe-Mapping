@@ -15,8 +15,7 @@ from faire_mapping.transformers.rules import (
     get_dna_yield_from_conc_and_vol,
     get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col,
 )
-
-#TODO: Still need to flush out mapping file - quite different from others. Shannon will look at it.
+### ARCHIVED ### SWITCHED TO NEW CODE ############
 def create_m2_pps_0423_sample_metadata():
 
     # initiate mapper
