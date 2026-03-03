@@ -3,6 +3,7 @@ import gspread #library that makes it easy for us to interact with the sheet
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 import re
+import numpy as np
 
 # TODO: outline keys that need to be present in the google_sheet_json_cred (see credentials.json to speicify how it should look)
 def load_google_sheet_as_df(google_sheet_id: str, sheet_name: str, header: int, google_sheet_json_cred: str) -> pd.DataFrame:
@@ -42,6 +43,12 @@ def fix_cruise_code_in_samp_names(df: pd.DataFrame, unwanted_cruise_code: str, d
                 unwanted_cruise_code, 
                 desired_cruise_code
                 )    
+        elif desired_cruise_code == '.NO20-01':
+            df[sample_name_col] = np.where(
+            df[sample_name_col].str.contains(unwanted_cruise_code, na=False),
+            # This regex matches the LAST period and everything after it
+            df[sample_name_col].str.replace(r'\.[^.]*$', desired_cruise_code, regex=True),
+            df[sample_name_col])  
         elif not unwanted_cruise_code: # If not unwanted cruise code, just append desired cruise code onto saple name
              df[sample_name_col] = df[sample_name_col].apply(lambda x: x if str(x).endswith(desired_cruise_code) else str(x) + desired_cruise_code)
         else: # everything else just replaces with the desired cruise code
@@ -73,7 +80,7 @@ def str_replace_for_samps(samp_name: pd.Series) -> str:
             samp_name = samp_name.replace('*','')
         if '.SKQ2021' in samp_name:
             samp_name = samp_name.replace('.SKQ2021', '.SKQ21-15S')
-        if '.NO20' in samp_name:
+        if '.NO20' in samp_name and '.NO20-01' not in samp_name:
             samp_name = samp_name.replace('.NO20', '.NO20-01')
         if 'Mid.NC.SKQ21' in samp_name:
             samp_name = samp_name.replace('Mid.NC.SKQ21', 'MID.NC.SKQ21-15S')

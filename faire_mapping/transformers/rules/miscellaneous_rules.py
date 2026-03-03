@@ -190,6 +190,8 @@ def get_max_depth_with_pressure_fallback(mapper: FaireSampleMetadataMapper, pres
     def apply_compmlse_depth_calculated(df, faire_col, metadata_col):
         # Ignore metadata_col from mapping file, used passed configuration instead
         # Step 1: Get pressure using fallback
+        for col in df.columns:
+             print(col)
         pressure_series = df.apply(
             lambda row: mapper.map_using_two_or_three_cols_if_one_is_na_use_other(
             metadata_row=row,

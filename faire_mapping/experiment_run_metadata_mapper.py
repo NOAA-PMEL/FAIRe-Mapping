@@ -1,5 +1,5 @@
 from .faire_mapper import OmeFaireMapper
-from .lists import marker_to_assay_mapping, marker_to_shorthand_mapping, mismatch_sample_names_metadata_to_raw_data_files_dict, update_cruise_codes
+from faire_mapping.constants import marker_to_assay_mapping, marker_to_shorthand_mapping, mismatch_sample_names_metadata_to_raw_data_files_dict, update_cruise_codes
 from .custom_exception import NoAcceptableAssayMatch
 from pathlib import Path
 from faire_mapping.utils import str_replace_for_samps
