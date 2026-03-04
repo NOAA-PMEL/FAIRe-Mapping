@@ -78,9 +78,6 @@ class SampleMetadataBuilder(BaseDfBuilder):
         metadata df
         """
         samp_df = self.transform_metadata_df()
-        # print(samp_df)
-        # print("")
-        # print(self.extraction_df)
 
         metadata_df = pd.merge(
             left=self.extraction_df,

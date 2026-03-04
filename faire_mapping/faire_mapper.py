@@ -148,24 +148,31 @@ class OmeFaireMapper:
             # If desired col name value is not na
             if pd.notna(metadata_row[desired_col_name]) and metadata_row[desired_col_name] != '':
                 return metadata_row[desired_col_name]
-            elif pd.notna(metadata_row[use_if_na_col_name]) and metadata_row[use_if_na_col_name] != '':
-                return metadata_row[use_if_na_col_name]
-            else:
-                try:
-                    if use_if_second_col_is_na is not None:
-                        return metadata_row[use_if_second_col_is_na]
-                    else:
+            elif use_if_na_col_name is not None:
+                if pd.notna(metadata_row[use_if_na_col_name]) and metadata_row[use_if_na_col_name] != '':
+                    return metadata_row[use_if_na_col_name]
+                else:
+                    try:
+                        if use_if_second_col_is_na is not None:
+                            return metadata_row[use_if_second_col_is_na]
+                        else:
+                            return ''
+                    except:
                         return ''
-                except:
-                    return ''
+            else:
+                return ''
 
         else:
             if pd.notna(metadata_row[desired_col_name]) and metadata_row[desired_col_name] != '':
                 return self.convert_date_to_iso8601(date=metadata_row[desired_col_name])
-            elif pd.notna(metadata_row[use_if_na_col_name]) and metadata_row[use_if_na_col_name] != '':
-                return self.convert_date_to_iso8601(date=metadata_row[use_if_na_col_name])
-            elif use_if_second_col_is_na is not None and pd.notna(metadata_row[use_if_second_col_is_na]) and metadata_row[use_if_second_col_is_na] != '':
-                return self.convert_date_to_iso8601(date=metadata_row[use_if_second_col_is_na])
+            elif use_if_na_col_name is not None:
+                if pd.notna(metadata_row[use_if_na_col_name]) and metadata_row[use_if_na_col_name] != '':
+                    return self.convert_date_to_iso8601(date=metadata_row[use_if_na_col_name])
+                elif use_if_second_col_is_na is not None:
+                    if use_if_second_col_is_na is not None and pd.notna(metadata_row[use_if_second_col_is_na]) and metadata_row[use_if_second_col_is_na] != '':
+                        return self.convert_date_to_iso8601(date=metadata_row[use_if_second_col_is_na])
+                else:
+                    return ''
             else:
                 return ''
             

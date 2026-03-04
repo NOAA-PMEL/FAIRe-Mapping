@@ -7,8 +7,6 @@ from faire_mapping.transformers.rules import (
     get_samp_store_temp_from_samp_name,
     get_samp_store_loc_from_samp_name,
     get_tot_depth_water_col_from_lat_lon_or_exact_col,
-
-    get_formatted_geo_loc_by_name,
     get_fallback_col_mapping_rule,
     get_max_depth_with_pressure_fallback,
     get_minimum_depth_from_max_minus_1m,
@@ -18,11 +16,8 @@ from faire_mapping.transformers.rules import (
     get_condition_constant_rule,
     get_altitude_from_maxdepth_and_totdepthcol,
     get_condition_constant_rule,
-    get_wind_direction_from_wind_degrees,
-    get_eventDate_iso8601_rule,
     get_date_ext_iso8601_rule,
     get_dna_yield_from_conc_and_vol,
-    get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col,
     get_standardized_station_id_from_nonstandardized_station_name,
     get_stations_within_5km_of_lat_lon,
     get_line_id_from_standardized_station,)
@@ -277,16 +272,16 @@ def main() -> None:
         get_material_samp_id_by_cruisecode_cast_btlnum,
         partial(get_fallback_col_mapping_rule, faire_field_name='decimalLongitude'),
         partial(get_fallback_col_mapping_rule, faire_field_name='decimalLatitude'),
-        # get_geo_loc_name_by_lat_lon_rule,
+        get_geo_loc_name_by_lat_lon_rule,
         partial(get_fallback_col_mapping_rule, faire_field_name='eventDate'),
         get_samp_store_dur_from_samp_name,
         get_samp_store_temp_from_samp_name,
         get_samp_store_loc_from_samp_name,
         get_date_duration_rule,
-        partial(get_max_depth_with_pressure_fallback, pressure_cols=['btl_pressure..decibar.'], lat_col='decimalLatitude', depth_cols=['Depth_m_notes']),
+        partial(get_max_depth_with_pressure_fallback, pressure_cols=['btl_pressure.decibar'], lat_col='decimalLatitude', depth_cols=['Depth_m']),
         get_minimum_depth_from_max_minus_1m,
         get_env_local_scale_by_depth,
-        partial(get_condition_constant_rule, faire_col='DepthInMeters_method', ref_col='Depth_m_notes'),
+        partial(get_condition_constant_rule, faire_col='DepthInMeters_method', ref_col='Depth_m'),
         get_tot_depth_water_col_from_lat_lon_or_exact_col,
         get_standardized_station_id_from_nonstandardized_station_name,
         get_stations_within_5km_of_lat_lon,
@@ -297,7 +292,7 @@ def main() -> None:
         get_dna_yield_from_conc_and_vol,
                         ]
     
-    sample_mapper = FaireSampleMetadataMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2206/config.yaml',
+    sample_mapper = FaireSampleMetadataMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/skq21_15S/config.yaml',
                                               additiona_rules=additional_rules,
                                               ome_auto_setup=True)
     
@@ -308,7 +303,7 @@ def main() -> None:
     # Customize
     updated_nc_dates_df = add_nc_dates(df=df, sample_mapper=sample_mapper)
     
-    df = sample_mapper.save_final_df_as_csv(final_df=updated_nc_dates_df, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2206/data/dy2206_faire.csv')
+    df = sample_mapper.save_final_df_as_csv(final_df=updated_nc_dates_df, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/skq21_15S/data/skq21_15S_faire.csv')
                 
                 
 

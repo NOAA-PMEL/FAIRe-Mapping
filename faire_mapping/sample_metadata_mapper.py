@@ -815,7 +815,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             get_dna_yield_from_conc_and_vol,
             get_well_number_from_well_field,
             get_well_position_from_well_field,
-            get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col)
+            get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col,
+            get_date_ext_iso8601_rule)
 
         if not self.extraction_metadata_builder.extraction_blanks_df.empty:
             blanks_transformer = SampleMetadataTransformer(sample_mapper=self, ome_auto_setup=False, extract_blank_transformer=True)
@@ -825,7 +826,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                                 get_dna_yield_from_conc_and_vol(self, extraction_blank=True),
                                 get_well_number_from_well_field(self),
                                 get_well_position_from_well_field(self),
-                                get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col(self)]
+                                get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col(self),
+                                get_date_ext_iso8601_rule(self)]
         
             blanks_transformer.add_custom_rules(additional_rules)
             print("\nExtraction Blank Mapping:\n")
