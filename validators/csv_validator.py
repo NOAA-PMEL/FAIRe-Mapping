@@ -7,6 +7,7 @@ from typing import Type
 from pydantic import BaseModel, ValidationError
 from models.experiment_run_metadata import ExperimentRunMetadata
 from models.sample_metadata import SampleMetadata, SampleMetadataDatasetModel
+import traceback
 
 
 class CSVValidationResult:
@@ -83,7 +84,8 @@ class CSVValidator:
                     if strict:
                         raise ValidationError(f"Validation failed at row {idx + 1}: {e}")
                 except Exception as e:
-                    error_msg = f"Failed to process CSV: {str(e)}"
+                    tb_str = traceback.format_exc()
+                    error_msg = f"Failed to process CSV at row {idx + 1}:\n{tb_str}"
                     result.errors.append(error_msg)
                     if strict:
                         raise Exception(error_msg)

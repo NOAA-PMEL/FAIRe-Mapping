@@ -619,7 +619,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                         'coords': coords
                     })
                     error_distances.sort(key=lambda x: x['distance_km'])
-
+            
             # sort by distance and return top n
             distances.sort(key=lambda x: x['distance_km'])
             alt_station_names = ' | '.join([item['station'] for item in distances])

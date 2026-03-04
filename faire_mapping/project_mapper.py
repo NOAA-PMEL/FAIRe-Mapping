@@ -1,6 +1,7 @@
 from faire_mapping.faire_mapper import OmeFaireMapper
 from faire_mapping.analysis_metadata_mapper import AnalysisMetadataMapper
 from faire_mapping.constants import marker_shorthand_to_pos_cont_gblcok_name, project_pcr_library_prep_mapping_dict
+from faire_mapping.utils import load_google_sheet_as_df, load_csv_as_df
 from datetime import date, datetime
 import pandas as pd
 import requests
@@ -50,16 +51,17 @@ class ProjectMapper(OmeFaireMapper):
     project_sheet_assay_start_col_num = 5
     project_sheet_project_level_col_num = 4
     
-    def __init__(self, config_yaml: str, gh_token: str):
+    def __init__(self, config_yaml: str, gh_token: str, google_sheet_json_cred):
 
         super().__init__(config_yaml)
 
         self.config_yaml = config_yaml
         self.gh_token = gh_token
         self.config_file = self.load_config(config_yaml)
+        self.google_sheet_json_cred = google_sheet_json_cred
         self.project_name = self.config_file['project_name'] if 'project_name' in self.config_file else None # None for NCBI
         self.project_info_google_sheet_id = self.config_file['project_info_google_sheet_id'] if 'project_info_google_sheet_id' in self.config_file else None # None for NCBI
-        self.project_info_df = self.load_google_sheet_as_df(google_sheet_id=self.project_info_google_sheet_id, sheet_name='Sheet1', header=0) if 'project_info_google_sheet_id' in self.config_file else None # None for NCBI
+        self.project_info_df = load_google_sheet_as_df(google_sheet_id=self.project_info_google_sheet_id, sheet_name='Sheet1', header=0, google_sheet_json_cred=self.google_sheet_json_cred) if 'project_info_google_sheet_id' in self.config_file else None # None for NCBI
         self.project_id = dict(zip(self.project_info_df['faire_field'], self.project_info_df['value']))['project_id'] if 'project_info_google_sheet_id' in self.config_file else None # None for NCBI
         self.mismatch_samp_names_dict = self.config_file['mismatch_sample_names'] if 'mismatch_sample_names' in self.config_file else {}
         self.pooled_samps_dict = self.config_file['pooled_samps'] if 'pooled_samps' in self.config_file else {}
@@ -195,7 +197,7 @@ class ProjectMapper(OmeFaireMapper):
             
             cruise_sample_csv_path = samp_metadata.get('sample_metadata_csv_path')
 
-            cruise_samp_df = self.load_csv_as_df(file_path=cruise_sample_csv_path)
+            cruise_samp_df = load_csv_as_df(file_path=cruise_sample_csv_path)
             samp_metadata_dfs.append(cruise_samp_df)
 
         combined_sample_metadata_df = pd.DataFrame()
@@ -212,7 +214,7 @@ class ProjectMapper(OmeFaireMapper):
         for exp_run in associated_exp_run_datasets:
 
             exp_run_csv_path = exp_run.get('sequence_run_csv_path')
-            exp_run_df = self.load_csv_as_df(file_path=exp_run_csv_path)
+            exp_run_df = load_csv_as_df(file_path=exp_run_csv_path)
             associated_exp_run_dfs.append(exp_run_df)
         
         combined_exp_run_df = pd.DataFrame()
@@ -293,7 +295,7 @@ class ProjectMapper(OmeFaireMapper):
                 if samp in all_valid_sample_samps and pooled_samp in all_valid_seq_samps:
 
                     # add pooled sample name to subsample's rel_cont_id
-                    rel_cont_id = sample_df.loc[sample_df[self.faire_sample_name_col] == samp, self.faire_rel_cont_id_col_name].values
+                    rel_cont_id = sample_df.loc[sample_df[self.faire_sample_name_col] == samp, self.faire_rel_cont_id_col_name].values[0]
                     if ' | ' in rel_cont_id:
                         rel_cont_id = rel_cont_id.split(' | ')
                     else:

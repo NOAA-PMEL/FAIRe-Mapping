@@ -1,27 +1,6 @@
 from faire_mapping.project_mapper import ProjectMapper
 import argparse
 import pandas as pd
-from faire_mapping.transformers.rules import (
-    get_material_samp_id_by_cruisecode_cast_btlnum,
-    get_formatted_geo_loc_by_name,
-    get_fallback_col_mapping_rule,
-    get_max_depth_with_pressure_fallback,
-    get_minimum_depth_from_max_minus_1m,
-    get_env_local_scale_by_depth,
-    get_date_duration_rule,
-    get_tot_depth_water_col_from_lat_lon_or_exact_col,
-    get_condition_constant_rule,
-    get_altitude_from_maxdepth_and_totdepthcol,
-    get_condition_constant_rule,
-    get_wind_direction_from_wind_degrees,
-    get_eventDate_iso8601_rule,
-    get_date_ext_iso8601_rule,
-    get_dna_yield_from_conc_and_vol,
-    get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col,
-    get_standardized_station_id_from_nonstandardized_station_name,
-    get_stations_within_5km_of_lat_lon,
-    get_line_id_from_standardized_station,
-)
 
 def fix_zenodo_version(df: pd.DataFrame) -> pd.DataFrame:
     nucl_acid_ext_and_samp_method_updates = {"https://doi.org/10.5281/zenodo.11398154": "https://doi.org/10.5281/zenodo.17655148",
@@ -68,7 +47,9 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    project_creator = ProjectMapper(config_yaml="/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/faire_project_config.yaml", gh_token=args.gh_token)
+    project_creator = ProjectMapper(config_yaml="/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/faire_project_config.yaml", 
+                                    gh_token=args.gh_token, 
+                                    google_sheet_json_cred='/home/poseidon/zalmanek/FAIRe-Mapping/credentials.json')
 
     # Calling spearatly because need to fix zenodo links
     sample_df, exp_df = project_creator.process_sample_run_data()

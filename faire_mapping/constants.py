@@ -55,7 +55,8 @@ nc_faire_field_cols = ['samp_name',
                     'extract_well_number',
                     'extract_well_position',
                     'dna_yield',
-                    'dna_yield_unit'
+                    'dna_yield_unit',
+                    'samp_type'
                     ]
 
 
@@ -221,8 +222,8 @@ project_pcr_library_prep_mapping_dict = {
     'ssu16sv4v5_parada_OSUmod': {
         'pcr_bebop': {
             'owner': 'marinednadude',
-            'repo': 'OSU-Parada-universal-16S-PCR',
-            'file_path': 'NOAA-PMEL-OME-OSU-Parada-universal-16S-PCR-Protocol-BeBOP copy.md'
+            'repo': 'NOAA-PMEL-OME-Parada-universal-16S-PCR-Protocol-BeBOP',
+            'file_path': 'NOAA-PMEL-OME-Parada-universal-16S-PCR-Protocol-BeBOP.md'
         },
          'library_bebop': {
             'owner': 'marinednadude',

@@ -25,7 +25,7 @@ class ReferenceStationBuilder(BaseDfBuilder):
     def create_station_lat_lon_ref_dict(self, station_ref_df: pd.DataFrame) -> dict:
         station_lat_lon_ref_dict = {}
         for _, row in station_ref_df.iterrows():
-            station_name = row[self.LAT_COL_NAME]
+            station_name = row[self.STATION_NAME_COL_NAME]
             lat = row[self.LAT_COL_NAME]
             lon = row[self.LON_COL_NAME]
             lat_hem = row[self.LAT_HEM_COL_NAME]
