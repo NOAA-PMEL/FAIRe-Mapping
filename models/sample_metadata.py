@@ -333,7 +333,7 @@ class SampleMetadata(BaseModel):
     sigma_theta_unit: Optional[Literal['kg/m3']] = Field(default=None)
     expedition_id: Optional[str] = Field(default=None)
     expedition_name: Optional[str] = Field(default=None)
-    rosette_position: Optional[int] = None 
+    rosette_position: Optional[str] = None 
     recordedBy: Optional[str]
     measurements_from: Optional[str] = None
     niskin_id: Optional[str] = Field(default=None)
@@ -369,7 +369,7 @@ class SampleMetadata(BaseModel):
     dna_yield: Optional[float] = None
     dna_yield_unit: Optional[Literal['ng DNA/mL seawater']] = None
     dna_cleanup_method: Optional[str] = None
-    rep_chem_bottle: Optional[int] = None
+    rep_chem_bottle: Optional[str] = None
     fluor: Optional[float] = None
     fluor_unit: Optional[Literal['volts']] = None
     redox_potential: Optional[float] = None

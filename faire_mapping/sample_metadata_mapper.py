@@ -288,7 +288,18 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                 return 'not applicable: control sample'
             return 'not applicable'
 
-    def calculate_altitude(self, metadata_row: pd.Series, depth_col: str, tot_depth_col: str) -> float:
+    def calculate_altitude(self, metadata_row: pd.Series, depth_col: str, tot_depth_col: str, exact_map_col: str = None) -> float:
+
+        if exact_map_col is not None:
+            if pd.notna(metadata_row[exact_map_col]):
+                return metadata_row[exact_map_col]
+        else:
+            try:
+                depth = int(depth_col)
+            except ValueError:
+                depth = metadata_row[depth_col]
+            tot_depth_water_col = metadata_row[tot_depth_col]
+      
         # Calculates the altitude by subtracting the depth from the tot_depth_col. 'depth_col' can be the name
         # of the depth_col or just an int (for PPS vals)
         try:
@@ -373,8 +384,15 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         lon = metadata_row.get(cols[0])
 
         # Handle missing values
-        if pd.isna(lat) or pd.isna(lon):
-            return None
+        try:
+            if pd.isna(lat) or pd.isna(lon) or str(lat).strip() == "" or str(lon).strip() == "":
+                return "" # Return empty
+            
+            lat = float(lat)
+            lon = float(lon)
+        except (ValueError, TypeError):
+            # This catches cases where the data might be a string like "Unknown" or " "
+            return ""
 
         marine_regions = gpd.read_file(
             "/home/poseidon/zalmanek/FAIRe-Mapping/faire_mapping/World_Seas_IHO_v3/World_Seas_IHO_v3.shp")
@@ -410,14 +428,16 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # uses the depth to assign env_local_scale
         aphotic = "marine aphotic zone [ENVO:00000210]"
         photic = "marine photic zone [ENVO:00000209]"
+        
+        try:
+            if float(depth) <= 200:
+                env_local_scale = photic
+            elif float(depth) > 200:
+                env_local_scale = aphotic
 
-       
-        if float(depth) <= 200:
-            env_local_scale = photic
-        elif float(depth) > 200:
-            env_local_scale = aphotic
-
-        return env_local_scale
+            return env_local_scale
+        except UnboundLocalError:
+            return ''
 
     def format_dates_for_duration_calculation(self, date: str) -> datetime:
         if date in  [None, 'nan', 'missing: not collected', '', 'missing: not provided']:
@@ -594,47 +614,52 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         listed_station = metadata_row[station_name_col]
         sample_name = metadata_row[self.sample_metadata_sample_name_column]
 
-        if 'NC' not in sample_name or 'blank' not in sample_name.lower():
         
-            # alt_stations = []
-            distances = []
-            error_distances = []
-
-            for station_name, coords in self.ref_station_builder.station_lat_lon_ref_dict.items():
-                station_lat = coords['lat']
-                station_lon = coords ['lon']
-
-                # calculate distance
-                distance = self.calculate_distance_btwn_lat_lon_points(lat1=lat, lon1=lon, lat2=station_lat, lon2=station_lon)
-
-                # Account for DBO1.9 which moved but coordinates haven't been updated yet - see email from Shaun
-                # Also make exception for DBO4.1 (took this out since changing from 1 km to 3 km)
-                if distance <= 5 or (station_name == 'DBO1.9' and distance <=10.5):
-                    distances.append({
-                        'station': station_name,
-                        'distance_km': distance,
-                        'coords': coords
-                    })
-
-                else:
-                    error_distances.append({
-                        'station': station_name,
-                        'distance_km': distance,
-                        'coords': coords
-                    })
-                    error_distances.sort(key=lambda x: x['distance_km'])
+        try:
+            if 'NC' not in sample_name or 'blank' not in sample_name.lower():
             
-            # sort by distance and return top n
-            distances.sort(key=lambda x: x['distance_km'])
-            alt_station_names = ' | '.join([item['station'] for item in distances])
-            # QC check reported station is in 5km list
-            self.check_station_is_in_stations_in_5_km(alt_station_names=alt_station_names, reported_station=listed_station, samp_name=sample_name, distances=distances)
-            if alt_station_names:
-                return alt_station_names
+                # alt_stations = []
+                distances = []
+                error_distances = []
+
+                for station_name, coords in self.ref_station_builder.station_lat_lon_ref_dict.items():
+                    station_lat = coords['lat']
+                    station_lon = coords ['lon']
+
+                    # calculate distance
+                    distance = self.calculate_distance_btwn_lat_lon_points(lat1=lat, lon1=lon, lat2=station_lat, lon2=station_lon)
+
+                    # Account for DBO1.9 which moved but coordinates haven't been updated yet - see email from Shaun
+                    # Also make exception for DBO4.1 (took this out since changing from 1 km to 3 km)
+                    if distance <= 5 or (station_name == 'DBO1.9' and distance <=10.5):
+                        distances.append({
+                            'station': station_name,
+                            'distance_km': distance,
+                            'coords': coords
+                        })
+
+                    else:
+                        error_distances.append({
+                            'station': station_name,
+                            'distance_km': distance,
+                            'coords': coords
+                        })
+                        error_distances.sort(key=lambda x: x['distance_km'])
+                
+                # sort by distance and return top n
+                distances.sort(key=lambda x: x['distance_km'])
+                alt_station_names = ' | '.join([item['station'] for item in distances])
+                # QC check reported station is in 5km list
+                self.check_station_is_in_stations_in_5_km(alt_station_names=alt_station_names, reported_station=listed_station, samp_name=sample_name, distances=distances)
+                if alt_station_names:
+                    return alt_station_names
+                else:
+                    print(ValueError(f"\033[31m{sample_name} listed station {listed_station}, but it is not picking up on any stations with 5 km based on its lat/lon {lat, lon}. Closest station is {error_distances[0]}!\033[0m]"))
             else:
-                print(ValueError(f"\033[31m{sample_name} listed station {listed_station}, but it is not picking up on any stations with 5 km based on its lat/lon {lat, lon}. Closest station is {error_distances[0]}!\033[0m]"))
-        else:
-            return 'not applicable: control sample'
+                return 'not applicable: control sample'
+        except ValueError:
+            print(ValueError(f"\033[31m Could not get distance to stations for {sample_name}!\033[0m]"))
+            return ''
     
     def check_station_is_in_stations_in_5_km(self, alt_station_names: str, reported_station: str, samp_name:str, distances: dict) -> None:
         # Check that reported station showed up in the stations within 5 km

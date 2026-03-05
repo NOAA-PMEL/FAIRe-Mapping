@@ -94,12 +94,13 @@ def get_altitude_from_maxdepth_and_totdepthcol(mapper: FaireSampleMetadataMapper
             """
             metadata_cols = metadata_col.split(' | ')
 
-            if len(metadata_cols) != 2: 
-                logger.error(f"Expected 2 altitude related columns separated by '|' for altitude calculation with maximumDepthInMeters column first, followed by tot_dept_water_col column second, got: {metadata_col}")
-                raise ValueError(f"Altitude calculation requires format 'maximumDepthInMeters | tot_depth_water_col'")
+            if len(metadata_cols) < 2 and len(metadata_cols) > 3: 
+                logger.error(f"Expected at least 2 altitude related columns separated by '|' for alatitude calculation in the format '|' with depth_col first, followed by tot_depth_water_col, followed by the optional exact altitude col, got: {metadata_col}")
+                raise ValueError(f"Altitude calculation requires format 'maximumDepthInMeters | tot_depth_water_col | [exact_altitude_col]")
                  
             max_depth_col = metadata_cols[0]
             tot_depth_col = metadata_cols[1]
+            exact_col = metadata_cols[2] if len(metadata_cols) == 3 else None
             
             # Apply the calculation to each row
             return df.apply(
