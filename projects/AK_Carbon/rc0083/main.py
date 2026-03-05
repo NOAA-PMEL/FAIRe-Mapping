@@ -19,7 +19,7 @@ from faire_mapping.transformers.rules import (
 
 # TODO: add related mapping to tot_depth_water_col when GDBC downloads when net cdf finishes copying
 
-
+########## FUNCTION ARCHIVED ###### NEW FUNCTIONALITY IMPLEMENTED!!! ############
 def create_rc0083_sample_metadata():
     
     # initiate mapper

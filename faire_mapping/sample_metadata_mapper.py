@@ -245,6 +245,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         except KeyError:
             prefix=prefix
         return f"{prefix}_Port{port_num}"
+    
+    def add_material_samp_id_for_aquamonitor(self, station: str):
+        """"Add the materialSampleID for aquamonitor which will be 'Aquamonitor_M18 (station)"""
+        return f'Aquamonitor_{station}'
 
     def get_well_number_from_well_field(self, metadata_row: pd.Series, well_col: str) -> int:
         # Gets the well number from a row that has a value like G1 -> 1

@@ -1,7 +1,26 @@
 import pandas as pd
-import sys
-sys.path.append("../../..")
-from utils.sample_metadata_mapper import FaireSampleMetadataMapper
+from faire_mapping.sample_metadata_mapper import FaireSampleMetadataMapper
+from faire_mapping.transformers.rules import (
+    get_aquamonitor_material_samp_id_by_station,
+    get_geo_loc_name_by_lat_lon_rule,
+    get_samp_store_dur_from_samp_name,
+    get_samp_store_loc_from_samp_name,
+    get_tot_depth_water_col_from_lat_lon_or_exact_col,
+
+
+    get_env_medium_for_coastal_waters_by_geo_loc_rule,
+    get_eventDate_iso8601_rule,
+    get_date_duration_rule,
+    get_depth_from_pressure,
+    get_minimum_depth_from_max_minus_1m,
+    get_altitude_from_maxdepth_and_totdepthcol,
+    get_env_local_scale_by_depth,
+    get_dna_yield_from_conc_and_vol,
+    get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col,
+    get_line_id_from_standardized_station,
+    get_stations_within_5km_of_lat_lon,
+    get_date_ext_iso8601_rule,
+)
 
 #TODO: Figure out materialSampleId and sample_derived_from once known what to do
 def create_aquamonitor_sample_metadata():
@@ -153,7 +172,34 @@ def create_aquamonitor_sample_metadata():
  
 def main() -> None:
 
-    sample_metadata = create_aquamonitor_sample_metadata()
+    # sample_metadata = create_aquamonitor_sample_metadata()
+    additional_rules = [
+        get_aquamonitor_material_samp_id_by_station, 
+        get_geo_loc_name_by_lat_lon_rule,
+        get_eventDate_iso8601_rule,
+        get_env_local_scale_by_depth,
+        get_samp_store_dur_from_samp_name,
+        get_samp_store_loc_from_samp_name,
+        get_date_duration_rule,
+        get_minimum_depth_from_max_minus_1m,
+        get_tot_depth_water_col_from_lat_lon_or_exact_col,
+        get_stations_within_5km_of_lat_lon,
+        get_altitude_from_maxdepth_and_totdepthcol,
+        get_date_ext_iso8601_rule,
+        get_dna_yield_from_conc_and_vol,
+                        ]
+
+    sample_mapper = FaireSampleMetadataMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/projects/FloatingSamples/AquaM/config.yaml',
+                                              additiona_rules=additional_rules,
+                                              ome_auto_setup=True)
+
+    df = sample_mapper.finalize_samp_metadata_df()
+
+    # Add customization
+    df[['decimalLatitude', 'decimalLongitude']] = df[['decimalLatitude', 'decimalLongitude']].round(0) # To hide identity.
+    df['recordedBy'] = df['recordedBy'].str.replace('and', '|')
+    
+    df = sample_mapper.save_final_df_as_csv(final_df=df, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/FloatingSamples/AquaM/data/aquaM_faire.csv')
 
 if __name__ == "__main__":
     main()

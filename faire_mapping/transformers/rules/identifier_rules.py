@@ -84,3 +84,27 @@ def get_pps_material_samp_id_by_code_prefix_and_cast(mapper: FaireSampleMetadata
             .build()
         )
 
+def get_aquamonitor_material_samp_id_by_station(mapper: FaireSampleMetadataMapper):
+    """
+    Rule for calculating getting the MaterialSampleID for a aquamonitor by station.
+    Expects metadata_col to be 'station_col'.
+    """
+    def apply_aquamonitor_matsampID(df, faire_col, metadata_col):
+        """
+        Apply Aquamonitor materialSampleID derivation using the mapper's add_material_samp_id_for_aquamonitor method.
+        """
+        # Apply the calculation to each row
+        return df[metadata_col].apply(mapper.add_material_samp_id_for_aquamonitor)
+    return (
+            TransformationBuilder('aquamonitor_materialSampleID')
+            .when(lambda f, m, mt: (
+                f == 'materialSampleID' and
+                mt == 'related'
+            ))
+            .apply(
+                apply_aquamonitor_matsampID,
+                mode='direct'
+            )
+            .for_mapping_type('related')
+            .build()
+        )

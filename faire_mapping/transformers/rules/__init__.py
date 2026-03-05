@@ -45,7 +45,8 @@ from .station_rules import(
 
 from .identifier_rules import(
     get_material_samp_id_by_cruisecode_cast_btlnum,
-    get_pps_material_samp_id_by_code_prefix_and_cast
+    get_pps_material_samp_id_by_code_prefix_and_cast,
+    get_aquamonitor_material_samp_id_by_station
 )
 
 from .controls_rules import(
