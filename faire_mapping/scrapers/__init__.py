@@ -1,0 +1,1 @@
+from .insdc_geo_locations import extract_insdc_geographic_locations

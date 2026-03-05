@@ -1,9 +1,24 @@
-import sys
-sys.path.append("../../..")
-
-from utils.sample_metadata_mapper import FaireSampleMetadataMapper
-from utils.experiment_run_metadata_mapper import ExperimentRunMetadataMapper
+from faire_mapping.sample_metadata_mapper import FaireSampleMetadataMapper
+from faire_mapping.experiment_run_metadata_mapper import ExperimentRunMetadataMapper
 import pandas as pd
+from faire_mapping.transformers.rules import (
+    get_material_samp_id_by_cruisecode_cast_btlnum,
+    get_geo_loc_name_by_lat_lon_rule,
+    get_well_number_from_well_field,
+    get_well_position_from_well_field,
+    get_standardized_station_id_from_nonstandardized_station_name,
+    get_stations_within_5km_of_lat_lon,
+    get_line_id_from_standardized_station,
+    get_eventDate_iso8601_rule,
+    get_env_local_scale_by_depth,
+    get_date_duration_rule,
+    get_minimum_depth_from_max_minus_1m,
+    get_tot_depth_water_col_from_lat_lon_or_exact_col,
+    get_altitude_from_maxdepth_and_totdepthcol,
+    get_dna_yield_from_conc_and_vol,
+    get_date_ext_iso8601_rule,
+)
+from functools import partial
 
 # switched direct mapping of geo_loc_name by Area.within.region because trying to keep consistent as Shaun Bell suggested. Just using IHO reference for this.
 def fix_stations(df: pd.DataFrame)  -> pd.DataFrame:
@@ -17,6 +32,22 @@ def fix_stations(df: pd.DataFrame)  -> pd.DataFrame:
 
     return df
 
+def add_nc_dates(df: pd.DataFrame, sample_mapper: FaireSampleMetadataMapper) -> pd.DataFrame:
+    sample_dates_dict = {
+        'E232.NC.NO20-01': '2020-10-06T05:59:00Z',
+        'E301.NC.NO20-01': '2020-10-20T08:15:00Z',
+    }
+
+    iso_dict = {}
+    for key, val in sample_dates_dict.items():
+        iso_date = sample_mapper.convert_date_to_iso8601(date=val)
+        iso_dict[key] = iso_date
+
+    df['eventDate'] = df['samp_name'].map(iso_dict).fillna(df['eventDate'])
+
+    return df
+
+###### ARCHIVED - NEW VERISON IMPLEMENTED #########
 def create_no201_sample_metadata():
     
     # initiate mapper
@@ -175,7 +206,35 @@ def create_no201_sample_metadata():
 
 def main() -> None:
 
-    sample_metadata = create_no201_sample_metadata()
+    # sample_metadata = create_no201_sample_metadata()
+    additional_rules = [
+        get_material_samp_id_by_cruisecode_cast_btlnum,
+        get_geo_loc_name_by_lat_lon_rule,
+        get_eventDate_iso8601_rule,
+        get_env_local_scale_by_depth,
+        get_date_duration_rule,
+        get_minimum_depth_from_max_minus_1m,
+        get_tot_depth_water_col_from_lat_lon_or_exact_col,
+        get_standardized_station_id_from_nonstandardized_station_name,
+        get_stations_within_5km_of_lat_lon,
+        get_line_id_from_standardized_station,
+        get_altitude_from_maxdepth_and_totdepthcol,
+        get_date_ext_iso8601_rule,
+        get_well_number_from_well_field,
+        get_well_position_from_well_field,
+        get_dna_yield_from_conc_and_vol,
+                        ]
+    
+    sample_mapper = FaireSampleMetadataMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/no201/config.yaml',
+                                              additiona_rules=additional_rules,
+                                              ome_auto_setup=True)
+
+    sample_mapper.sample_metadata_df_builder.sample_metadata_df = fix_stations(df=sample_mapper.sample_metadata_df_builder.sample_metadata_df)
+    
+    df = sample_mapper.finalize_samp_metadata_df()
+    df = add_nc_dates(df=df, sample_mapper=sample_mapper)
+    
+    sample_mapper.save_final_df_as_csv(final_df=df, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/no201/data/no201_faire.csv')
                 
 if __name__ == "__main__":
     main()

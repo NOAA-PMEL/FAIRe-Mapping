@@ -1,8 +1,6 @@
 import argparse
 import pandas as pd
-import sys
-sys.path.append("..")
-from utils.project_mapper import ProjectMapper
+from faire_mapping.project_mapper import ProjectMapper
 
 def main() -> None:
 

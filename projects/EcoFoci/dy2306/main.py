@@ -1,9 +1,28 @@
-import sys
-sys.path.append("../../..")
-
-from utils.sample_metadata_mapper import FaireSampleMetadataMapper
-from utils.experiment_run_metadata_mapper import ExperimentRunMetadataMapper
+from faire_mapping.sample_metadata_mapper import FaireSampleMetadataMapper
 import pandas as pd
+from faire_mapping.transformers.rules import (
+    get_material_samp_id_by_cruisecode_cast_btlnum,
+    get_fallback_col_mapping_rule,
+    get_formatted_geo_loc_by_name,
+    get_max_depth_with_pressure_fallback,
+    get_samp_store_dur_from_samp_name,
+    get_samp_store_temp_from_samp_name,
+    get_samp_store_loc_from_samp_name,
+    get_date_duration_rule,
+    get_minimum_depth_from_max_minus_1m,
+    get_tot_depth_water_col_from_lat_lon_or_exact_col,
+    get_altitude_from_maxdepth_and_totdepthcol,
+    get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col,
+    get_dna_yield_from_conc_and_vol,
+    get_date_ext_iso8601_rule,
+    get_fallback_col_constant_mapping_rule,
+    get_standardized_station_id_from_nonstandardized_station_name,
+    get_stations_within_5km_of_lat_lon,
+    get_line_id_from_standardized_station,
+    get_env_local_scale_by_depth,
+    get_dna_yield_from_conc_and_vol,
+)
+from functools import partial
 
 
 def fix_stations(df: pd.DataFrame)  -> pd.DataFrame:
@@ -26,6 +45,22 @@ def fix_stations(df: pd.DataFrame)  -> pd.DataFrame:
 
     return df
 
+def add_nc_dates(df: pd.DataFrame, sample_mapper: FaireSampleMetadataMapper) -> pd.DataFrame:
+    sample_dates_dict = {
+        'E1717.NC.DY23-06': '2023-04-24T08:51:00Z',
+        'E1771.NC.DY23-06': '2023-04-28T03:01:00Z',
+        'E1819.NC.DY23-6': '2023-05-06T20:31:00Z        '
+    }
+
+    iso_dict = {}
+    for key, val in sample_dates_dict.items():
+        iso_date = sample_mapper.convert_date_to_iso8601(date=val)
+        iso_dict[key] = iso_date
+
+    df['eventDate'] = df['samp_name'].map(iso_dict).fillna(df['eventDate'])
+
+    return df
+
 def drop_blank_alask_set_7(df: pd.DataFrame) -> pd.DataFrame:
     # Drop the Blank.Alaska.Set7 from DY23-06. This was grabbed because its associated with the M2-PPS-0423 samples which originally had the 
     # DY23-06 cruise code in their sample name. The sampleMapper class groups by cruise code in the extraction sheet. But none of the DY23-06 samples
@@ -35,6 +70,7 @@ def drop_blank_alask_set_7(df: pd.DataFrame) -> pd.DataFrame:
 
     return df_filtered
 
+####### ARCHIVED ###### OLD SCRIPT AND WAY OF DOING THINGS! ###################
 def create_dy2306_sample_metadata():
     
     # initiate mapper
@@ -173,7 +209,7 @@ def create_dy2306_sample_metadata():
                 sample_mapper.get_samp_store_loc_by_samp_store_dur
             )
             sample_metadata_results['samp_store_temp'] = sample_mapper.sample_metadata_df[metadata_col].apply(
-                sample_mapper.get_samp_sore_temp_by_samp_store_dur
+                sample_mapper.get_samp_store_temp_by_samp_store_dur
             )
         
         # eventDate needs to be proecessed before prepped_samp_store_dur
@@ -253,7 +289,43 @@ def create_dy2306_sample_metadata():
 
 def main() -> None:
 
-    sample_metadata = create_dy2306_sample_metadata()
+    # sample_metadata = create_dy2306_sample_metadata()
+    additional_rules = [
+        get_material_samp_id_by_cruisecode_cast_btlnum,
+        partial(get_fallback_col_mapping_rule, faire_field_name='decimalLongitude'),
+        partial(get_fallback_col_mapping_rule, faire_field_name='decimalLatitude'),
+        get_formatted_geo_loc_by_name,
+        partial(get_fallback_col_mapping_rule, faire_field_name='eventDate'),
+        partial(get_max_depth_with_pressure_fallback, pressure_cols=['btl_pressure (decibar)'], lat_col='decimalLatitude', depth_cols=['Depth_m']),
+        partial(get_fallback_col_constant_mapping_rule, faire_field_name="DepthInMeters_method"),
+        get_env_local_scale_by_depth,
+        get_samp_store_dur_from_samp_name,
+        get_samp_store_temp_from_samp_name,
+        get_samp_store_loc_from_samp_name,
+        get_date_duration_rule,
+        get_minimum_depth_from_max_minus_1m,
+        get_tot_depth_water_col_from_lat_lon_or_exact_col,
+        get_standardized_station_id_from_nonstandardized_station_name,
+        get_stations_within_5km_of_lat_lon,
+        get_line_id_from_standardized_station,
+        get_altitude_from_maxdepth_and_totdepthcol,
+        get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col,
+        get_dna_yield_from_conc_and_vol,
+        get_date_ext_iso8601_rule,
+    ]
+
+    sample_mapper = FaireSampleMetadataMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2306/config.yaml',
+                                              additiona_rules=additional_rules,
+                                              ome_auto_setup=True)
+
+    sample_mapper.sample_metadata_df_builder.sample_metadata_df = fix_stations(df=sample_mapper.sample_metadata_df_builder.sample_metadata_df)
+
+    df = sample_mapper.finalize_samp_metadata_df()
+    # Drop blank sample
+    final_df = drop_blank_alask_set_7(df=df)
+    final_df_with_nc_dates = add_nc_dates(df=final_df, sample_mapper=sample_mapper)
+    
+    sample_mapper.save_final_df_as_csv(final_df=final_df_with_nc_dates, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2306/data/dy2306_faire.csv')
                 
 
 if __name__ == "__main__":

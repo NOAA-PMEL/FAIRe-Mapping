@@ -1,4 +1,4 @@
-from utils.project_mapper import ProjectMapper
+from faire_mapping.project_mapper import ProjectMapper
 import argparse
 import pandas as pd
 
@@ -47,7 +47,9 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    project_creator = ProjectMapper(config_yaml="/home/poseidon/zalmanek/FAIRe-Mapping/projects/AK_Carbon/faire_project_config.yaml", gh_token=args.gh_token)
+    project_creator = ProjectMapper(config_yaml="/home/poseidon/zalmanek/FAIRe-Mapping/projects/AK_Carbon/faire_project_config.yaml", 
+                                    gh_token=args.gh_token,
+                                    google_sheet_json_cred='/home/poseidon/zalmanek/FAIRe-Mapping/credentials.json')
 
     # Calling spearatly because need to fix zenodo links
     sample_df, exp_df = project_creator.process_sample_run_data()

@@ -1,8 +1,30 @@
 import pandas as pd
-import sys
 import numpy as np
-sys.path.append("../../..")
-from utils.sample_metadata_mapper import FaireSampleMetadataMapper
+from faire_mapping.sample_metadata_mapper import FaireSampleMetadataMapper
+from faire_mapping.transformers.rules import (
+    get_fallback_col_mapping_rule,
+    get_geo_loc_name_by_lat_lon_rule,
+    get_eventDate_iso8601_rule,
+    get_max_depth_with_pressure_fallback,
+    get_samp_store_dur_from_samp_name,
+    get_samp_store_temp_from_samp_name,
+    get_samp_store_loc_from_samp_name,
+    get_date_duration_rule,
+    get_condition_constant_rule,
+    get_minimum_depth_from_max_minus_1m,
+    get_tot_depth_water_col_from_lat_lon_or_exact_col,
+    get_altitude_from_maxdepth_and_totdepthcol,
+    get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col,
+    get_dna_yield_from_conc_and_vol,
+    get_date_ext_iso8601_rule,
+    get_fallback_col_constant_mapping_rule,
+    get_standardized_station_id_from_nonstandardized_station_name,
+    get_stations_within_5km_of_lat_lon,
+    get_line_id_from_standardized_station,
+    get_env_local_scale_by_depth,
+    get_dna_yield_from_conc_and_vol,
+)
+from functools import partial
 
 # QC85 station check will throw warnings - ignore errors.
 
@@ -296,7 +318,47 @@ def create_33R020210613_sample_metadata():
 
 def main() -> None:
 
-    faire_sample_outputs = create_33R020210613_sample_metadata()
+    # faire_sample_outputs = create_33R020210613_sample_metadata()
+    additional_rules = [
+        partial(get_fallback_col_mapping_rule, faire_field_name='decimalLongitude'),
+        partial(get_fallback_col_mapping_rule, faire_field_name='decimalLatitude'),
+        partial(get_fallback_col_mapping_rule, faire_field_name='verbatimLongitude'),
+        partial(get_fallback_col_mapping_rule, faire_field_name='verbatimLatitude'),
+        get_geo_loc_name_by_lat_lon_rule,
+        get_eventDate_iso8601_rule,
+        get_env_local_scale_by_depth,
+        get_date_duration_rule,
+        get_minimum_depth_from_max_minus_1m,
+        get_standardized_station_id_from_nonstandardized_station_name,
+        get_stations_within_5km_of_lat_lon,
+        get_line_id_from_standardized_station,
+        get_altitude_from_maxdepth_and_totdepthcol,
+        get_date_ext_iso8601_rule,
+        get_dna_yield_from_conc_and_vol,
+    ]
+
+    sample_mapper = FaireSampleMetadataMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/projects/WCOA/wcoa21/config.yaml',
+                                              additiona_rules=additional_rules,
+                                              ome_auto_setup=True)
+    
+    sample_mapper.sample_metadata_df_builder.sample_metadata_df["altitude_method"] = np.where(
+        sample_mapper.sample_metadata_df_builder.sample_metadata_df["ctd_Altimeter"]  <= 95,
+                "not applicable", #  if altimeter columns was used directly
+                 "Calculated by subtracting the maximumDepthInMeters from the tot_depth_water_col." #  method description used if over 95
+            )
+
+
+    df = sample_mapper.finalize_samp_metadata_df()
+
+    # customization
+    df['materialSampleID'] = np.where(
+        df['materialSampleID'].str.contains('not applicable', na=False), 
+        df['materialSampleID'],                           # Keep it as is
+        'WCOA21_' + df['materialSampleID'].astype(str)    # Otherwise, add the prefix
+    )
+    df['verbatimEventTime'] = df['verbatimEventTime'].str.split(' ').str.get(1)
+
+    sample_mapper.save_final_df_as_csv(final_df=df, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/WCOA/wcoa21/data/wcoa21_faire.csv')
 
 
 if __name__ == "__main__":

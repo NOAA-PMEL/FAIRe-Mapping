@@ -1,4 +1,4 @@
 credentials.json
-utils/GEBCO_2024.nc
+faire_mapping/GEBCO_2024.nc
 __pycache__/
 otuRaw*

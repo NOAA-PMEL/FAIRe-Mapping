@@ -1,9 +1,29 @@
-import sys
-sys.path.append("../../..")
-
-from utils.sample_metadata_mapper import FaireSampleMetadataMapper
-from utils.experiment_run_metadata_mapper import ExperimentRunMetadataMapper
+from faire_mapping.sample_metadata_mapper import FaireSampleMetadataMapper
 import pandas as pd
+from faire_mapping.transformers.rules import (
+    get_material_samp_id_by_cruisecode_cast_btlnum,
+    get_geo_loc_name_by_lat_lon_rule,
+    get_samp_store_dur_from_samp_name,
+    get_samp_store_temp_from_samp_name,
+    get_samp_store_loc_from_samp_name,
+    get_tot_depth_water_col_from_lat_lon_or_exact_col,
+    get_fallback_col_mapping_rule,
+    get_max_depth_with_pressure_fallback,
+    get_minimum_depth_from_max_minus_1m,
+    get_env_local_scale_by_depth,
+    get_date_duration_rule,
+    get_tot_depth_water_col_from_lat_lon_or_exact_col,
+    get_condition_constant_rule,
+    get_altitude_from_maxdepth_and_totdepthcol,
+    get_condition_constant_rule,
+    get_date_ext_iso8601_rule,
+    get_dna_yield_from_conc_and_vol,
+    get_standardized_station_id_from_nonstandardized_station_name,
+    get_stations_within_5km_of_lat_lon,
+    get_line_id_from_standardized_station,
+    get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col
+    )
+from functools import partial
 
 # TODO: figure out what to do about missing samples in the sample data. Sample E1820.DY2306 - E1842.DY2306 are missing 
 # (but they exist in the extraction spreadsheet)
@@ -36,7 +56,23 @@ def fix_stations(df: pd.DataFrame) -> pd.DataFrame:
 
     return df
 
+def add_nc_dates(df: pd.DataFrame, sample_mapper: FaireSampleMetadataMapper) -> pd.DataFrame:
+    sample_dates_dict = {
+        'E2028.NC.SKQ23-12S': '2023-10-03T11:55:16Z',
+        'E2029.NC.SKQ23-12S': '2023-09-21T09:49:17Z',
+        'E2030.NC.SKQ23-12S': '2023-09-14T13:19:49Z'
+    }
 
+    iso_dict = {}
+    for key, val in sample_dates_dict.items():
+        iso_date = sample_mapper.convert_date_to_iso8601(date=val)
+        iso_dict[key] = iso_date
+
+    df['eventDate'] = df['samp_name'].map(iso_dict).fillna(df['eventDate'])
+
+    return df
+
+######## ARCHIVED ######## NEW FUNCTIONAITY IMPLEMENTED BELOW ##################
 def create_skq23_12s_sample_metadata():
     
     # initiate mapper
@@ -182,7 +218,7 @@ def create_skq23_12s_sample_metadata():
                 sample_mapper.get_samp_store_loc_by_samp_store_dur
             )
             sample_metadata_results['samp_store_temp'] = sample_mapper.sample_metadata_df[metadata_col].apply(
-                sample_mapper.get_samp_sore_temp_by_samp_store_dur
+                sample_mapper.get_samp_store_temp_by_samp_store_dur
             )
         
         elif faire_col == 'date_ext':
@@ -246,7 +282,47 @@ def create_skq23_12s_sample_metadata():
 
 def main() -> None:
 
-    sample_metadata = create_skq23_12s_sample_metadata()
+    # sample_metadata = create_skq23_12s_sample_metadata()
+    additional_rules = [
+        get_material_samp_id_by_cruisecode_cast_btlnum,
+        partial(get_fallback_col_mapping_rule, faire_field_name='decimalLongitude'),
+        partial(get_fallback_col_mapping_rule, faire_field_name='decimalLatitude'),
+        get_geo_loc_name_by_lat_lon_rule,
+        partial(get_fallback_col_mapping_rule, faire_field_name='eventDate'),
+        get_samp_store_dur_from_samp_name,
+        get_samp_store_temp_from_samp_name,
+        get_samp_store_loc_from_samp_name,
+        get_date_duration_rule,
+        partial(get_fallback_col_mapping_rule, faire_field_name='maximumDepthInMeters'),
+        get_env_local_scale_by_depth,
+        get_minimum_depth_from_max_minus_1m,
+        get_tot_depth_water_col_from_lat_lon_or_exact_col,
+        get_standardized_station_id_from_nonstandardized_station_name,
+        get_stations_within_5km_of_lat_lon,
+        get_line_id_from_standardized_station,
+        get_altitude_from_maxdepth_and_totdepthcol,
+        get_date_ext_iso8601_rule,
+        get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col,
+        get_dna_yield_from_conc_and_vol,
+                        ]
+    
+    sample_mapper = FaireSampleMetadataMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/skq23_12S/config.yaml',
+                                              additiona_rules=additional_rules,
+                                              ome_auto_setup=True)
+    
+    sample_mapper.sample_metadata_df_builder.sample_metadata_df = fix_stations(df=sample_mapper.sample_metadata_df_builder.sample_metadata_df)
+    
+    df = sample_mapper.finalize_samp_metadata_df()
+
+    # Customize
+    updated_nc_dates_df = add_nc_dates(df=df, sample_mapper=sample_mapper)
+    updated_nc_dates_df['ctd_cast_number'] = updated_nc_dates_df['ctd_cast_number'].apply(
+                lambda row: int(float(str(row).replace('CTD', ''))) if 'not applicable' not in str(row).lower() else row)
+    
+    df = sample_mapper.save_final_df_as_csv(final_df=updated_nc_dates_df, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/skq23_12S/data/skq23_12S_faire.csv')
+                
+                
+
                 
 if __name__ == "__main__":
     main()

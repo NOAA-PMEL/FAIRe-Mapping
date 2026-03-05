@@ -1,0 +1,6 @@
+from faire_mapping.mapping_builders.extraction_blank_mapping_dict_builder import ExtractionBlankMappingDictBuilder
+
+mapping_file_id = "1lnHUaAVj2ybyiruvBUY-vxtYpBM8xyAnsxHaC-y3W08"
+google_sheet_json_cred = "/home/poseidon/zalmanek/FAIRe-Mapping/credentials.json"
+blank_mapping_builder = ExtractionBlankMappingDictBuilder(google_sheet_mapping_file_id=mapping_file_id, google_sheet_json_cred=google_sheet_json_cred)
+print(blank_mapping_builder.extraction_blanks_mapping_dict)

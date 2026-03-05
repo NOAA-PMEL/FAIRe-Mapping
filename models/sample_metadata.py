@@ -23,10 +23,8 @@ import xarray as xr
 # Load World SEas IHO dataset once at modul level (when file is imported)
 def load_iho_dataset():
     try:
-    # Get the parent directory of the current script
-        parent_dir = Path(__file__).parent.parent
         # reference the file relative to the script's location
-        target_file = parent_dir / "utils" / "World_Seas_IHO_v3/World_Seas_IHO_v3.shp"
+        target_file = "/home/poseidon/zalmanek/FAIRe-Mapping/faire_mapping/World_Seas_IHO_v3/World_Seas_IHO_v3.shp"
         return gpd.read_file(target_file)
     except Exception as e:
         print(f"Warning: Could not load IHO datset: {e}")
@@ -180,25 +178,25 @@ class SampleMetadata(BaseModel):
     hydrogen_ion_unit: Optional[Literal['nmol/kg']] = Field(default=None)
     nitrate_plus_nitrite: Optional[float]
     nitrate_plus_nitrite_unit: Optional[Literal['µM']]  # need to add cv here when known
-    omega_arag: Optional[float]
-    omega_arag_method: Optional[str]
+    omega_arag: Optional[float] = None
+    omega_arag_method: Optional[str] = None
     omega_calc: Optional[float] = Field(default=None)
-    omega_calc_method: Optional[str]
-    pco2: Optional[float]
-    pco2_unit: Optional[Literal['uatm']]
-    phosphate: Optional[float]
-    phosphate_unit: Optional[Literal['µmol/L', 'µM', 'µmol/kg']]
+    omega_calc_method: Optional[str] = None
+    pco2: Optional[float] = None
+    pco2_unit: Optional[Literal['uatm']] = None
+    phosphate: Optional[float] = None
+    phosphate_unit: Optional[Literal['µmol/L', 'µM', 'µmol/kg']] = None
     phosphate_WOCE_flag: Optional[int] = Field(default=None)
-    pressure: Optional[float]
-    pressure_unit: Optional[Literal['dbar']]
+    pressure: Optional[float] = None
+    pressure_unit: Optional[Literal['dbar']] = None
     pressure_standard_deviation: Optional[float] = Field(default=None)
-    silicate: Optional[float]
-    silicate_unit: Optional[Literal['µmol/L', 'µM', 'µmol/kg']]
+    silicate: Optional[float] = None
+    silicate_unit: Optional[Literal['µmol/L', 'µM', 'µmol/kg']] = None
     silicate_WOCE_flag: Optional[int] = Field(default=None)
-    tot_alkalinity: Optional[float]
-    tot_alkalinity_unit: Optional[Literal['µmol/kg']]
+    tot_alkalinity: Optional[float] = None
+    tot_alkalinity_unit: Optional[Literal['µmol/kg']] = None
     tot_alkalinity_WOCE_flag: Optional[int] = Field(default=None)
-    transmittance: Optional[float]
+    transmittance: Optional[float] = None
     transmittance_unit: Optional[Literal['']] # need to add cv here when known
     beam_attenuation: Optional[float] = Field(default=None)
     beam_attenuation_unit: Optional[Literal['1/m']] = Field(default=None)
@@ -335,7 +333,7 @@ class SampleMetadata(BaseModel):
     sigma_theta_unit: Optional[Literal['kg/m3']] = Field(default=None)
     expedition_id: Optional[str] = Field(default=None)
     expedition_name: Optional[str] = Field(default=None)
-    rosette_position: Optional[int] = None 
+    rosette_position: Optional[str] = None 
     recordedBy: Optional[str]
     measurements_from: Optional[str] = None
     niskin_id: Optional[str] = Field(default=None)
@@ -370,12 +368,13 @@ class SampleMetadata(BaseModel):
     extract_well_position: Optional[str] = None
     dna_yield: Optional[float] = None
     dna_yield_unit: Optional[Literal['ng DNA/mL seawater']] = None
-    dna_cleanup_method: Optional[str]
-    rep_chem_bottle: Optional[int]
+    dna_cleanup_method: Optional[str] = None
+    rep_chem_bottle: Optional[str] = None
     fluor: Optional[float] = None
     fluor_unit: Optional[Literal['volts']] = None
     redox_potential: Optional[float] = None
     redox_potential_unit: Optional[Literal['mV']] = None
+    samp_type: Literal['water', None]
 
     # class variables loaded once and shared across all datasets
     # list of arctic region keywods
@@ -484,7 +483,7 @@ class SampleMetadata(BaseModel):
     @model_validator(mode='after')
     def validate_expedition_date_ranges(self):
         """Class method to validate date ranges across all records in an expedition. Call this after validating individual records"""
-        if not self.eventDate:
+        if not self.eventDate or not self.materialSampleID:
             return self
 
         try:

@@ -1,8 +1,28 @@
-import sys
-sys.path.append("../../..")
-
-from utils.sample_metadata_mapper import FaireSampleMetadataMapper
+from faire_mapping.sample_metadata_mapper import FaireSampleMetadataMapper
 import pandas as pd
+from faire_mapping.transformers.rules import (
+    get_material_samp_id_by_cruisecode_cast_btlnum,
+    switch_sign_of_lat_or_lon_deg,
+    get_standardized_station_id_from_nonstandardized_station_name,
+    get_stations_within_5km_of_lat_lon,
+    get_line_id_from_standardized_station,
+    get_formatted_geo_loc_by_name,
+    get_eventDate_iso8601_rule,
+    get_env_local_scale_by_depth,
+    get_date_duration_rule,
+    get_samp_store_dur_from_samp_name,
+    get_samp_store_temp_from_samp_name,
+    get_samp_store_loc_from_samp_name,
+    get_wind_direction_from_wind_degrees,
+    get_depth_from_pressure,
+    get_minimum_depth_from_max_minus_1m,
+    get_tot_depth_water_col_from_lat_lon_or_exact_col,
+    get_altitude_from_maxdepth_and_totdepthcol,
+    get_dna_yield_from_conc_and_vol,
+    get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col,
+    get_date_ext_iso8601_rule,
+)
+from functools import partial
 
 def replace_incorrect_lat_lon(df: pd.DataFrame):
     # Sean mentioned the lat/lon with 64.0038, -163.06616 are incorrect and gave me the correct values of Lat:  64 00.24 N Lon: 167 54.02 W
@@ -12,6 +32,7 @@ def replace_incorrect_lat_lon(df: pd.DataFrame):
 
     return df
 
+#### FUNCTION ARCHIVED - OLD WAY OF MAPPING _ UPDATED TP NEW WAY - SEE main() #########
 def create_dy2209_sample_metadata():
 
     # initiate mapper
@@ -111,7 +132,7 @@ def create_dy2209_sample_metadata():
                 sample_mapper.get_samp_store_loc_by_samp_store_dur
             )
             sample_metadata_results['samp_store_temp'] = sample_mapper.sample_metadata_df[metadata_col].apply(
-                sample_mapper.get_samp_sore_temp_by_samp_store_dur
+                sample_mapper.get_samp_store_temp_by_samp_store_dur
             )
 
         elif faire_col == 'prepped_samp_store_dur':
@@ -216,8 +237,39 @@ def create_dy2209_sample_metadata():
 
 def main() -> None:
 
-    # # create sample metadata - experiment metadata needed first
-    sample_metadata = create_dy2209_sample_metadata()
+    additional_rules = [
+        get_material_samp_id_by_cruisecode_cast_btlnum,
+        switch_sign_of_lat_or_lon_deg,
+        get_standardized_station_id_from_nonstandardized_station_name,
+        get_stations_within_5km_of_lat_lon,
+        get_line_id_from_standardized_station,
+        get_formatted_geo_loc_by_name,
+        get_eventDate_iso8601_rule,
+        get_env_local_scale_by_depth,
+        get_date_duration_rule,
+        get_samp_store_dur_from_samp_name,
+        get_samp_store_temp_from_samp_name,
+        get_samp_store_loc_from_samp_name,
+        get_wind_direction_from_wind_degrees,
+        get_depth_from_pressure,
+        get_minimum_depth_from_max_minus_1m,
+        get_tot_depth_water_col_from_lat_lon_or_exact_col,
+        get_altitude_from_maxdepth_and_totdepthcol,
+        get_dna_yield_from_conc_and_vol,
+        get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col,
+        get_date_ext_iso8601_rule,
+                        ]
+    
+    sample_mapper = FaireSampleMetadataMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2209/config.yaml',
+                                              additiona_rules=additional_rules,
+                                              ome_auto_setup=True)
+
+    sample_mapper.sample_metadata_df_builder.sample_metadata_df = replace_incorrect_lat_lon(df=sample_mapper.sample_metadata_df_builder.sample_metadata_df)
+    
+    df = sample_mapper.finalize_samp_metadata_df()
+    
+    sample_mapper.save_final_df_as_csv(final_df=df, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2209/data/dy2209_faire.csv')
+                
 
 
 if __name__ == "__main__":
