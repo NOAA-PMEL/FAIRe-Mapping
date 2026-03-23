@@ -153,12 +153,12 @@ def main() -> None:
         if faire_col == 'biological_rep_relation' and metadata_col:
             sample_faire_metadata_results[faire_col] = add_biological_replicates_column(df=metadata_df_builder.df)
 
-        # elif faire_col == "geo_loc_name":
-        #     # The axis=1 belongs to .apply(), not the helper function
-        #     sample_faire_metadata_results[faire_col] = metadata_df_builder.df.apply(
-        #         lambda row: find_geo_loc_by_lat_lon(metadata_row=row, metadata_cols=metadata_col), 
-        #         axis=1
-        #     )
+        elif faire_col == "geo_loc_name":
+            # The axis=1 belongs to .apply(), not the helper function
+            sample_faire_metadata_results[faire_col] = metadata_df_builder.df.apply(
+                lambda row: find_geo_loc_by_lat_lon(metadata_row=row, metadata_cols=metadata_col), 
+                axis=1
+            )
 
         elif faire_col == "ctd_cast_number":
              # Create the new column
