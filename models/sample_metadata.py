@@ -375,6 +375,13 @@ class SampleMetadata(BaseModel):
     redox_potential: Optional[float] = None
     redox_potential_unit: Optional[Literal['mV']] = None
     samp_type: Literal['water', None]
+    rov_dive_number: Optional[str] = None
+    ph_free: Optional[int] = None
+    ph_total: Optional[int] = None
+    conductivity: Optional[int] = None
+    dNTU: Optional[float] = None
+    dE_dt: Optional[float] = None
+    percent_d3He: Optional[float] = None
 
     # class variables loaded once and shared across all datasets
     # list of arctic region keywods
