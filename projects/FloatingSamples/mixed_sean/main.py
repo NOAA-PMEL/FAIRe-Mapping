@@ -129,40 +129,124 @@ def extract_cast_number(value):
         # Fallback if the string format is unexpected
         return value
 
-def figure_out_rel_cont_ids(faire_mapper: OmeFaireMapper):
-     
-     config = faire_mapper.load_config(config_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/FloatingSamples/mixed_sean/config.yaml')
-     extraction_info = config['extractions']
+def remove_cruise_codes_from_samp_dict(samp_dict: dict) -> dict:
+    for control_samp, list_of_samps in samp_dict.items():
+        updated_list_of_samps = []
+        for samp in list_of_samps:
+            samp_parts = samp.split('.')
+            del samp_parts[-1] # remove last item in list (cruise code)
+            updated_samp = '.'.join(samp_parts)
+            updated_list_of_samps.append(updated_samp)
+        samp_dict[control_samp] = updated_list_of_samps
 
-     extraction_mapping_dict_builder = ExtractionMetadataBuilder(extractions_info=extraction_info,
-                                                                 unwanted_cruise_code=".Chaba22",
-                                                                 desired_cruise_code='.TN409',
-                                                                 google_sheet_json_cred=config['json_creds'],
-                                                                 update_mapping_dict=False)
-     print(extraction_mapping_dict_builder.extraction_df)
-     extraction_mapping_dict_builder.extraction_df.to_csv("/home/poseidon/zalmanek/FAIRe-Mapping/projects/FloatingSamples/mixed_sean/data/extractions.csv")
+    return samp_dict
+
+def get_blanks_info(concat_extract_df: pd.DataFrame, metadata_df: pd.DataFrame):
+    #  1. blanks to samps dict -> {'blank_samp': ['samp1', samp2]}
+    blank_to_samps = {}
+    extract_dfs = concat_extract_df.groupby('extract_id')
+    for extract_id, df in extract_dfs:
+        extract_samps = df['samp_name'].to_list()
+         
+        blanks = [s for s in extract_samps if 'blank' in s.lower()]
+        for blank in blanks:
+             other_samps = [s for s in extract_samps if s!= blank]
+             blank_to_samps[blank] = other_samps
+
+    # 2. Nc samps to samps dict -> {'nc_samp': ['samp1', samp2]}
+    nc_to_samps = {}
+    expedition_dfs = metadata_df.groupby('expedition_id')
+    for exp, df in expedition_dfs:
+        samps = df['samp_name'].to_list()
+
+        nc_samps = [s for s in samps if '.nc' in s.lower()]
+        for nc in nc_samps:
+            other_samps = [s for s in samps if s != nc]
+            nc_to_samps[nc] = other_samps
+
+    # 3. update both blanks and NC dictionaries to remove cruise code to make matching easier
+    blank_to_samps = remove_cruise_codes_from_samp_dict(samp_dict=blank_to_samps)
+    nc_to_samps = remove_cruise_codes_from_samp_dict(samp_dict=nc_to_samps) 
+
+
+    # 4 Next creaete dict of all samples and their rel cont ids
+    blanks_to_be_added = []
+    samp_rel_cont_id_dict = {}
+    for i, r in metadata_df.iterrows():
+        samp_name = r['samp_name']
+        if '.nc' not in samp_name.lower():
+            samp_parts = samp_name.split('.')
+            del samp_parts[-1] # remove last item in list (cruise code)
+            updated_samp = '.'.join(samp_parts)
+            related_controls = []
+            for blank, samps in blank_to_samps.items():
+                if updated_samp in samps:
+                    related_controls.append(blank)
+                    if blank not in blanks_to_be_added:
+                        blanks_to_be_added.append(blank)
+            for nc, samps in nc_to_samps.items():
+                if updated_samp in samps:
+                    related_controls.append(nc)
+            samp_rel_cont_id_dict[samp_name] = ' | '.join(related_controls)
+
+    return samp_rel_cont_id_dict, blanks_to_be_added
+         
+def figure_out_rel_cont_ids(faire_mapper: OmeFaireMapper, metadata_df: pd.DataFrame):
+     
+    config = faire_mapper.load_config(config_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/FloatingSamples/mixed_sean/config.yaml')
+    extraction_info = config['extractions']
+
+    extraction_mapping_dict_builder = ExtractionMetadataBuilder(extractions_info=extraction_info,
+                                                                google_sheet_json_cred=config['json_creds'],
+                                                                update_mapping_dict=False)
+    #  print(extraction_mapping_dict_builder.extraction_df)
+    extraction_mapping_dict_builder.extraction_df.to_csv("/home/poseidon/zalmanek/FAIRe-Mapping/projects/FloatingSamples/mixed_sean/data/extractions.csv")
+
+    blank_dict, blanks_to_be_added = get_blanks_info(concat_extract_df=extraction_mapping_dict_builder.extraction_df, metadata_df=metadata_df)
+    metadata_df['rel_cont_id'] = metadata_df['samp_name'].map(blank_dict)
+
+    return metadata_df, blanks_to_be_added
+
+def add_blanks_to_metadata(blanks_to_add: list, concat_extract_df: pd.DataFrame, metadata_df: pd.DataFrame):
+    new_row_dict = {}
+    for i, r in concat_extract_df.iterrows():
+        samp_name = r['samp_name']
+        neg_cont_type = 'extraction negative'
+        date_ext = r['extraction_date'] # TODO run through date code to get ISO code
+        habitat_nat_art = 1
+        extraction_blank_vol_dna_ext = r['extraction_blank_vol_dna_ext']
+        samp_vol_we_dna_ext_unit = 'mL'
+        concentration = r['extraction_conc']
+        concentration_unit = r
+        # TODO nucl_acid_ext_lysis
+        # TODO nucl_acid_ext_sep
+        # TODO nucl_acid_ext
+        # TODO nucl_acid_ext_kit
+        # TODO dna_cleanup_0_1
+        # TODO dna_cleanup_method
+
+    
 
 def main() -> None:
 
-    # metadata_df_builder = BaseDfBuilder(csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/FloatingSamples/mixed_sean/Orphan_Projects_Metadata.csv')
+    metadata_df_builder = BaseDfBuilder(csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/FloatingSamples/mixed_sean/Orphan_Projects_Metadata.csv')
    
-    # # Get mapping dict
-    # mapper_dict_builder = SampleExtractionMappingDictBuilder(google_sheet_mapping_file_id='1vfdQRReGUEl88axV-DAz1hGMhGznh17UfrYWyuSs-Mw',
-    #                                                         google_sheet_json_cred='/home/poseidon/zalmanek/FAIRe-Mapping/credentials.json')
+    # Get mapping dict
+    mapper_dict_builder = SampleExtractionMappingDictBuilder(google_sheet_mapping_file_id='1vfdQRReGUEl88axV-DAz1hGMhGznh17UfrYWyuSs-Mw',
+                                                            google_sheet_json_cred='/home/poseidon/zalmanek/FAIRe-Mapping/credentials.json')
     
-    # print(mapper_dict_builder.sample_mapping_dict)
-    
-    # # Just going to use FAIRE-Mapper since extraction is included in metadata and will manually do the few related mappings
-    # faire_mapper = OmeFaireMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/projects/FloatingSamples/mixed_sean/config.yaml')
+    # Just going to use FAIRE-Mapper since extraction is included in metadata and will manually do the few related mappings
+    faire_mapper = OmeFaireMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/projects/FloatingSamples/mixed_sean/config.yaml')
 
-    # # remove empty rows
-    # metadata_df_builder.df.dropna(how='all', inplace=True)
+    # remove empty rows
+    metadata_df_builder.df.dropna(how='all', inplace=True)
     
-    # sample_faire_metadata_results = {}
+    sample_faire_metadata_results = {}
     
-    # # Exact Mappings
-    # for faire_col, metadata_col in mapper_dict_builder.sample_mapping_dict[faire_mapper.exact_mapping].items():
-    #    sample_faire_metadata_results[faire_col] = faire_mapper.apply_exact_mappings(df=metadata_df_builder.df, faire_col=faire_col, metadata_col=metadata_col)
+    print(mapper_dict_builder.sample_mapping_dict)
+    # Exact Mappings
+    for faire_col, metadata_col in mapper_dict_builder.sample_mapping_dict[faire_mapper.exact_mapping].items():
+       sample_faire_metadata_results[faire_col] = faire_mapper.apply_exact_mappings(df=metadata_df_builder.df, faire_col=faire_col, metadata_col=metadata_col)
 
     # # --- RELATED MAPPINGS ----
     # for faire_col, metadata_col in mapper_dict_builder.sample_mapping_dict[faire_mapper.related_mapping].items():
@@ -180,25 +264,14 @@ def main() -> None:
 
     #     elif faire_col == "ctd_cast_number":
     #          # Create the new column
-    #         sample_faire_metadata_results[faire_col] = metadata_df_builder.df[faire_col].apply(extract_cast_number)
-            
+    #         sample_faire_metadata_results[faire_col] = metadata_df_builder.df[faire_col].apply(extract_cast_number)       
 
-    # faire_sample_df = pd.DataFrame(sample_faire_metadata_results)
-    # faire_sample_df.to_csv("/home/poseidon/zalmanek/FAIRe-Mapping/projects/FloatingSamples/mixed_sean/data/orphan_faire.csv")
+    faire_sample_df = pd.DataFrame(sample_faire_metadata_results)
+    rel_cont_id_df, blanks_to_be_added = figure_out_rel_cont_ids(faire_mapper=faire_mapper, metadata_df=faire_sample_df)
+    for blank in blanks_to_be_added:
+        print(blank)
+    rel_cont_id_df.to_csv("/home/poseidon/zalmanek/FAIRe-Mapping/projects/FloatingSamples/mixed_sean/data/orphan_faire.csv")
 
-    # figure_out_rel_cont_ids(faire_mapper=faire_mapper)
-
-    df = pd.read_csv("/home/poseidon/zalmanek/FAIRe-Mapping/projects/FloatingSamples/mixed_sean/Orphan_Projects_Metadata.csv")
-    dfs = df.groupby("expedition_id")
-
-    parent_path = Path("/home/poseidon/zalmanek/FAIRe-Mapping/projects/FloatingSamples/mixed_sean")
-    
-    for expedition_id, df in dfs:
-         dir = parent_path / expedition_id
-         dir.mkdir(exist_ok=True)
-         file_path = dir / f"{expedition_id}_metadata.csv"
-         print(file_path)
-         df.to_csv(file_path, index=False)
         
             
 if __name__ == "__main__":

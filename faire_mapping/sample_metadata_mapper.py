@@ -132,7 +132,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         # stations/reference stations stuff
         self.station_name_reference_google_sheet_id = self.config_file['station_name_reference_google_sheet_id'] if 'station_name_reference_google_sheet_id' in self.config_file else None # Some projects won't have reference stations (RC0083)
-        self.ref_station_builder = ReferenceStationBuilder(header=0, google_sheet_id=self.station_name_reference_google_sheet_id, json_creds_path=self.google_json_creds)
+        if self.station_name_reference_google_sheet_id:
+            self.ref_station_builder = ReferenceStationBuilder(header=0, google_sheet_id=self.station_name_reference_google_sheet_id, json_creds_path=self.google_json_creds)
 
     def finalize_samp_metadata_df(self) -> pd.DataFrame:
         """
@@ -720,6 +721,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
     
     def fill_empty_sample_values_and_finalize_sample_df(self, df: pd.DataFrame, default_message="missing: not collected"):
         # fill empty values for samples after mapping over all sample data without control samples
+    
         if df.empty: # for empty NC dataframes (like in Aquamonitor)
             pass
         # check if data frame is sample data frame and if so, then adds not applicable: control sample to control columns

@@ -9,7 +9,6 @@ class BaseDfBuilder:
                  header: int = 0, 
                  sep: str = ',',
                  csv_path: str = None,
-                 encoding: str = 'utf-8', # For CSV files
                  google_sheet_id: str = None, 
                  json_creds_path: str = None,
                  sheet_name: str = None):
