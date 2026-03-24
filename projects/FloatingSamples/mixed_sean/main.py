@@ -5,8 +5,11 @@ import pandas as pd
 import geopandas as gpd
 from shapely.geometry import Point
 from faire_mapping.custom_exception import NoInsdcGeoLocError
-from faire_mapping import extract_insdc_geographic_locations
+from faire_mapping import extract_insdc_geographic_locations, ExtractionMetadataBuilder
+from pathlib import Path
+
 import sys
+
 
 def extract_replicate_sample_parent(sample_name):
         # Extracts the E number in the sample name
@@ -126,47 +129,77 @@ def extract_cast_number(value):
         # Fallback if the string format is unexpected
         return value
 
+def figure_out_rel_cont_ids(faire_mapper: OmeFaireMapper):
+     
+     config = faire_mapper.load_config(config_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/FloatingSamples/mixed_sean/config.yaml')
+     extraction_info = config['extractions']
+
+     extraction_mapping_dict_builder = ExtractionMetadataBuilder(extractions_info=extraction_info,
+                                                                 unwanted_cruise_code=".Chaba22",
+                                                                 desired_cruise_code='.TN409',
+                                                                 google_sheet_json_cred=config['json_creds'],
+                                                                 update_mapping_dict=False)
+     print(extraction_mapping_dict_builder.extraction_df)
+     extraction_mapping_dict_builder.extraction_df.to_csv("/home/poseidon/zalmanek/FAIRe-Mapping/projects/FloatingSamples/mixed_sean/data/extractions.csv")
+
 def main() -> None:
 
-    metadata_df_builder = BaseDfBuilder(csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/FloatingSamples/mixed_sean/Orphan_Projects_Metadata.csv')
+    # metadata_df_builder = BaseDfBuilder(csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/FloatingSamples/mixed_sean/Orphan_Projects_Metadata.csv')
    
-    # Get mapping dict
-    mapper_dict_builder = SampleExtractionMappingDictBuilder(google_sheet_mapping_file_id='1vfdQRReGUEl88axV-DAz1hGMhGznh17UfrYWyuSs-Mw',
-                                                            google_sheet_json_cred='/home/poseidon/zalmanek/FAIRe-Mapping/credentials.json')
+    # # Get mapping dict
+    # mapper_dict_builder = SampleExtractionMappingDictBuilder(google_sheet_mapping_file_id='1vfdQRReGUEl88axV-DAz1hGMhGznh17UfrYWyuSs-Mw',
+    #                                                         google_sheet_json_cred='/home/poseidon/zalmanek/FAIRe-Mapping/credentials.json')
     
-    # Just going to use FAIRE-Mapper since extraction is included in metadata and will manually do the few related mappings
-    faire_mapper = OmeFaireMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/projects/FloatingSamples/mixed_sean/config.yaml')
+    # print(mapper_dict_builder.sample_mapping_dict)
+    
+    # # Just going to use FAIRE-Mapper since extraction is included in metadata and will manually do the few related mappings
+    # faire_mapper = OmeFaireMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/projects/FloatingSamples/mixed_sean/config.yaml')
 
-    # remove empty rows
-    metadata_df_builder.df.dropna(how='all', inplace=True)
+    # # remove empty rows
+    # metadata_df_builder.df.dropna(how='all', inplace=True)
     
-    sample_faire_metadata_results = {}
+    # sample_faire_metadata_results = {}
     
-    # Exact Mappings
-    for faire_col, metadata_col in mapper_dict_builder.sample_mapping_dict[faire_mapper.exact_mapping].items():
-       sample_faire_metadata_results[faire_col] = faire_mapper.apply_exact_mappings(df=metadata_df_builder.df, faire_col=faire_col, metadata_col=metadata_col)
+    # # Exact Mappings
+    # for faire_col, metadata_col in mapper_dict_builder.sample_mapping_dict[faire_mapper.exact_mapping].items():
+    #    sample_faire_metadata_results[faire_col] = faire_mapper.apply_exact_mappings(df=metadata_df_builder.df, faire_col=faire_col, metadata_col=metadata_col)
 
-    # --- RELATED MAPPINGS ----
-    for faire_col, metadata_col in mapper_dict_builder.sample_mapping_dict[faire_mapper.related_mapping].items():
+    # # --- RELATED MAPPINGS ----
+    # for faire_col, metadata_col in mapper_dict_builder.sample_mapping_dict[faire_mapper.related_mapping].items():
         
-        # samp_category by samp name
-        if faire_col == 'biological_rep_relation' and metadata_col:
-            sample_faire_metadata_results[faire_col] = add_biological_replicates_column(df=metadata_df_builder.df)
+    #     # samp_category by samp name
+    #     if faire_col == 'biological_rep_relation' and metadata_col:
+    #         sample_faire_metadata_results[faire_col] = add_biological_replicates_column(df=metadata_df_builder.df)
 
-        # elif faire_col == "geo_loc_name":
-        #     # The axis=1 belongs to .apply(), not the helper function
-        #     sample_faire_metadata_results[faire_col] = metadata_df_builder.df.apply(
-        #         lambda row: find_geo_loc_by_lat_lon(metadata_row=row, metadata_cols=metadata_col), 
-        #         axis=1
-        #     )
+    #     elif faire_col == "geo_loc_name":
+    #         # The axis=1 belongs to .apply(), not the helper function
+    #         sample_faire_metadata_results[faire_col] = metadata_df_builder.df.apply(
+    #             lambda row: find_geo_loc_by_lat_lon(metadata_row=row, metadata_cols=metadata_col), 
+    #             axis=1
+    #         )
 
-        elif faire_col == "ctd_cast_number":
-             # Create the new column
-            sample_faire_metadata_results[faire_col] = metadata_df_builder.df[faire_col].apply(extract_cast_number)
+    #     elif faire_col == "ctd_cast_number":
+    #          # Create the new column
+    #         sample_faire_metadata_results[faire_col] = metadata_df_builder.df[faire_col].apply(extract_cast_number)
             
 
-    faire_sample_df = pd.DataFrame(sample_faire_metadata_results)
-    faire_sample_df.to_csv("/home/poseidon/zalmanek/FAIRe-Mapping/projects/FloatingSamples/mixed_sean/data/orphan_faire.csv")
+    # faire_sample_df = pd.DataFrame(sample_faire_metadata_results)
+    # faire_sample_df.to_csv("/home/poseidon/zalmanek/FAIRe-Mapping/projects/FloatingSamples/mixed_sean/data/orphan_faire.csv")
+
+    # figure_out_rel_cont_ids(faire_mapper=faire_mapper)
+
+    df = pd.read_csv("/home/poseidon/zalmanek/FAIRe-Mapping/projects/FloatingSamples/mixed_sean/Orphan_Projects_Metadata.csv")
+    dfs = df.groupby("expedition_id")
+
+    parent_path = Path("/home/poseidon/zalmanek/FAIRe-Mapping/projects/FloatingSamples/mixed_sean")
+    
+    for expedition_id, df in dfs:
+         dir = parent_path / expedition_id
+         dir.mkdir(exist_ok=True)
+         file_path = dir / f"{expedition_id}_metadata.csv"
+         print(file_path)
+         df.to_csv(file_path, index=False)
+        
             
 if __name__ == "__main__":
     main()
