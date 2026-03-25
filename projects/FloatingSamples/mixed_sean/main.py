@@ -8,6 +8,7 @@ from faire_mapping.custom_exception import NoInsdcGeoLocError
 from faire_mapping import extract_insdc_geographic_locations, ExtractionMetadataBuilder
 from pathlib import Path
 from datetime import datetime
+from difflib import SequenceMatcher
 
 
 
@@ -234,7 +235,7 @@ def get_blanks_info(concat_extract_df: pd.DataFrame, metadata_df: pd.DataFrame):
         blanks = [s for s in extract_samps if 'blank' in s.lower()]
         for blank in blanks:
              other_samps = [s for s in extract_samps if s!= blank]
-             blank_to_samps[blank] = other_samps
+             blank_to_samps[blank.replace(' ', '_')] = other_samps
 
     # 2. Nc samps to samps dict -> {'nc_samp': ['samp1', samp2]}
     nc_to_samps = {}
@@ -288,9 +289,48 @@ def figure_out_rel_cont_ids(faire_mapper: OmeFaireMapper, metadata_df: pd.DataFr
     blank_dict, blanks_to_be_added = get_blanks_info(concat_extract_df=extraction_mapping_dict_builder.extraction_df, metadata_df=metadata_df)
     metadata_df['rel_cont_id'] = metadata_df['samp_name'].map(blank_dict)
 
-    return metadata_df, blanks_to_be_added, extraction_mapping_dict_builder.extraction_df
+    return metadata_df, blanks_to_be_added, extraction_mapping_dict_builder.extraction_df, blank_dict
 
-def add_blanks_to_metadata(blanks_to_add: list, concat_extract_df: pd.DataFrame, faire_df: pd.DataFrame):
+def add_other_ext_values_to_new_row_dict(associated_samps: list,
+                                          faire_df_field: str, 
+                                          faire_df: pd.DataFrame,
+                                          new_row_dict: dict):
+    
+    filtered_faire_df = faire_df[faire_df["samp_name"].isin(associated_samps)]
+            
+    faire_field_values = filtered_faire_df[faire_df_field].unique()
+    if len(faire_field_values) == 1:
+        new_row_dict[faire_df_field] = faire_field_values[0]
+        return new_row_dict
+    else:
+        Warning(f"Too many values for {faire_df_field}: {faire_field_values}. Don't know which one to choose.")
+        new_row_dict[faire_df_field] = "not applicable"
+        return new_row_dict
+
+def calculate_dna_yield(metadata_row: pd.Series, sample_vol_metadata_col: str, extraction_blank: bool = False) -> float:
+    # calculate the dna yield based on the concentration (ng/uL) and the sample_volume (mL).
+    concentration = str(metadata_row['extraction_conc'])
+    
+    if extraction_blank: # common column created in extraction builder
+        sample_vol = str(metadata_row['extraction_blank_vol_dna_ext']).replace('~','')
+    else: # for all other samples will be whatever col is sepcified.
+        sample_vol = str(metadata_row[sample_vol_metadata_col]).replace('~','')
+    
+    if concentration == '' or concentration == None or concentration == 'nan':
+        return 'not applicable'
+
+    try:
+        concentration = float(concentration)
+        sample_vol = float(sample_vol)
+        dna_yield = (concentration * 100)/sample_vol
+        return round(dna_yield, 3)
+    except:
+        if '.nc' in metadata_row['samp_name'].lower():
+            return 'not applicable: control sample'
+        return 'not applicable'
+    
+def add_blanks_to_metadata(blanks_to_add: list, concat_extract_df: pd.DataFrame, faire_df: pd.DataFrame, blank_dict):
+    blank_dict
     
     new_rows_list = []
     for i, r in concat_extract_df.iterrows():
@@ -305,20 +345,22 @@ def add_blanks_to_metadata(blanks_to_add: list, concat_extract_df: pd.DataFrame,
                 'samp_vol_we_dna_ext_unit': 'mL',
                 'concentration': r['extraction_conc'],
                 'concentration_unit': 'ng/µl',
+                'dna_yield': calculate_dna_yield(metadata_row=r, sample_vol_metadata_col='extraction_blank_vol_dna_ext', extraction_blank=True),
+                'extract_well_number': r['Well'][-1] if pd.notna(r['Well']) else "not applicable",
+                'extract_well_position': r['Well'][0] if pd.notna(r['Well']) else "not applicable"
                 }
-            # TODO nucl_acid_ext_lysi
-            # TODO nucl_acid_ext_sep
-            # TODO nucl_acid_ext
-            # TODO nucl_acid_ext_kit
-            # TODO dna_cleanup_0_1
-            # TODO dna_cleanup_method
-            # TODO rationOfAbsorbance260_280
-            # TODO nucl_acid_ext_method_addition
-            # TODO extract_id
-            # TODO: extract_plate = function(r['extract_id']) has 'Plate'
-            # TODO extract_well_number = function(r['Well'])
-            # TODO extract_well_position = function(r['Well'])
-            # TODO dna_yield = funct (extraction_conc/samp vol)
+            
+            associated_samples = associated_samples = [samp for samp, blanks in blank_dict.items() if r['samp_name'] in blanks.split(" | ")]
+            
+            # Add values by taking what exists from associated samples in df
+            cols_to_get_vals = ['nucl_acid_ext_lysis', 'nucl_acid_ext_sep', 'extract_id', 'nucl_acid_ext', 'nucl_acid_ext_kit',
+                                'dna_cleanup_0_1', 'dna_cleanup_method', 'ratioOfAbsorbance260_280', 'nucl_acid_ext_method_additional',
+                                'extract_plate']
+            for faire_df_field in cols_to_get_vals:
+                new_row_dict = add_other_ext_values_to_new_row_dict(associated_samps=associated_samples, 
+                                                                    faire_df_field=faire_df_field,
+                                                                    faire_df=faire_df,
+                                                                    new_row_dict=new_row_dict)
 
             # Add 'not applicable: control sample' to other columns
             missing_cols = set(faire_df.columns) - set(new_row_dict.keys())
@@ -330,11 +372,8 @@ def add_blanks_to_metadata(blanks_to_add: list, concat_extract_df: pd.DataFrame,
     new_rows_df = pd.DataFrame(new_rows_list)
     faire_df = pd.concat([faire_df, new_rows_df], ignore_index=True)
 
-    print(faire_df)
+    return faire_df
         
-
-    
-
 def main() -> None:
 
     metadata_df_builder = BaseDfBuilder(csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/FloatingSamples/mixed_sean/Orphan_Projects_Metadata.csv')
@@ -374,11 +413,10 @@ def main() -> None:
     #         sample_faire_metadata_results[faire_col] = metadata_df_builder.df[faire_col].apply(extract_cast_number)       
 
     faire_sample_df = pd.DataFrame(sample_faire_metadata_results)
-    rel_cont_id_df, blanks_to_be_added, extraction_df = figure_out_rel_cont_ids(faire_mapper=faire_mapper, metadata_df=faire_sample_df)
-    add_blanks_to_metadata(blanks_to_add=blanks_to_be_added, concat_extract_df=extraction_df, faire_df=rel_cont_id_df)
-    rel_cont_id_df.to_csv("/home/poseidon/zalmanek/FAIRe-Mapping/projects/FloatingSamples/mixed_sean/data/orphan_faire.csv")
+    rel_cont_id_df, blanks_to_be_added, extraction_df, blank_dict = figure_out_rel_cont_ids(faire_mapper=faire_mapper, metadata_df=faire_sample_df)
+    faire_with_blanks = add_blanks_to_metadata(blanks_to_add=blanks_to_be_added, concat_extract_df=extraction_df, faire_df=rel_cont_id_df, blank_dict=blank_dict)
 
-        
-            
+    faire_mapper.save_final_df_as_csv(final_df=faire_with_blanks, sheet_name="sampleMetadata", header=2, csv_path="/home/poseidon/zalmanek/FAIRe-Mapping/projects/FloatingSamples/mixed_sean/data/orphan_faire.csv")
+                         
 if __name__ == "__main__":
     main()
