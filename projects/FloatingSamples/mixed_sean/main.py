@@ -7,8 +7,8 @@ from shapely.geometry import Point
 from faire_mapping.custom_exception import NoInsdcGeoLocError
 from faire_mapping import extract_insdc_geographic_locations, ExtractionMetadataBuilder
 from pathlib import Path
+from datetime import datetime
 
-import sys
 
 
 def extract_replicate_sample_parent(sample_name):
@@ -141,6 +141,89 @@ def remove_cruise_codes_from_samp_dict(samp_dict: dict) -> dict:
 
     return samp_dict
 
+def convert_date_to_iso8601(date: str) -> datetime:
+        # converts strings from 2021/11/08 00:00:00 to iso8601 format  to 2021-11-08T00:00:00Z
+        # also converts strings from 5/1/2024 to 2024-01-05T00:00:00Z
+        # And coverts 2024-05-01 to 2024-01-05T00:00:00Z
+        # Also handles years like 0022 and corrects them to 2022
+        has_time_component = False
+
+        date = str(date)
+        
+        if date in  ['None', 'nan', 'missing: not collected', '', 'missing: not provided']:
+            return "missing: not provided"
+
+        # 1. Handle full ISO 8601 format (YYYY-MM-DDTHH:MM:SSZ) and return immediately
+        try: 
+            # Use the correct format including T and Z
+            datetime.strptime(date, "%Y-%m-%dT%H:%M:%SZ")
+            return date
+        except ValueError: 
+            pass # Not that format, continue to check others
+
+        # 2. Check for other supported formats
+        
+        # Format 2021/11/08 00:00:00
+        if "/" in date and ":" in date: 
+            dt_obj = datetime.strptime(date, "%Y/%m/%d %H:%M:%S")
+            has_time_component = True
+            
+        # Format 5/1/2024 or 5/1/24
+        elif "/" in date and ":" not in date: 
+            try: # 5/1/2024 format
+                dt_obj = datetime.strptime(date, "%m/%d/%Y")
+            except ValueError:
+                try: # foramt 5/1/24
+                    dt_obj = datetime.strptime(date, "%m/%d/%y")
+                except ValueError:
+                    raise ValueError(f"Unsupported slash-separated dae format: {date}")
+        
+        # --- FIX APPLIED HERE: Handle all dash-separated formats gracefully ---
+        elif "-" in date:
+            if ':' in date:
+                # 2.1. Try ISO-like T-separated time (e.g., 2023-04-24T08:51:00)
+                try:
+                    dt_obj = datetime.strptime(date, "%Y-%m-%dT%H:%M:%S")
+                    has_time_component = True
+                except ValueError:
+                    # 2.2. Fallback: Try space-separated time (e.g., 2023-04-24 08:51:00)
+                    try:
+                        dt_obj = datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
+                        has_time_component = True
+                    except ValueError:
+                        try:
+                            # %z handles the +00:00 or +0000 part
+                            dt_obj = datetime.strptime(date, "%Y-%m-%d %H:%M:%S%z")
+                            has_time_component = True
+                        except ValueError:
+                            try:
+                            # Try usin dateutil library
+                                from dateutil import parser
+                                dt_obj=parser.parse(date)
+                                return dt_obj.strftime("%Y-%m-%dT%H:%M:%SZ")
+                            except ValueError:
+                                # Failed both time formats, raise error
+                                raise ValueError(f"Unsupported dash-separated date/time format: {date}")
+            else:
+                # 2.3. Date-only format (e.g., 2024-04-10)
+                dt_obj = datetime.strptime(date, "%Y-%m-%d")
+        # ---------------------------------------------------------------------
+
+        else:
+            print(date)
+            raise ValueError(f"Unsupported date format: {date}")
+        
+        # Correct years that are clearly wrong (like 0022 -> 2022)
+        if dt_obj.year < 100:
+            corrected_year = 2000 + dt_obj.year
+            dt_obj = dt_obj.replace(year=corrected_year)
+
+        # Only add time component if it was in the original string
+        if has_time_component:
+            return dt_obj.strftime("%Y-%m-%dT%H:%M:%SZ")
+        else:
+            return dt_obj.strftime("%Y-%m-%d")
+
 def get_blanks_info(concat_extract_df: pd.DataFrame, metadata_df: pd.DataFrame):
     #  1. blanks to samps dict -> {'blank_samp': ['samp1', samp2]}
     blank_to_samps = {}
@@ -205,25 +288,50 @@ def figure_out_rel_cont_ids(faire_mapper: OmeFaireMapper, metadata_df: pd.DataFr
     blank_dict, blanks_to_be_added = get_blanks_info(concat_extract_df=extraction_mapping_dict_builder.extraction_df, metadata_df=metadata_df)
     metadata_df['rel_cont_id'] = metadata_df['samp_name'].map(blank_dict)
 
-    return metadata_df, blanks_to_be_added
+    return metadata_df, blanks_to_be_added, extraction_mapping_dict_builder.extraction_df
 
-def add_blanks_to_metadata(blanks_to_add: list, concat_extract_df: pd.DataFrame, metadata_df: pd.DataFrame):
-    new_row_dict = {}
+def add_blanks_to_metadata(blanks_to_add: list, concat_extract_df: pd.DataFrame, faire_df: pd.DataFrame):
+    
+    new_rows_list = []
     for i, r in concat_extract_df.iterrows():
-        samp_name = r['samp_name']
-        neg_cont_type = 'extraction negative'
-        date_ext = r['extraction_date'] # TODO run through date code to get ISO code
-        habitat_nat_art = 1
-        extraction_blank_vol_dna_ext = r['extraction_blank_vol_dna_ext']
-        samp_vol_we_dna_ext_unit = 'mL'
-        concentration = r['extraction_conc']
-        concentration_unit = r
-        # TODO nucl_acid_ext_lysis
-        # TODO nucl_acid_ext_sep
-        # TODO nucl_acid_ext
-        # TODO nucl_acid_ext_kit
-        # TODO dna_cleanup_0_1
-        # TODO dna_cleanup_method
+        if r['samp_name'] in blanks_to_add:
+            new_row_dict = {
+                'samp_name': r['samp_name'].replace(' ', '_'),
+                'neg_cont_type': 'extraction negative',
+                'samp_category': "negative control",
+                'date_ext': convert_date_to_iso8601(date=r['extraction_date']) ,
+                'habitat_natural_artificial_0_1': 1,
+                'samp_vol_we_dna_ext': r['extraction_blank_vol_dna_ext'],
+                'samp_vol_we_dna_ext_unit': 'mL',
+                'concentration': r['extraction_conc'],
+                'concentration_unit': 'ng/µl',
+                }
+            # TODO nucl_acid_ext_lysi
+            # TODO nucl_acid_ext_sep
+            # TODO nucl_acid_ext
+            # TODO nucl_acid_ext_kit
+            # TODO dna_cleanup_0_1
+            # TODO dna_cleanup_method
+            # TODO rationOfAbsorbance260_280
+            # TODO nucl_acid_ext_method_addition
+            # TODO extract_id
+            # TODO: extract_plate = function(r['extract_id']) has 'Plate'
+            # TODO extract_well_number = function(r['Well'])
+            # TODO extract_well_position = function(r['Well'])
+            # TODO dna_yield = funct (extraction_conc/samp vol)
+
+            # Add 'not applicable: control sample' to other columns
+            missing_cols = set(faire_df.columns) - set(new_row_dict.keys())
+            for col in missing_cols:
+                new_row_dict[col] = 'not applicable: control sample'
+            
+            new_rows_list.append(new_row_dict)
+    
+    new_rows_df = pd.DataFrame(new_rows_list)
+    faire_df = pd.concat([faire_df, new_rows_df], ignore_index=True)
+
+    print(faire_df)
+        
 
     
 
@@ -243,7 +351,6 @@ def main() -> None:
     
     sample_faire_metadata_results = {}
     
-    print(mapper_dict_builder.sample_mapping_dict)
     # Exact Mappings
     for faire_col, metadata_col in mapper_dict_builder.sample_mapping_dict[faire_mapper.exact_mapping].items():
        sample_faire_metadata_results[faire_col] = faire_mapper.apply_exact_mappings(df=metadata_df_builder.df, faire_col=faire_col, metadata_col=metadata_col)
@@ -267,9 +374,8 @@ def main() -> None:
     #         sample_faire_metadata_results[faire_col] = metadata_df_builder.df[faire_col].apply(extract_cast_number)       
 
     faire_sample_df = pd.DataFrame(sample_faire_metadata_results)
-    rel_cont_id_df, blanks_to_be_added = figure_out_rel_cont_ids(faire_mapper=faire_mapper, metadata_df=faire_sample_df)
-    for blank in blanks_to_be_added:
-        print(blank)
+    rel_cont_id_df, blanks_to_be_added, extraction_df = figure_out_rel_cont_ids(faire_mapper=faire_mapper, metadata_df=faire_sample_df)
+    add_blanks_to_metadata(blanks_to_add=blanks_to_be_added, concat_extract_df=extraction_df, faire_df=rel_cont_id_df)
     rel_cont_id_df.to_csv("/home/poseidon/zalmanek/FAIRe-Mapping/projects/FloatingSamples/mixed_sean/data/orphan_faire.csv")
 
         

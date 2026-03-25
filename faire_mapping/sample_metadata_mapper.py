@@ -861,7 +861,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                                 get_date_ext_iso8601_rule(self)]
         
             blanks_transformer.add_custom_rules(additional_rules)
-            print("\nExtraction Blank Mapping:\n")
+            
             blanks_metadata_df = blanks_transformer.transform()
 
             blanks_metadata_df[self.faire_sample_name_col] = self.extraction_metadata_builder.extraction_blanks_df[self.extraction_metadata_builder.EXTRACT_SAMP_NAME_COL]
