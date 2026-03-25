@@ -9,6 +9,7 @@ from datetime import datetime
 from collections import defaultdict
 import xarray as xr
 
+# This is a note for Brynn
 # TODO: Add custom data validation for controlled vocabs that accept 'other: <description>' (samp_category, neg_cont_type, verbatimCoordinateSystem, verbatimSRS,
 # samp_size_unit, samp_store_temp, samp_store_sol, precip_chem_prep, filter_material)
 # TODO: Add list validation abstracted out (sample_derived_from)
@@ -375,6 +376,13 @@ class SampleMetadata(BaseModel):
     redox_potential: Optional[float] = None
     redox_potential_unit: Optional[Literal['mV']] = None
     samp_type: Literal['water', None]
+    rov_dive_number: Optional[str] = None
+    ph_free: Optional[int] = None
+    ph_total: Optional[int] = None
+    conductivity: Optional[int] = None
+    dNTU: Optional[float] = None
+    dE_dt: Optional[float] = None
+    percent_d3He: Optional[float] = None
 
     # class variables loaded once and shared across all datasets
     # list of arctic region keywods
