@@ -10,6 +10,8 @@ import subprocess
 import re
 import hashlib
 import shutil 
+from faire_mapping.e_num_samps_to_update import wcoa_samp_e_nums, chaba_enums, OC0722_enums, QiAVATest_enums, oc0919_enums
+from faire_mapping.utils import load_google_sheet_as_df
 
 # TODO: update for PCR replicates? - MAke sample name the same, change lib_id?
 # TODO: add associatedSequences functionlity after submittting to NCBI
@@ -36,6 +38,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         self.ignore_markers = self.config_file['ignore_markers']
         self.google_sheet_mapping_file_id = self.config_file['google_sheet_mapping_file_id']
         self.merged = self.config_file['merged']  if 'merged' in self.config_file else False
+        self.json_creds = self.config_file['json_creds']
 
         self.mapping_dict = self._create_experiment_run_mapping_dict()
         self.run_metadata_df = self._create_experiment_metadata_df()
@@ -56,12 +59,11 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
     
         # Step 1: Add exact mappings
         for faire_col, metadata_col in self.mapping_dict[self.exact_mapping].items():
-            exp_metadata_results[faire_col] = self.run_metadata_df[metadata_col].apply(
-                lambda row: self.apply_exact_mappings(metadata_row=row, faire_col=faire_col))
+            exp_metadata_results[faire_col] = self.apply_exact_mappings(df=self.run_metadata_df, faire_col=faire_col, metadata_col=metadata_col)
         
         # Step 2: Add constants
         for faire_col, static_value in self.mapping_dict[self.constant_mapping].items():
-            exp_metadata_results[faire_col] = self.apply_static_mappings(faire_col=faire_col, static_value=static_value)
+            exp_metadata_results[faire_col] = self.apply_static_mappings(df=self.run_metadata_df, faire_col=faire_col, static_value=static_value)
 
         # Step 3: Add related mappings
         for faire_col, metadata_col in self.mapping_dict[self.related_mapping].items():
@@ -124,7 +126,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
 
     def _create_experiment_run_mapping_dict(self):
 
-        experiment_mapping_df = self.load_google_sheet_as_df(google_sheet_id=self.google_sheet_mapping_file_id, sheet_name=self.experiment_run_mapping_sheet_name, header=1)
+        experiment_mapping_df = load_google_sheet_as_df(google_sheet_id=self.google_sheet_mapping_file_id, sheet_name=self.experiment_run_mapping_sheet_name, header=1, google_sheet_json_cred=self.json_creds)
 
         # Group by the mapping type
         group_by_mapping = experiment_mapping_df.groupby(self.mapping_file_mapped_type_column)
@@ -150,7 +152,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
     
     def _create_experiment_metadata_df(self) -> pd.DataFrame:
 
-        exp_df = self.load_google_sheet_as_df(google_sheet_id=self.run_sample_metadata_file_id, sheet_name=self.run_metadata_sample_sheet_name, header=0)
+        exp_df = load_google_sheet_as_df(google_sheet_id=self.run_sample_metadata_file_id, sheet_name=self.run_metadata_sample_sheet_name, header=0, google_sheet_json_cred=self.json_creds)
 
         # filter rows if ignore_markers is present using str.contains with regex OR operator (|)
         if self.ignore_markers:
@@ -212,8 +214,50 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             if 'E265.1B' in sample_name:
                 sample_name = 'E265.1B.NO20-01'
                 sample_name_lookup = 'E265.IB.NO20'
-            if sample_name == 'MID.NC.SKQ21-15S':
+            elif sample_name == 'MID.NC.SKQ21-15S':
                 sample_name_lookup = 'Mid.NC.SKQ21'
+            elif sample_name == 'E2139.1T.QIAvacTest1':
+                sample_name_lookup = 'E.2139.1T.QiavacTest'
+            elif sample_name == 'E2139.2T.QIAvacTest1':
+                sample_name_lookup = 'E.2139.2T.QiavacTest'
+            elif sample_name == 'E2139.3T.QIAvacTest1':
+                sample_name_lookup = 'E.2139.3T.QiavacTest'
+            elif sample_name == 'E2139.4T.QIAvacTest1':
+                sample_name_lookup = 'E.2139.4T.QiavacTest'
+            elif sample_name == 'E2138.1T.QIAvacTest1':
+                sample_name_lookup = 'E2138.1T.QiavacTest'
+            elif sample_name == 'E2138.2T.QIAvacTest1':
+                sample_name_lookup = 'E2138.2T.QiavacTest'
+            elif sample_name == 'Blank1C.QIAvacTest':
+                sample_name_lookup = "Blank1C.QiavacTest"  
+            elif sample_name == 'Blank3Q.QIAvacTest':
+                sample_name_lookup = "Blank3Q.QiavacTest"
+            elif sample_name == 'E2090.CEO-AquaM-0923':
+                sample_name_lookup = 'E2090.SKQ23-12S'
+            elif sample_name == 'E2084.CEO-AquaM-0923':
+                sample_name_lookup = 'E2084.SKQ23-12S'
+            elif sample_name == 'E2097.CEO-AquaM-0923':
+                sample_name_lookup = 'E2097.SKQ23-12S'
+            elif sample_name == 'E2030.NC.SKQ23-12S':
+                sample_name_lookup = 'E2030.NC'
+            elif '.KC2023' in sample_name:
+                sample_name_lookup = sample_name.replace('.KC2023', '.Kotzebue23')
+
+            elif 'M2-PPS-0423' in sample_name:
+                sample_name_lookup = sample_name.replace('M2-PPS-0423', 'DY2306')
+            elif '.TH042-PPS-0623' in sample_name:
+                sample_name_lookup = sample_name.replace('.TH042-PPS-0623', '.OC0723')
+            elif '.TH042-PPS-0622' in sample_name:
+                sample_name_lookup = sample_name.replace('.TH042-PPS-0622', '.OC0722')
+            elif '.TH042-PPS-0821' or '.CE042-PPS-0821' in sample_name:
+                sample_name_lookup = sample_name.replace('.TH042-PPS-0821', '.OC1021').replace('.CE042-PPS-0821', '.OC1021')
+            elif '.TH042-PPS-0822' in sample_name:
+                sample_name_lookup = sample_name.replace('.TH042-PPS-0822', '.OC0922')
+            elif '.LO18' in sample_name:
+                sample_name_lookup = sample_name.replace('.LO18', '.L018')
+            elif '.TN409' in sample_name:
+                sample_name_lookup = sample_name.replace('.TN409', '.Chaba22')
+    
             
             pattern = re.compile(f"^{re.escape(sample_name_lookup)}[_.]R[{file_num}].+")
 
@@ -243,7 +287,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             # try reformatting sample name (for osu runs mainly) and redo steps above
             sample_name_lookup = self._try_diff_sample_name_for_raw_data_lookup(sample_name)
             if 'camel' in sample_name.lower() or 'ferett' in sample_name.lower() or 'ferret' in sample_name.lower():
-                sample_name_lookup = sample_name_lookup.split('_')[-1]
+                sample_name_lookup = sample_name_lookup.split('.')[-1]
                 pattern = re.compile(f"^{re.escape(f'MP_{sample_name_lookup}')}[_.]R[{file_num}].+")
             else:
                 pattern = re.compile(f"^{re.escape(sample_name_lookup)}[_.]R[{file_num}].+")
@@ -253,6 +297,24 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             if not matching_files and 'Ferett' in sample_name_lookup:
                 sample_name_lookup = sample_name_lookup.replace('Ferett', 'Ferret')
                 pattern = re.compile(f"^{re.escape(f'MP_{sample_name_lookup}')}[_.]R[{file_num}].+")
+                matching_files = [f for f in all_files if pattern.match(f)]
+
+            # For OSU runs with MP_ in front of raw files :(
+            if not matching_files:
+                sample_name_lookup = 'MP_' + sample_name.replace('.', '_').replace('LO18', 'L018').replace('DY20-12', 'DY20').replace('NO20-01', 'NO20')
+                pattern = re.compile(f"^{re.escape(sample_name_lookup)}[_.]R[{file_num}].+")
+                matching_files = [f for f in all_files if pattern.match(f)]
+
+            # For WCOA samples that did not have a cruise code originally on them
+            if not matching_files:
+                sample_name_lookup = sample_name.replace('.WCOA21', '.MiFishMod').replace('.WCOA21', '')
+                pattern = re.compile(f"^{re.escape(sample_name_lookup)}[_.]R[{file_num}].+")
+                matching_files = [f for f in all_files if pattern.match(f)]
+
+            # FOR OC0919 samples
+            if not matching_files:
+                sample_name_lookup = sample_name.replace('.OC0919', '')
+                pattern = re.compile(f"^{re.escape(sample_name_lookup)}[_.]R[{file_num}].+")
                 matching_files = [f for f in all_files if pattern.match(f)]
 
 
@@ -270,6 +332,10 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                 }
         else:
             print(f"Warning: No matching files found for sample {sample_name} in marker {marker}, using sample lookup name {sample_name_lookup}, pattern {pattern}.")
+
+        for k, v in target_dict.items():
+            if 'E1866' in k:
+                print(f"trouble samp is {k}: {v}")
     
     def _create_marker_sample_raw_data_file_dicts(self):
         # Finds all matching data files by marker for each sample returns two nested dict one for forward raw data files, and one for reverse raw data files
@@ -417,10 +483,18 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         # try diffierent (old cruise code) cruise code because it may have been updated
         if '.DY20-12' in sample_name:
             sample_name = sample_name.replace('.DY20-12', '.DY20')
+
+        if '.WCOA21' in sample_name:
+            sample_name = sample_name.replace('.WCOA21', '')
+
+        if '.SKQ21-15S' in sample_name:
+            sample_name = sample_name.replace('.SKQ21-15S', '.SKQ2021')
+        
         else:
             for old, new in update_cruise_codes.items():
                 sample_name = sample_name.replace(new, old)
-        sample_name = 'MP_' + sample_name.replace('.', '_')
+                sample_name = sample_name.replace('.OC1021_ce', '.OC1021') # Needs to be added because same old cruise code as a different batch of samples that got different new name
+     
    
         return sample_name
     
@@ -545,6 +619,10 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             # This breaks the sample name into its E number, Tech rep (if exists), and bio rep (if exists) and puts those pieces into a list, then checks the asv_data_dict for keys that include
             # all of those pieces (so will essentially check the dict for keys with the same E number, bio rep, and tech rep (will ignore cruise code or underscores/periods)
             sample_name = sample_name.strip()
+
+            tech_rep = None
+            bio_rep = None
+
             if '.' in sample_name:
                 sample_name_bits = sample_name.split('.')
                 e_number = sample_name_bits[0]
@@ -563,6 +641,14 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
 
                 for samp_name, count_data in self.asv_data_dict[marker].items():
                     if all(samp_bit in samp_name for samp_bit in samp_bit_without_cruise_code):
+
+                        # Strict PCR/Technical repliate check
+                        if tech_rep and tech_rep not in samp_name:
+                            continue
+                        # if metadata does not have a pcr bit, the dictk key must not have "PCR"
+                        if not tech_rep and "PCR" in samp_name:
+                            continue
+
                         count = count_data.get(faire_col)
                         if count:
                             print(f'\033[32m{sample_name} cant find a match in the asv_data_dict exactly for marker {marker}, but did find a match based on similarity: {samp_name}. If this is incorrect please look into!\033[0m')
@@ -686,15 +772,66 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
 
     def change_or_add_cruise_codes_by_e_num(self, df: pd.DataFrame) -> pd.DataFrame:
         # Changes the cruise code, or possibly adds the cruise code to the sample name based on the E number
-        e_nums = df[self.run_metadata_sample_name_column].str.extract(r'E(\d+)')[0].astype('Int64')
-
+        e_nums = df[self.run_metadata_sample_name_column].str.extract(r'E(\d+)')[0].astype('Int64') # For looking at the enum integers
+        str_e_nums = df[self.run_metadata_sample_name_column].str.extract(r'(E\d+(?:\.(?:\d[A-Z]|NC))?)')[0]
         # for M2-PPS-0423 sample names E1820 - E1842
         mask = (e_nums >= 1820) & (e_nums <= 1842)
         df.loc[mask, self.run_metadata_sample_name_column] = df.loc[mask, self.run_metadata_sample_name_column].str.replace('.DY23-06', '.M2-PPS-0423')
 
         # for AquaM sample names
-        mask = (e_nums == 2084) | (e_nums == 2090) | (e_nums == 2097)
-        df.loc[mask, self.run_metadata_sample_name_column] = df.loc[mask, self.run_metadata_sample_name_column].str.replace('.SKQ23-12S', '.CEO-AquaM-0923')  
+        aqua_mask = (e_nums == 2084) | (e_nums == 2090) | (e_nums == 2097)
+        df.loc[aqua_mask, self.run_metadata_sample_name_column] = df.loc[aqua_mask, self.run_metadata_sample_name_column].str.replace('.SKQ23-12S', '.CEO-AquaM-0923')  
+
+        # Koetzebue mask
+        k_mask = (e_nums == 2140) | (e_nums == 2141)
+        df.loc[k_mask, self.run_metadata_sample_name_column] = df.loc[k_mask, self.run_metadata_sample_name_column].str.replace('.Kotzebue23', '.KC2023')  
+
+        # For WCOA samples: 
+        wcoa_mask = (str_e_nums.isin(wcoa_samp_e_nums)) & (~df[self.run_metadata_sample_name_column].str.contains(r'\.WCOA21', na=False))
+        df.loc[wcoa_mask, self.run_metadata_sample_name_column] = df.loc[wcoa_mask, self.run_metadata_sample_name_column].str.replace('.MiFishMod', '', regex=False)
+        # This matches either ".PCR" followed by digits OR the end of the string.
+        df.loc[wcoa_mask, self.run_metadata_sample_name_column] = df.loc[wcoa_mask, self.run_metadata_sample_name_column].str.replace(
+            r'(\.PCR\d*|$)', 
+            r'.WCOA21\1', 
+            regex=True, 
+            n=1
+        )
+
+        # Chaba samples
+        chaba_mask = (str_e_nums.isin(chaba_enums))
+        df.loc[chaba_mask, self.run_metadata_sample_name_column] = df.loc[chaba_mask, self.run_metadata_sample_name_column].str.replace('.Chaba22', '.TN409')
+        
+        # LO18 samples
+        LO_mask = (e_nums >= 6) & (e_nums <= 12)
+        df.loc[LO_mask, self.run_metadata_sample_name_column] = df.loc[LO_mask, self.run_metadata_sample_name_column].str.replace('.L018', '.LO18')
+
+        # OCO922 samples
+        oco922_mask = (e_nums >= 1240) & (e_nums <= 1263)
+        df.loc[oco922_mask, self.run_metadata_sample_name_column] = df.loc[oco922_mask, self.run_metadata_sample_name_column].str.replace('.OC0922', '.TH042-PPS-0822')
+
+        #OCO1021 TH042 samples
+        oco1021_th042_mask = (e_nums >= 1275) & (e_nums <= 1298)
+        df.loc[oco1021_th042_mask, self.run_metadata_sample_name_column] = df.loc[oco1021_th042_mask, self.run_metadata_sample_name_column].str.replace('.OC1021', '.TH042-PPS-0821')
+
+        #OCO1021 CE042 samples
+        oco1021_ce0422_mask = (e_nums >= 1299) & (e_nums <= 1310) | (e_nums >= 1312) & (e_nums <= 1313) | (e_nums >= 1315) & (e_nums <= 1322)
+        df.loc[oco1021_ce0422_mask, self.run_metadata_sample_name_column] = df.loc[oco1021_ce0422_mask, self.run_metadata_sample_name_column].str.replace('.OC1021', '.CE042-PPS-0821')
+
+        # OCO722 samples
+        oc0722_mask = (str_e_nums.isin(OC0722_enums))
+        df.loc[oc0722_mask, self.run_metadata_sample_name_column] = df.loc[oc0722_mask, self.run_metadata_sample_name_column].str.replace('.OC0722', '.TH042-PPS-0622')
+
+        # OC0723 samples
+        oco723_mask = (e_nums >= 1849) & (e_nums <= 1872)
+        df.loc[oco723_mask, self.run_metadata_sample_name_column] = df.loc[oco723_mask, self.run_metadata_sample_name_column].str.replace('.OC0723', '.TH042-PPS-0623')
+
+        # QIAVacTest samples
+        qiavactest_mask = (str_e_nums.isin(QiAVATest_enums))
+        df.loc[qiavactest_mask, self.run_metadata_sample_name_column] = df.loc[qiavactest_mask, self.run_metadata_sample_name_column].str.replace('QiavacTest', 'QIAvacTest', regex=False) + '1'
+
+        # 3. Append .OC0919 to the end of the current sample name
+        oc0919_mask = (str_e_nums.isin(oc0919_enums)) & (~df[self.run_metadata_sample_name_column].str.contains(r'\.OC0919', na=False))
+        df.loc[oc0919_mask, self.run_metadata_sample_name_column] = df.loc[oc0919_mask, self.run_metadata_sample_name_column] + '.OC0919'
 
         return df
 

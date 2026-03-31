@@ -161,7 +161,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         df = self.transformer.transform()
         return df  
     
-    def add_biological_replicates_column(self, df: pd.DataFrame) -> pd.Series:
+    def add_biological_replicates_column(self, df: pd.DataFrame, faire_col: str, metadata_col: str) -> pd.Series:
         """
         Add biological replicates for all samples
         """

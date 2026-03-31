@@ -72,7 +72,7 @@ def str_replace_for_samps(samp_name: pd.Series) -> str:
             return samp_name.replace('.IB.NO20', '.1B.NO20-01')
         if 'E.2139.' in samp_name:
             return samp_name.replace('E.2139.', 'E2139.') # For E239 QiavacTest, had a . between E and number in metadata
-        if 'E687' in samp_name:
+        if 'E687' in samp_name and '.WCOA21' not in samp_name:
             return samp_name.replace('E687', 'E687.WCOA21')
         if '.NC' in samp_name: # If an E was put in front of an NC sample (this happends in some of the extractions e.g. the SKQ21 extractions), will remove the E
             samp_name = samp_name.replace('E.', '')
@@ -92,6 +92,11 @@ def str_replace_for_samps(samp_name: pd.Series) -> str:
             samp_name =  samp_name.replace('.DY2306', '.DY23-06')
         if 'E2030.NC' == samp_name:
             samp_name = 'E2030.NC.SKQ23-12S'
+        if 'Blank1C.QiavacTest' == samp_name:
+             samp_name = 'Blank1C.QIAvacTest'
+        if 'Blank3Q.QiavacTest' == samp_name:
+             samp_name ='Blank3Q.QIAvacTest'
+             
 
         return samp_name
 

@@ -90,7 +90,7 @@ class SampleMetadata(BaseModel):
     precip_force_prep: Optional[float] = Field(description = "x g")
     precip_time_prep: Optional[float] = Field(description = "minute")
     precip_temp_prep: Optional[Union[float, Literal['ambient temperature']]] = Field(description = "degree Celsius")
-    prepped_samp_store_temp: Optional[Union[float, Literal['ambient temperature', 'ambient temperature | -20']]] = Field(description = "degree Celsius")
+    prepped_samp_store_temp: Optional[Union[float, Literal['ambient temperature', 'ambient temperature | -20', 'ambient temperature | 4 | -20']]] = Field(description = "degree Celsius")
     prepped_samp_store_sol: Optional[Literal['ethanol', 'sodium acetate', 'longmire', 'lysis buffer']]
     prepped_samp_store_dur: Optional[str]
     prep_method_additional: Optional[str] 

@@ -273,6 +273,9 @@ def get_blanks_info(concat_extract_df: pd.DataFrame, metadata_df: pd.DataFrame):
                     related_controls.append(nc)
             samp_rel_cont_id_dict[samp_name] = ' | '.join(related_controls)
 
+    # Need to add these blanks that weren't associated with anything. Sean 3/20/2026
+    blanks_to_be_added.extend(['Blank1C.QIAvac Test', 'Blank3Q.QIAvac Test'])
+
     return samp_rel_cont_id_dict, blanks_to_be_added
          
 def figure_out_rel_cont_ids(faire_mapper: OmeFaireMapper, metadata_df: pd.DataFrame):
@@ -336,7 +339,7 @@ def add_blanks_to_metadata(blanks_to_add: list, concat_extract_df: pd.DataFrame,
     for i, r in concat_extract_df.iterrows():
         if r['samp_name'] in blanks_to_add:
             new_row_dict = {
-                'samp_name': r['samp_name'].replace(' ', '_'),
+                'samp_name': r['samp_name'].replace(' ', ''),
                 'neg_cont_type': 'extraction negative',
                 'samp_category': "negative control",
                 'date_ext': convert_date_to_iso8601(date=r['extraction_date']) ,
@@ -350,17 +353,30 @@ def add_blanks_to_metadata(blanks_to_add: list, concat_extract_df: pd.DataFrame,
                 'extract_well_position': r['Well'][0] if pd.notna(r['Well']) else "not applicable"
                 }
             
-            associated_samples = associated_samples = [samp for samp, blanks in blank_dict.items() if r['samp_name'] in blanks.split(" | ")]
-            
-            # Add values by taking what exists from associated samples in df
-            cols_to_get_vals = ['nucl_acid_ext_lysis', 'nucl_acid_ext_sep', 'extract_id', 'nucl_acid_ext', 'nucl_acid_ext_kit',
-                                'dna_cleanup_0_1', 'dna_cleanup_method', 'ratioOfAbsorbance260_280', 'nucl_acid_ext_method_additional',
-                                'extract_plate']
-            for faire_df_field in cols_to_get_vals:
-                new_row_dict = add_other_ext_values_to_new_row_dict(associated_samps=associated_samples, 
-                                                                    faire_df_field=faire_df_field,
-                                                                    faire_df=faire_df,
-                                                                    new_row_dict=new_row_dict)
+            if r['samp_name'] not in ['Blank1C.QIAvac Test', 'Blank3Q.QIAvac Test']:
+                associated_samples = [samp for samp, blanks in blank_dict.items() if r['samp_name'] in blanks.split(" | ")]
+                
+                # Add values by taking what exists from associated samples in df
+                cols_to_get_vals = ['nucl_acid_ext_lysis', 'nucl_acid_ext_sep', 'extract_id', 'nucl_acid_ext', 'nucl_acid_ext_kit',
+                                    'dna_cleanup_0_1', 'dna_cleanup_method', 'ratioOfAbsorbance260_280', 'nucl_acid_ext_method_additional',
+                                    'extract_plate']
+                for faire_df_field in cols_to_get_vals:
+                    new_row_dict = add_other_ext_values_to_new_row_dict(associated_samps=associated_samples, 
+                                                                        faire_df_field=faire_df_field,
+                                                                        faire_df=faire_df,
+                                                                        new_row_dict=new_row_dict)
+            # ['Blank1C.QiavacTest', 'Blank3Q.QiavacTest'] need to be added even though they aren't associated with any samples (Sean 3/30/2026)
+            else:
+                new_row_dict['nucl_acid_ext_lysis'] = 'physical | enzymatic | thermal'
+                new_row_dict['nucl_acid_ext_sep'] = 'column-based'
+                new_row_dict['extract_id'] = 'QiavacTest_1'
+                new_row_dict['nucl_acid_ext'] = 'https://doi.org/10.5281/zenodo.15793435'
+                new_row_dict['nucl_acid_ext_kit'] = 'Qiagen DNeasy Blood and Tissue Kit'
+                new_row_dict['dna_cleanup_0_1'] = '0'
+                new_row_dict['dna_cleanup_method'] = 'not applicable'
+                new_row_dict['ratioOfAbsorbance260_280'] = 'not applicable'
+                new_row_dict['nucl_acid_ext_method_additional'] = 'missing: not provided'
+                new_row_dict['extract_plate'] = 'not applicable'
 
             # Add 'not applicable: control sample' to other columns
             missing_cols = set(faire_df.columns) - set(new_row_dict.keys())
@@ -394,27 +410,31 @@ def main() -> None:
     for faire_col, metadata_col in mapper_dict_builder.sample_mapping_dict[faire_mapper.exact_mapping].items():
        sample_faire_metadata_results[faire_col] = faire_mapper.apply_exact_mappings(df=metadata_df_builder.df, faire_col=faire_col, metadata_col=metadata_col)
 
-    # # --- RELATED MAPPINGS ----
-    # for faire_col, metadata_col in mapper_dict_builder.sample_mapping_dict[faire_mapper.related_mapping].items():
+    # --- RELATED MAPPINGS ----
+    for faire_col, metadata_col in mapper_dict_builder.sample_mapping_dict[faire_mapper.related_mapping].items():
         
-    #     # samp_category by samp name
-    #     if faire_col == 'biological_rep_relation' and metadata_col:
-    #         sample_faire_metadata_results[faire_col] = add_biological_replicates_column(df=metadata_df_builder.df)
+        # samp_category by samp name
+        if faire_col == 'biological_rep_relation' and metadata_col:
+            sample_faire_metadata_results[faire_col] = add_biological_replicates_column(df=metadata_df_builder.df)
 
-    #     elif faire_col == "geo_loc_name":
-    #         # The axis=1 belongs to .apply(), not the helper function
-    #         sample_faire_metadata_results[faire_col] = metadata_df_builder.df.apply(
-    #             lambda row: find_geo_loc_by_lat_lon(metadata_row=row, metadata_cols=metadata_col), 
-    #             axis=1
-    #         )
+        elif faire_col == "geo_loc_name":
+            # The axis=1 belongs to .apply(), not the helper function
+            sample_faire_metadata_results[faire_col] = metadata_df_builder.df.apply(
+                lambda row: find_geo_loc_by_lat_lon(metadata_row=row, metadata_cols=metadata_col), 
+                axis=1
+            )
 
-    #     elif faire_col == "ctd_cast_number":
-    #          # Create the new column
-    #         sample_faire_metadata_results[faire_col] = metadata_df_builder.df[faire_col].apply(extract_cast_number)       
+        elif faire_col == "ctd_cast_number":
+             # Create the new column
+            sample_faire_metadata_results[faire_col] = metadata_df_builder.df[faire_col].apply(extract_cast_number)       
 
     faire_sample_df = pd.DataFrame(sample_faire_metadata_results)
     rel_cont_id_df, blanks_to_be_added, extraction_df, blank_dict = figure_out_rel_cont_ids(faire_mapper=faire_mapper, metadata_df=faire_sample_df)
     faire_with_blanks = add_blanks_to_metadata(blanks_to_add=blanks_to_be_added, concat_extract_df=extraction_df, faire_df=rel_cont_id_df, blank_dict=blank_dict)
+
+    # Remove positive control that was added in
+    faire_with_blanks.drop(faire_with_blanks[faire_with_blanks['samp_name'] == 'E2180.OC0919'].index, inplace=True)
+    faire_with_blanks['samp_type'] = 'water'
 
     faire_mapper.save_final_df_as_csv(final_df=faire_with_blanks, sheet_name="sampleMetadata", header=2, csv_path="/home/poseidon/zalmanek/FAIRe-Mapping/projects/FloatingSamples/mixed_sean/data/orphan_faire.csv")
                          

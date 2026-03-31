@@ -2,7 +2,7 @@ import argparse
 import pandas as pd
 import sys
 sys.path.append("..")
-from utils.experiment_run_metadata_mapper import ExperimentRunMetadataMapper
+from faire_mapping.experiment_run_metadata_mapper import ExperimentRunMetadataMapper
 
 def create_exp_run_metadata(config_yaml: str) -> pd.DataFrame:
 

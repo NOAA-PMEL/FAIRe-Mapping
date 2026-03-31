@@ -71,7 +71,7 @@ def main() -> None:
     df = get_expedition_name(df=df)
     df = fix_recorded_by(df=df)
 
-    df = sample_mapper.save_final_df_as_csv(final_df=df, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path="/home/poseidon/zalmanek/FAIRe-Mapping/projects/OCNMS/ctd_ocnms21-23/data/ctd_ocnms21-23_farie.csv")
+    df = sample_mapper.save_final_df_as_csv(final_df=df, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path="/home/poseidon/zalmanek/FAIRe-Mapping/projects/OCNMS/ctd_ocnms21-23/data/ctd_ocnms21-23_faire.csv")
                 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 ## 33RO20210613 Sample Metadata config.yaml ##
 # Metadata file related 
-sample_metadata_file: /home/poseidon/zalmanek/WCOA21/wcoa21_data_management/FinalOME_Merge_WCOA21_sample_data.csv
+sample_metadata_file: /home/poseidon/zalmanek/WCOA21/wcoa21_data_management/FinalOME_Merge_nc_samp_added.csv
 sample_metadata_sample_name_column: Sample_Name # The name of the column in the metadata spreadsheet that lists the sample names
 sample_metadata_file_neg_control_col_name: 'Negative_control' # Name of the column in the metadata spreadsheet for the boolean Negative Control
 sample_metadata_cast_no_col_name: 'btl_Cast_number'
@@ -13,7 +13,7 @@ extractions:
     extraction_metadata_google_sheet_id: 1aXN_HmGRDgDLvkz1Dbkje6R7rUUg9mNNc630YN8HvFE
     extraction_cruise_key: .WCOA21
     extraction_sample_name_col: 'FINAL Sample NAME'
-    extraction_conc_col_name: 'Qubit Conc.  (ng/μL)' #to calculate average of extraction concentration
+    extraction_conc_col_name: 'Qubit Conc. (ng/μL)' #to calculate average of extraction concentration
     extraction_date_col_name: 'Extraction Date (Local)'
     extraction_metadata_sheet_name: 'Sheet1'
     extraction_blank_vol_we_dna_ext: 1000 # The volume or mass of blanks extracted if there are blanks extracted
@@ -22,7 +22,7 @@ extractions:
     extraction_metadata_google_sheet_id: 1K4XrXplTNukaeIY_UQ_XXuYLBuvJwJmaeEbAZvHSiEI
     extraction_cruise_key: .WCOA21
     extraction_sample_name_col: 'FINAL Sample NAME (24 samples)'
-    extraction_conc_col_name: 'Qubit Conc.  (ng/μL)' #to calculate average of extraction concentration
+    extraction_conc_col_name: 'Qubit Conc. (ng/μL)' #to calculate average of extraction concentration
     extraction_date_col_name: 'Extraction Date (Local)'
     extraction_metadata_sheet_name: 'Extraction Sheet'
     extraction_blank_vol_we_dna_ext: 1000 # The volume or mass of blanks extracted if there are blanks extracted #TODO: figure this out

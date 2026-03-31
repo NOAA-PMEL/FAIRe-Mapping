@@ -28,7 +28,7 @@ extractions:
       - .NA128
       - .Chaba22
     extraction_sample_name_col: 'FINAL Sample NAME'
-    extraction_conc_col_name: 'Qubit Conc.  (ng/μL)' #to calculate average of extraction concentration
+    extraction_conc_col_name: 'Qubit Conc. (ng/μL)' #to calculate average of extraction concentration
     extraction_date_col_name: 'Extraction Date (Local)'
     extraction_metadata_sheet_name: 'Sheet1'
     extraction_blank_vol_we_dna_ext: 1000 # The volume or mass of blanks extracted if there are blanks extracted
@@ -37,7 +37,7 @@ extractions:
     extraction_metadata_google_sheet_id: 1_Oa4CievaRjUFxI7xceAA3NIS6IlUdobtA0_Ahi1arI
     extraction_cruise_key: .NA128
     extraction_sample_name_col: 'FINAL Sample NAME'
-    extraction_conc_col_name: 'Qubit Conc.  (ng/μL)' #to calculate average of extraction concentration
+    extraction_conc_col_name: 'Qubit Conc. (ng/μL)' #to calculate average of extraction concentration
     extraction_date_col_name: 'Extraction Date (Local)'
     extraction_metadata_sheet_name: 'Extraction Sheet'
     extraction_blank_vol_we_dna_ext: 1000 # The volume or mass of blanks extracted if there are blanks extracted
@@ -46,7 +46,7 @@ extractions:
     extraction_metadata_google_sheet_id: 1LftDxnIXT6rsPExrotJDRuGyzyxo77kl_OBlsbZDe6c
     extraction_cruise_key: .AX22
     extraction_sample_name_col: 'FINAL Sample NAME (24 samples)'
-    extraction_conc_col_name: 'Qubit Conc.  (ng/μL)' #to calculate average of extraction concentration
+    extraction_conc_col_name: 'Qubit Conc. (ng/μL)' #to calculate average of extraction concentration
     extraction_date_col_name: 'Extraction Date (Local)'
     extraction_metadata_sheet_name: 'Extraction Sheet'
     extraction_blank_vol_we_dna_ext: 1000 # The volume or mass of blanks extracted if there are blanks extracted
@@ -57,7 +57,7 @@ extractions:
       - .LT0625
       - .LT0710
     extraction_sample_name_col: 'FINAL Sample NAME'
-    extraction_conc_col_name: 'Qubit Conc.  (ng/μL)' #to calculate average of extraction concentration
+    extraction_conc_col_name: 'Qubit Conc. (ng/μL)' #to calculate average of extraction concentration
     extraction_date_col_name: 'Extraction Date (Local)'
     extraction_metadata_sheet_name: 'eDNA from H2O'
     extraction_blank_vol_we_dna_ext: 1000 # The volume or mass of blanks extracted if there are blanks extracted
@@ -70,7 +70,7 @@ extractions:
       - .WCOA21
       - '.'
     extraction_sample_name_col: 'FINAL Sample NAME'
-    extraction_conc_col_name: 'Qubit Conc.  (ng/μL)' #to calculate average of extraction concentration
+    extraction_conc_col_name: 'Qubit Conc. (ng/μL)' #to calculate average of extraction concentration
     extraction_date_col_name: 'Extraction Date (Local)'
     extraction_metadata_sheet_name: 'eDNA from EtOH'
     extraction_blank_vol_we_dna_ext: 1000 # The volume or mass of blanks extracted if there are blanks extracted
@@ -83,7 +83,7 @@ extractions:
       - .SRGG24
       - .SRLW24
     extraction_sample_name_col: 'FINAL Sample NAME'
-    extraction_conc_col_name: 'Qubit Conc.  (ng/μL)' #to calculate average of extraction concentration
+    extraction_conc_col_name: 'Qubit Conc. (ng/μL)' #to calculate average of extraction concentration
     extraction_date_col_name: 'Extraction Date'
     extraction_metadata_sheet_name: 'Extraction Sheet'
     extraction_blank_vol_we_dna_ext: 1000 # The volume or mass of blanks extracted if there are blanks extracted
@@ -94,7 +94,7 @@ extractions:
       - .Kotzebue23
       - .QIAvac Test
     extraction_sample_name_col: 'FINAL Sample NAME'
-    extraction_conc_col_name: 'Qubit Conc.  (ng/μL)' #to calculate average of extraction concentration
+    extraction_conc_col_name: 'Qubit Conc. (ng/μL)' #to calculate average of extraction concentration
     extraction_date_col_name: 'Extraction Date (Local)'
     extraction_metadata_sheet_name: 'Sheet1'
     extraction_blank_vol_we_dna_ext: 1000 # The volume or mass of blanks extracted if there are blanks extracted
@@ -103,7 +103,7 @@ extractions:
     extraction_metadata_google_sheet_id: 1t3B8o0bmiBcUmY4EUrR_3pCyzX_51qy14OImsLZ_ZBU
     extraction_cruise_key: .ZymoPC
     extraction_sample_name_col: 'FINAL Sample NAME'
-    extraction_conc_col_name: 'Qubit Conc.  (ng/μL)' #to calculate average of extraction concentration
+    extraction_conc_col_name: 'Qubit Conc. (ng/μL)' #to calculate average of extraction concentration
     extraction_date_col_name: 'Extraction Date (Local)'
     extraction_metadata_sheet_name: 'Extraction Sheet'
     extraction_blank_vol_we_dna_ext: 1000 # The volume or mass of blanks extracted if there are blanks extracted

@@ -293,5 +293,13 @@ update_cruise_codes = {
     '.SKQ2021': '.SKQ21-15S',
     '.DY20': '.DY20-12',
     '.DY2012': '.DY20-12',
-    '.SKQ21': '.SKQ21-15S'   
+    '.SKQ21': '.SKQ21-15S',
+    '.Chaba22': '.TN409',
+    '.L018': '.LO18',
+    '.OC0922': '.TH042-PPS-0822',
+    '.OC1021': '.TH042-PPS-0821',
+    '.OC1021_ce': '.CE042-PPS-0821', # The ce will get removed in code, since technically this should be .OC2021, but will be duplicate
+    '.OC0722': '.TH042-PPS-0622',
+    '.OC0723': '.TH042-PPS-0623', 
+    
 }
