@@ -46,7 +46,7 @@ class ExperimentRunMetadata(BaseModel):
     def valdate_input_read_count_is_bigger_than_output_read_count(self):
         # Checks ito make sure that input_read_count is bigger than output_read_count
         if self.input_read_count < self.output_read_count:
-            raise ValueError(f"Sample: {self.samp_name} has an input_read_count of {self.input_read_count} which is less than the output_read_count of {self.output_read_count}")
+            raise ValueError(f"Sample: {self.samp_name} for {self.assay_name} has an input_read_count of {self.input_read_count} which is less than the output_read_count of {self.output_read_count}")
         return self
     
     @model_validator(mode='after')

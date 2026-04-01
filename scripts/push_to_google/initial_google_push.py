@@ -1,32 +1,24 @@
 import gspread
 from google.oauth2.service_account import Credentials
 import pandas as pd
-import yaml
+from pathlib import Path
 # Will need to update to only add new data and not clear the whole sheet eventually.
 
 class GoogleSheetConcatenator:
 
-    def __init__(self, root_dir, metadata_type: str, credentials='/home/poseidon/zalmanek/FAIRe-Mapping/credentials.json', destination_sheet_id='1askd-wDorl-YVh7jk6vBEVtzGMLKp9oXGC7k-SqSrtc'):
+    def __init__(self, df: pd.DataFrame, metadata_type: str, credentials='/home/poseidon/zalmanek/FAIRe-Mapping/credentials.json', destination_sheet_id='1askd-wDorl-YVh7jk6vBEVtzGMLKp9oXGC7k-SqSrtc'):
         """
-        root dir: The data root dir with the *_faire.csv files to be concatentated
+        df: The concatenated final df to push to google
         credentials: path to json file with google auth credentials
         metadaata_type: either sampleMetadata or experimentRunMetadata exactly
         destination_sheet_id: default sheet for all the metadata
         """
-        self.root_dir = root_dir
         self.creds = credentials
         self.destination_sheet_id = destination_sheet_id
         self.destination_sheet_name = metadata_type
         self.client = self.setup_google_client()
-        self.combined_df = self.concat_csv_files()
+        self.combined_df = df
         self.write_data_to_master_sheet()
-
-    def concat_csv_files(root_dir: str):
-
-        csv_files = list(root_dir.rglob("*_faire.csv"))
-        df = pd.concat([pd.read_csv(f) for f in csv_files], ignore_index=True)
-
-        return df
 
     def setup_google_client(self):
         # Set up credentials

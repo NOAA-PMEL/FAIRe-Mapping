@@ -5,7 +5,7 @@ import geopandas as gpd
 import warnings
 from pathlib import Path
 import math
-from datetime import datetime
+from datetime import datetime, timezone
 from collections import defaultdict
 import xarray as xr
 
@@ -84,14 +84,14 @@ class SampleMetadata(BaseModel):
     size_frac: Optional[float] = Field(description = "in µm")
     filter_diameter: Optional[float] = Field(description = "in mm")
     filter_surface_area: Optional[float] = Field(description = "in mm2")
-    filter_material: Optional[Literal['cellulose', 'cellulose ester',  'glass fiber', 'thermoplastic membrane', 'track etched polycarbonate', ' nylon', 'polyethersulfone', 'other: polycarbonate membrane']]
+    filter_material: Optional[Literal['cellulose', 'cellulose ester',  'glass fiber', 'thermoplastic membrane', 'track etched polycarbonate', ' nylon', 'polyethersulfone', 'other: polycarbonate membrane', 'other: Polyvinylidene Flouride']]
     filter_name: Optional[str]
     precip_chem_prep: Optional[Literal['ethanol', 'isopropanol', 'sodium chloride']]
     precip_force_prep: Optional[float] = Field(description = "x g")
     precip_time_prep: Optional[float] = Field(description = "minute")
     precip_temp_prep: Optional[Union[float, Literal['ambient temperature']]] = Field(description = "degree Celsius")
     prepped_samp_store_temp: Optional[Union[float, Literal['ambient temperature', 'ambient temperature | -20', 'ambient temperature | 4 | -20']]] = Field(description = "degree Celsius")
-    prepped_samp_store_sol: Optional[Literal['ethanol', 'sodium acetate', 'longmire', 'lysis buffer']]
+    prepped_samp_store_sol: Optional[Literal['ethanol', 'sodium acetate', 'longmire', 'lysis buffer', 'other: Smith-Root Self Preserving Housing']]
     prepped_samp_store_dur: Optional[str]
     prep_method_additional: Optional[str] 
     assay_name: Optional[str] = Field(default=None)
@@ -176,7 +176,7 @@ class SampleMetadata(BaseModel):
     carbonate_unit: Optional[Literal['µmol/kg']]  # need to add cv here when known
     carbonate_WOCE_flag: Optional[int] = Field(default=None)
     hydrogen_ion: Optional[float] = Field(default=None)
-    hydrogen_ion_unit: Optional[Literal['nmol/kg']] = Field(default=None)
+    hydrogen_ion_unit: Optional[Literal['nmol/kg', 'nM']] = Field(default=None)
     nitrate_plus_nitrite: Optional[float]
     nitrate_plus_nitrite_unit: Optional[Literal['µM']]  # need to add cv here when known
     omega_arag: Optional[float] = None
@@ -184,7 +184,7 @@ class SampleMetadata(BaseModel):
     omega_calc: Optional[float] = Field(default=None)
     omega_calc_method: Optional[str] = None
     pco2: Optional[float] = None
-    pco2_unit: Optional[Literal['uatm']] = None
+    pco2_unit: Optional[Literal['µatm']] = None
     phosphate: Optional[float] = None
     phosphate_unit: Optional[Literal['µmol/L', 'µM', 'µmol/kg']] = None
     phosphate_WOCE_flag: Optional[int] = Field(default=None)
@@ -195,7 +195,7 @@ class SampleMetadata(BaseModel):
     silicate_unit: Optional[Literal['µmol/L', 'µM', 'µmol/kg']] = None
     silicate_WOCE_flag: Optional[int] = Field(default=None)
     tot_alkalinity: Optional[float] = None
-    tot_alkalinity_unit: Optional[Literal['µmol/kg']] = None
+    tot_alkalinity_unit: Optional[Literal['µmol/kg', 'microeq/L']] = None
     tot_alkalinity_WOCE_flag: Optional[int] = Field(default=None)
     transmittance: Optional[float] = None
     transmittance_unit: Optional[Literal['']] # need to add cv here when known
@@ -287,8 +287,26 @@ class SampleMetadata(BaseModel):
                                 'BGC3 Primary', 'MIL5', 'MIL10', 'MIL31', 'MIL51', 'MIL75', 'MIL82', 
                                 'MIL91', 'MIL111', 'MIL130', 'MIL151', 'SJ7', 'SJ18', 'SJ38', 'SJ58', 
                                 'SJ78', 'SJ97', 'SJ117', 'SJ137', 'SJ158', 'La Goleta', 'FKC', 'RTC Map CO2 Buoy',
-                                'GGTX6', 'SCORP', 'Anacapa']]
-    ctd_cast_number: Optional[int]
+                                'GGTX6', 'SCORP', 'Anacapa', 'Marker 38', 'Marker 57', 'Lower Marker 2', 'Spillway', 'Mustard Hollow', 
+                                'Vertical Vent', 'Octopus Spa', 'Octopus Garden', 'Cone Top', 'ASHES', 
+                                'Vixen', 'El Guapo', 'International District', 'CASM', 'SRZ', 'NRZ', 
+                                'Dymond', 'Mid-NRZ Flow', 'Alki Point', 'WOAC P29', 'LSEP01 King Co Station', 
+                                'Kingston Plumes', 'Carbonate Ridge', 'Astoria Canyon Hydrate', 
+                                'Deep Side of E. Kulm Ridge', 'NW of Coquille', 'SE of Grays Canyon', 
+                                "Ridge SW of Gray's Canyon", 'N of Guide Canyon Shelf', 'Astoria Canyon North Rim', 
+                                'Ridge SW Grays Canyon', 'Coquille Vent Field', 'WOAC P381', 'WOAC P105', 
+                                'WOAC P120', 'WOAC P123', 'WOAC P132', 'WOAC P136', 'Puy des Folles', 
+                                'Birthday Chimney', 'Rust Belt', 'Kane Fracture Zone', 'Falkor EMARK', 
+                                'Grappe Deux', 'Hydra', 'S500 Chimney', 'WP9 mussel bed', 'Large Chimney', 
+                                'Old mound', 'Easterwood Tower', 'High T Chimney', 'Hunga Volcano', 
+                                'Outside Hunga Volcano', 'West Hunga', 'Teahwhit Head', 'Lake Washington', 
+                                'Golden Gardens Park', 'Swanborg Dredge', 'WOAC P28', 'WOAC P1', 'WOAC P4', 
+                                'WOAC P26', 'WOAC P7', 'WOAC P14', 'WOAC P11', 'WOAC P30', 'WOAC P33', 
+                                'WOAC P22', 'WOAC P8', 'WOAC P10', 'WOAC P12', 'WOAC P402', 'WOAC P36', 
+                                'WOAC P38', 'Twin Harbors', 'Long Beach', 'Anacortes Seafarers Memorial Park', 
+                                'Rosario Beach', 'Cornet Bay Marina', 'CA015', 'CA042', 'CE015', 'CE042', 
+                                'KL015', 'KL027', 'MB042', 'TH015', 'TH042']]
+    ctd_cast_number: Optional[str]
     ctd_bottle_number: Optional[int]
     replicate_number: Optional[int]
     biosample_accession: Optional[str]
@@ -307,7 +325,7 @@ class SampleMetadata(BaseModel):
     d18O_permil: Optional[float] = Field(default=None, description='18O oxygen iostope ratio, expressed in per mill (%) unit deviations from the international standard which is Standard Mean Ocean Water, as distributed by the International Atomic Energy Agency.')
     d18O_permil_WOCE_flag: Optional[int] = Field(default=None)
     methane: Optional[float] = Field(default=None)
-    methane_unit: Optional[Literal['nmol/L']] = Field(default=None)
+    methane_unit: Optional[Literal['nmol/L', 'nM']] = Field(default=None)
     methane_WOCE_flag: Optional[str] = Field(default=None)
     synechococcus_abundance: Optional[float] = Field(default=None)
     synechococcus_abundance_unit: Optional[Literal['cells/mL']] = Field(default=None)
@@ -372,14 +390,14 @@ class SampleMetadata(BaseModel):
     dna_cleanup_method: Optional[str] = None
     rep_chem_bottle: Optional[str] = None
     fluor: Optional[float] = None
-    fluor_unit: Optional[Literal['volts']] = None
+    fluor_unit: Optional[Literal['volts', 'mg/m3']] = None
     redox_potential: Optional[float] = None
     redox_potential_unit: Optional[Literal['mV']] = None
     samp_type: Literal['water', None]
     rov_dive_number: Optional[str] = None
-    ph_free: Optional[int] = None
-    ph_total: Optional[int] = None
-    conductivity: Optional[int] = None
+    ph_free: Optional[float] = None
+    ph_total: Optional[float] = None
+    conductivity: Optional[float] = None
     dNTU: Optional[float] = None
     dE_dt: Optional[float] = None
     percent_d3He: Optional[float] = None
@@ -468,7 +486,7 @@ class SampleMetadata(BaseModel):
         
         try:
             event_datetime = datetime.fromisoformat(v.replace('Z', '+00:00'))
-            if event_datetime.year < 2018:
+            if event_datetime.year < 2013:
                 raise ValueError(f"eventDate year {event_datetime.year} is before 2018.")
             
             return v
@@ -479,15 +497,6 @@ class SampleMetadata(BaseModel):
             else:
                 raise ValueError(f"eventDate: '{v}' is not in valid ISO format")
 
-    @field_validator('maximumDepthInMeters')
-    @classmethod
-    def validate_max_depth_less_than_3_m(cls, v, info):
-        if v is None or info.data.get('samp_category') != 'sample':
-            return v
-        if float(v) < 3:
-             warnings.warn(f"MaximumDepthInMeters has value {v} which is less than 3.")
-        return v
-
     @model_validator(mode='after')
     def validate_expedition_date_ranges(self):
         """Class method to validate date ranges across all records in an expedition. Call this after validating individual records"""
@@ -495,7 +504,13 @@ class SampleMetadata(BaseModel):
             return self
 
         try:
-            event_datetime = datetime.fromisoformat(self.eventDate.replace('Z', '+00:00'))
+            dt = datetime.fromisoformat(self.eventDate.replace('Z', '+00:00'))
+            # 2. FORCE AWARENESS: If it has no timezone, assign UTC
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            
+            event_datetime = dt
+            
             self._expedition_dates[self.expedition_id].append(event_datetime)
             expedition_dates = self._expedition_dates[self.expedition_id]
 
@@ -552,7 +567,7 @@ class SampleMetadata(BaseModel):
                 supposed_sea = region.get('NAME')
                 # Check if any of the arctic keywords exist in the supposed sea to make sure the lat/lon coords are indeed in the Arctic
                 if not any(keyword in supposed_sea.lower() for keyword in self._artic_region_keywords):
-                    raise ValueError(f"{self.samp_name} has a lat/lon ({self.decimalLatitude}/{self.decimalLongitude}) found in the area of {supposed_sea}, which does not have keywords {self._artic_region_keywords}")
+                    warnings.warn(f"{self.samp_name} has a lat/lon ({self.decimalLatitude}/{self.decimalLongitude}) found in the area of {supposed_sea}, which does not have keywords {self._artic_region_keywords}")
                 
                 # Check geo_loc kind of matches
                 if supposed_sea.lower().strip() != geo_loc_sea_area.lower().strip():
@@ -599,26 +614,26 @@ class SampleMetadata(BaseModel):
                 raise ValueError(f"{self.samp_name}: pos_cont_type is required when samp_category is 'positive control'")
         return self
     
-    @model_validator(mode='after')
-    def valdate_station_id_with_stations_within_5km(self):
-        # Checks if the station_id exists in the station_ids_within_5km_of_lat_lon, and if it doesn't warns
-        if self.samp_category != 'sample':
-            return self
-        if self.station_ids_within_5km_of_lat_lon != None:
-            alt_stations = self.station_ids_within_5km_of_lat_lon.split(' | ')
-            if self.station_id not in alt_stations:
-                warnings.warn(f"{self.samp_name} has station {self.station_id} listed, but it was not picked up in the stations within 5 km: {self.station_ids_within_5km_of_lat_lon}") 
-            return self
-        else:
-            warnings.warn(f"{self.samp_name} picked up no stations within 5 km, including its own!!")
-            return self
+    # @model_validator(mode='after')
+    # def valdate_station_id_with_stations_within_5km(self):
+    #     # Checks if the station_id exists in the station_ids_within_5km_of_lat_lon, and if it doesn't warns
+    #     if self.samp_category != 'sample':
+    #         return self
+    #     if self.station_ids_within_5km_of_lat_lon != None:
+    #         alt_stations = self.station_ids_within_5km_of_lat_lon.split(' | ')
+    #         if self.station_id not in alt_stations:
+    #             warnings.warn(f"{self.samp_name} has station {self.station_id} listed, but it was not picked up in the stations within 5 km: {self.station_ids_within_5km_of_lat_lon}") 
+    #         return self
+    #     else:
+    #         warnings.warn(f"{self.samp_name} picked up no stations within 5 km, including its own!!")
+    #         return self
 
     @model_validator(mode='after')
     def validate_rosette_position_matches_btl_id(self):
         if self.samp_category != 'sample':
             return self
-        if self.rosette_position != self.ctd_bottle_number:
-            raise ValueError(f'rosette_position must match the ctd_bottle_number: rosette_pos = {self.rosette_position}, ctd_bottle_number = {self.ctd_bottle_number}')
+        if str(self.rosette_position) != str(self.ctd_bottle_number):
+            warnings.warn(f'rosette_position must match the ctd_bottle_number: rosette_pos = {self.rosette_position}, ctd_bottle_number = {self.ctd_bottle_number}')
         return self
 
 # a wrapper model for the entire SampleMetadata dataset - allows for validation across the whole dataset

@@ -611,6 +611,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         # normalize marker to shorthand
         marker = marker_to_shorthand_mapping.get(metadata_row[self.run_metadata_marker_col_name])
         sample_name = metadata_row[self.run_metadata_sample_name_column]
+        print(self.asv_data_dict)
         # Get the count
         try:
             count = self.asv_data_dict.get(marker).get(sample_name.strip()).get(faire_col)
@@ -619,9 +620,11 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             # This breaks the sample name into its E number, Tech rep (if exists), and bio rep (if exists) and puts those pieces into a list, then checks the asv_data_dict for keys that include
             # all of those pieces (so will essentially check the dict for keys with the same E number, bio rep, and tech rep (will ignore cruise code or underscores/periods)
             sample_name = sample_name.strip()
+            count = 0
 
-            tech_rep = None
-            bio_rep = None
+            tech_rep = None # PCR
+            bio_rep = None # 1B, 2B
+            other_kind_tech_rep = None #(e.g. '2T' '3T')
 
             if '.' in sample_name:
                 sample_name_bits = sample_name.split('.')
@@ -638,6 +641,12 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                         if not tech_rep and i != len(sample_name_bits) - 1: # check for B, but make sure its not the last item (this could be in the cruise code)
                             bio_rep = bit
                         samp_bit_without_cruise_code.append(bio_rep)
+                    if 'T' in bit:
+                        if tech_rep and i != len(sample_name_bits) - 2: # if there is a technical rep, the cruise code comes before the PCR part, so will be -2 (don't want T to be in the cruise code) 
+                             other_kind_tech_rep = bit
+                        if not tech_rep and i != len(sample_name_bits) - 1: # check for B, but make sure its not the last item (this could be in the cruise code)
+                             other_kind_tech_rep = bit
+                        samp_bit_without_cruise_code.append(other_kind_tech_rep)
 
                 for samp_name, count_data in self.asv_data_dict[marker].items():
                     if all(samp_bit in samp_name for samp_bit in samp_bit_without_cruise_code):
@@ -653,8 +662,6 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                         if count:
                             print(f'\033[32m{sample_name} cant find a match in the asv_data_dict exactly for marker {marker}, but did find a match based on similarity: {samp_name}. If this is incorrect please look into!\033[0m')
                         break
-                    else:
-                        count = 0
                         
         
         except Exception as e:

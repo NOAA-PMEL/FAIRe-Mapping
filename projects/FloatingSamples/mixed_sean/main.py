@@ -113,7 +113,7 @@ def find_geo_loc_by_lat_lon(metadata_row: pd.Series, metadata_cols: str) -> str:
                 else:
                     return geo_loc
         # If no region contains the point return None
-        return None
+        return "missing: not collected"
 
 def extract_cast_number(value):
     # Check for your "keep as is" conditions
@@ -377,6 +377,7 @@ def add_blanks_to_metadata(blanks_to_add: list, concat_extract_df: pd.DataFrame,
                 new_row_dict['ratioOfAbsorbance260_280'] = 'not applicable'
                 new_row_dict['nucl_acid_ext_method_additional'] = 'missing: not provided'
                 new_row_dict['extract_plate'] = 'not applicable'
+                new_row_dict['concentration'] = 'BDL'
 
             # Add 'not applicable: control sample' to other columns
             missing_cols = set(faire_df.columns) - set(new_row_dict.keys())
@@ -410,6 +411,9 @@ def main() -> None:
     for faire_col, metadata_col in mapper_dict_builder.sample_mapping_dict[faire_mapper.exact_mapping].items():
        sample_faire_metadata_results[faire_col] = faire_mapper.apply_exact_mappings(df=metadata_df_builder.df, faire_col=faire_col, metadata_col=metadata_col)
 
+    for faire_col, metadata_col in mapper_dict_builder.sample_mapping_dict[faire_mapper.constant_mapping].items():
+        sample_faire_metadata_results[faire_col] = faire_mapper.apply_static_mappings(df=metadata_df_builder.df, faire_col=faire_col, static_value=metadata_col)
+
     # --- RELATED MAPPINGS ----
     for faire_col, metadata_col in mapper_dict_builder.sample_mapping_dict[faire_mapper.related_mapping].items():
         
@@ -436,7 +440,25 @@ def main() -> None:
     faire_with_blanks.drop(faire_with_blanks[faire_with_blanks['samp_name'] == 'E2180.OC0919'].index, inplace=True)
     faire_with_blanks['samp_type'] = 'water'
 
+    # Add in pos_cont_type for positive controls that were included
+    pos_cont_type = "ZymoBIOMICS Microbial Community Standard D6300; synthetic microbial community spike in"
+    faire_with_blanks['pos_cont_type'] = faire_with_blanks.apply(lambda row: pos_cont_type if row['samp_category'] == 'positive control' else '', axis=1)
+
+    # Fix hydrogen_ion and methane range values
+    target_samples = ['H2ox_bag4', 'H2ox_bag2', 'H2ox_bag7', 'H2ox_bag11', 'H2ox_bag19']
+    faire_with_blanks['verbatim_hydrogen_ion'] = 'not applicable'
+    faire_with_blanks['verbatim_methane'] = 'not applicable'
+    mask = faire_with_blanks['samp_name'].isin(target_samples)
+    faire_with_blanks.loc[mask, 'verbatim_hydrogen_ion'] = faire_with_blanks.loc[mask, 'hydrogen_ion']
+    faire_with_blanks.loc[mask, 'verbatim_methane'] = faire_with_blanks.loc[mask, 'methane']
+    float_regex = r'(\d+\.\d+|\d+)'
+    faire_with_blanks.loc[mask, 'hydrogen_ion'] = faire_with_blanks.loc[mask, 'hydrogen_ion'].str.extract(float_regex)[0]
+    faire_with_blanks.loc[mask, 'methane'] = faire_with_blanks.loc[mask, 'methane'].str.extract(float_regex)[0]
+
+
     faire_mapper.save_final_df_as_csv(final_df=faire_with_blanks, sheet_name="sampleMetadata", header=2, csv_path="/home/poseidon/zalmanek/FAIRe-Mapping/projects/FloatingSamples/mixed_sean/data/orphan_faire.csv")
                          
 if __name__ == "__main__":
     main()
+
+
