@@ -1,6 +1,8 @@
 project_name: ecoFoci
 project_info_google_sheet_id: 1E8fHmfnTQA1CV8GTVuFoOXlgeUwTaVy9uXao9mUzG1Q # google sheet id for where project and data management metadata are.
 
+drop_not_sequenced_samps: False
+
 datasets: # a list of sample_metadata.csvs and their associated experimentRun csvs
   sample_metadata_csvs:
     - cruise_name: dy2012
@@ -28,7 +30,7 @@ datasets: # a list of sample_metadata.csvs and their associated experimentRun cs
     - cruise_name: ctd_ocnms21-23
       sample_metadata_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/OCNMS/ctd_ocnms21-23/data/ctd_ocnms21-23_faire.csv
     - cruise_name: pps_ocnms21-23
-      sample_metadata_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/OCNMS/ctd_ocnms21-23/data/ctd_ocnms21-23_faire.csv
+      sample_metadata_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/OCNMS/pps_ocnms21-23/data/pps_ocnms21-23_faire.csv
     - cruise_name: wcoa21
       sample_metadata_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/WCOA/wcoa21/data/wcoa21_faire.csv
   associated_sequencing_csvs:
@@ -90,9 +92,17 @@ pooled_samps:
     samps_that_were_pooled:
     - NC2
     - NC3
+    - NC4
     - NC5
     sample_category: negative control
     cont_type: extraction negative
+  - pooled_samp_name: RC0083_NC_pool
+    samps_that_were_pooled:
+    - E1573.NC.RC0083
+    - E1451.NC.RC0083
+    - E1500.NC.RC0083
+    sample_category: negative control
+    cont_type: field negative
 
 # AnalysisMetadata # NONE OF THIS MATTERS FOR ALL OF THE DATA 
 bioinformatics_bebop_path: /home/poseidon/zalmanek/BeBOPs/BioinformticsBeBops/NOAA-PMEL-OME-Bioinformatics-Metabarcoding-Protocol-BeBOP/NOAA-PMEL-OME-Bioinformatics-Metabarcoding-Protocol-BEBOP.md
@@ -103,7 +113,7 @@ bebop_config_marker_col_name: Marker
 
 faire_template_file: /home/poseidon/zalmanek/FAIRe-Mapping/faire_template.xlsx
 final_faire_template_path: /home/poseidon/zalmanek/FAIRe-Mapping/scripts/push_to_google/all_faire.xlsx
-logging_directory: /home/poseidon/zalmanek/FAIRe-Mapping/scripts/push_to_google/logging
+logging_directory: /home/poseidon/zalmanek/FAIRe-Mapping/scripts/push_to_google/logging/
 
 json_creds: /home/poseidon/zalmanek/FAIRe-Mapping/credentials.json
  

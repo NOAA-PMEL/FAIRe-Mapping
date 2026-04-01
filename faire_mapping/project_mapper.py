@@ -71,6 +71,8 @@ class ProjectMapper(OmeFaireMapper):
         self.bebop_config_run_col_name = self.config_file['bebop_config_run_col_name'] if 'bebop_config_run_col_name' in self.config_file else None # None if NCBI
         self.bebop_config_marker_col_name = self.config_file['bebop_config_marker_col_name'] if 'bebop_config_marker_col_name' in self.config_file else None # None if NCBI
         self.logging_directory = self.config_file['logging_directory']
+        # If the drop_not_sequenced_samps exist in config make it whatever values is in config, otherwise default is True (will only be false for when combining all samples ever in push to google)
+        self.drop_not_sequenced_samps = self.config_file.get('drop_not_sequenced_samps', True)
 
         self.pcr_library_dict = {}
 
@@ -132,11 +134,14 @@ class ProjectMapper(OmeFaireMapper):
         bio_rep_samp_derived_df = self.add_bio_rep_samp_derived(sample_df=pcr_updated_df)
     
         # Filter primary dataframe based on samp_name values in sequencing run dataframe
-        filtered_samp_df, missing_samples = self._filter_samp_df_by_samp_name(samp_df=bio_rep_samp_derived_df, associated_seq_df=combined_exp_run_df)
-        if missing_samples:
-            missing_file_name = 'samps_not_sequenced.csv'
-            print(f"\033[35mThere are samples that do not appear to have been sequenced - they don't exist in the experimentRunMetadata, please see {self.logging_directory+missing_file_name} for a list.\33[0m]")
-            self.save_list_to_csv(the_list=missing_samples, file_name=missing_file_name)
+        if self.drop_not_sequenced_samps:
+            filtered_samp_df, missing_samples = self._filter_samp_df_by_samp_name(samp_df=bio_rep_samp_derived_df, associated_seq_df=combined_exp_run_df)
+            if missing_samples:
+                missing_file_name = 'samps_not_sequenced.csv'
+                print(f"\033[35mThere are samples that do not appear to have been sequenced - they don't exist in the experimentRunMetadata, please see {self.logging_directory+missing_file_name} for a list.\33[0m]")
+                self.save_list_to_csv(the_list=missing_samples, file_name=missing_file_name)
+        else:
+            filtered_samp_df=bio_rep_samp_derived_df
 
         # Fill empty values for POSITIVE and pool samples with "not applicable: control sample"
         final_sample_metadata_df = self.fill_empty_vals(df=filtered_samp_df)
@@ -203,7 +208,10 @@ class ProjectMapper(OmeFaireMapper):
         combined_sample_metadata_df = pd.DataFrame()
         combined_sample_metadata_df = pd.concat(samp_metadata_dfs, ignore_index=True)
 
-        return combined_sample_metadata_df
+        # clean leading and trailing white spaces
+        cleaned_df = combined_sample_metadata_df.map(lambda x: x.strip() if isinstance(x, str) else x)
+
+        return cleaned_df
    
     def create_exp_run_metadata_df(self) -> pd.DataFrame:
 
@@ -222,7 +230,10 @@ class ProjectMapper(OmeFaireMapper):
 
         exp_run_df_with_merged_counts = self.update_output_input_counts_for_merged_runs(exp_df = combined_exp_run_df)
 
-        return exp_run_df_with_merged_counts
+        # Clean leading and trailing white spaces
+        cleaned_df = exp_run_df_with_merged_counts.map(lambda x: x.strip() if isinstance(x, str) else x)
+
+        return cleaned_df
     
     def update_output_input_counts_for_merged_runs(self, exp_df: pd.DataFrame) -> pd.DataFrame:
         # For OSU/Run3 where there will be the same sample_name and assay_name (part of assay name since different for runs)
@@ -561,10 +572,10 @@ class ProjectMapper(OmeFaireMapper):
 
         
         # Get list of reference names
-        reference_names = set(final_sample_df[self.faire_sample_name_col].unique())
+        reference_names = set(final_sample_df[self.faire_sample_name_col].astype(str).unique())
 
         # Create mask of rows to keep
-        mask = exp_run_df[self.faire_sample_name_col].isin(reference_names)
+        mask = exp_run_df[self.faire_sample_name_col].astype(str).isin(reference_names)
 
         # filter exp_run_df
         exp_run_df_filtered = exp_run_df[mask]

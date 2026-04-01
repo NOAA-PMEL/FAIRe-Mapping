@@ -611,7 +611,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         # normalize marker to shorthand
         marker = marker_to_shorthand_mapping.get(metadata_row[self.run_metadata_marker_col_name])
         sample_name = metadata_row[self.run_metadata_sample_name_column]
-        print(self.asv_data_dict)
+
         # Get the count
         try:
             count = self.asv_data_dict.get(marker).get(sample_name.strip()).get(faire_col)
@@ -638,15 +638,18 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                     if 'B' in bit:
                         if tech_rep and i != len(sample_name_bits) - 2: # if there is a technical rep, the cruise code comes before the PCR part, so will be -2 (don't want B to be in the cruise code) 
                             bio_rep = bit
-                        if not tech_rep and i != len(sample_name_bits) - 1: # check for B, but make sure its not the last item (this could be in the cruise code)
+                        elif not tech_rep and i != len(sample_name_bits) - 1: # check for B, but make sure its not the last item (this could be in the cruise code)
                             bio_rep = bit
+                        if bio_rep:
+                            samp_bit_without_cruise_code.append(bio_rep)
                         samp_bit_without_cruise_code.append(bio_rep)
                     if 'T' in bit:
                         if tech_rep and i != len(sample_name_bits) - 2: # if there is a technical rep, the cruise code comes before the PCR part, so will be -2 (don't want T to be in the cruise code) 
                              other_kind_tech_rep = bit
-                        if not tech_rep and i != len(sample_name_bits) - 1: # check for B, but make sure its not the last item (this could be in the cruise code)
+                        elif not tech_rep and i != len(sample_name_bits) - 1: # check for B, but make sure its not the last item (this could be in the cruise code)
                              other_kind_tech_rep = bit
-                        samp_bit_without_cruise_code.append(other_kind_tech_rep)
+                        if other_kind_tech_rep:
+                            samp_bit_without_cruise_code.append(other_kind_tech_rep)
 
                 for samp_name, count_data in self.asv_data_dict[marker].items():
                     if all(samp_bit in samp_name for samp_bit in samp_bit_without_cruise_code):

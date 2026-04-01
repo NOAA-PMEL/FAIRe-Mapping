@@ -176,6 +176,7 @@ class SampleMetadata(BaseModel):
     carbonate_unit: Optional[Literal['µmol/kg']]  # need to add cv here when known
     carbonate_WOCE_flag: Optional[int] = Field(default=None)
     hydrogen_ion: Optional[float] = Field(default=None)
+    verbatim_hydrogen_ion: Optional[str] = None
     hydrogen_ion_unit: Optional[Literal['nmol/kg', 'nM']] = Field(default=None)
     nitrate_plus_nitrite: Optional[float]
     nitrate_plus_nitrite_unit: Optional[Literal['µM']]  # need to add cv here when known
@@ -327,6 +328,7 @@ class SampleMetadata(BaseModel):
     methane: Optional[float] = Field(default=None)
     methane_unit: Optional[Literal['nmol/L', 'nM']] = Field(default=None)
     methane_WOCE_flag: Optional[str] = Field(default=None)
+    verbatim_methane: Optional[str] = None
     synechococcus_abundance: Optional[float] = Field(default=None)
     synechococcus_abundance_unit: Optional[Literal['cells/mL']] = Field(default=None)
     synechococcus_abundance_WOCE_flag: Optional[str] = Field(default=None)
