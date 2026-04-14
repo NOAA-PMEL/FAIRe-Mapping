@@ -69,7 +69,9 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         for faire_col, metadata_col in self.mapping_dict[self.related_mapping].items():
             # Add assay_name
             if faire_col == 'assay_name':
-                exp_metadata_results[faire_col] = self.run_metadata_df[metadata_col].apply(self.convert_assay_to_standard)
+                exp_metadata_results[faire_col] = self.run_metadata_df.apply(lambda row: self.convert_assay_to_standard(metadata_row=row, marker_col=metadata_col, sample_name_col=self.run_metadata_sample_name_column),
+                    axis = 1
+                )
 
             elif faire_col == 'lib_id':
                 lib_ids = self.run_metadata_df.apply(
@@ -119,8 +121,10 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         exp_df = pd.DataFrame(exp_metadata_results)
         faire_exp_df = pd.concat([self.exp_run_faire_template_df, exp_df])
 
-        # Create non-curated asv tables (rawOtu)
-        self.create_non_curated_osu_tables(final_exp_df=faire_exp_df)
+        # TODO: Need to figure out how to globally update sample names to match experimentRunMetadata. As it is written it doesn't work. Also mifishmod samps in run2, would need 
+        # to be peeeled out into their own asv table.
+        # # Create non-curated asv tables (rawOtu)
+        # self.create_non_curated_osu_tables(final_exp_df=faire_exp_df)
 
         return faire_exp_df
 
@@ -364,8 +368,11 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                 self._outline_raw_data_dict(sample_name=sample_name, file_num=1, all_files=all_files, marker=marker, marker_dir=marker_raw_data_dir)
                 self._outline_raw_data_dict(sample_name=sample_name, file_num=2, all_files=all_files, marker=marker ,marker_dir=marker_raw_data_dir)
 
-    def convert_assay_to_standard(self, marker: str) -> str:
+    def convert_assay_to_standard(self, metadata_row: pd.Series, marker_col: str, sample_name_col: str = None) -> str:
         # matches the marker to the corresponding assay and returns standardized assay name
+        # sample name is optional (will only be needed for the mifish stuff in run2)
+        sample_name = metadata_row[sample_name_col]
+        marker = metadata_row[marker_col]
         
         potential_assays = marker_to_assay_mapping.get(marker, None)
         if isinstance(potential_assays, list):
@@ -375,6 +382,18 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                     if 'osu' in assay.lower():
                         return assay
                 raise NoAcceptableAssayMatch(f'The marker/assay {marker} does not match any of the {[v for v in marker_to_assay_mapping.values()]}, for an osu assay, please update marker_to_assay_mapping dict in list file.')
+            elif 'mifish' in marker.lower():
+                # Identify if this is a "Special" case that needs 2xRSA
+                is_run1 = self.run_name == 'run1'
+                is_special_run2 = self.run_name == 'run2' and any(x in sample_name for x in ['E450', 'E447', '.mifishmod'])
+
+                for assay in potential_assays:
+                    if is_run1 or is_special_run2:
+                        if '2xrsa' in assay.lower():
+                            return assay
+                    else:
+                        if '2xrsa' not in assay.lower():
+                            return assay
             # else get the other assay name that does not have OSU in the run name if the run name is not an osu assay, but has an osu sibling assay
             else:
                 for assay in potential_assays:
@@ -713,43 +732,47 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             formatted_bioaccessions = ' | '.join(bioaccessions)
             return formatted_bioaccessions
 
-    def create_non_curated_osu_tables(self, final_exp_df: pd.DataFrame):
-        # creates the non_curated osu_tables - it will be a otu_table.csv per seq_run_id per assay_name - so multiple per sequencing run
+    # def create_non_curated_osu_tables(self, final_exp_df: pd.DataFrame):
+    #     # creates the non_curated osu_tables - it will be a otu_table.csv per seq_run_id per assay_name - so multiple per sequencing run
 
-        seq_run_id = self.mapping_dict[self.constant_mapping].get(self.faire_seq_run_id_col)
+    #     seq_run_id = self.mapping_dict[self.constant_mapping].get(self.faire_seq_run_id_col)
         
-        for marker, file_path in self.asv_counts_tsvs_for_run.items(): 
-            # for OSU and run3, need to use merged path to get the asv tables
-            if isinstance(file_path, dict):
-                file_path = file_path.get('merged')
-            else:
-                file_path = file_path
+    #     for marker, file_path in self.asv_counts_tsvs_for_run.items(): 
+    #         # for OSU and run3, need to use merged path to get the asv tables
+    #         if isinstance(file_path, dict):
+    #             file_path = file_path.get('merged')
+    #         else:
+    #             file_path = file_path
            
-            asv_table = self._read_asv_counts_tsv(asv_tsv_file=file_path)
+    #         asv_table = self._read_asv_counts_tsv(asv_tsv_file=file_path)
             
-            # Get ASVs.fa file to get DNA sequences
-            asv_tsv_path = Path(file_path)
-            asvs_fa_path = asv_tsv_path.parent / "ASVs.fa"
+    #         # Get ASVs.fa file to get DNA sequences
+    #         asv_tsv_path = Path(file_path)
+    #         asvs_fa_path = asv_tsv_path.parent / "ASVs.fa"
 
-            # rename samples to match the updated sample names
-            asv_table_samples_updated = asv_table.rename(columns=self.asv_samp_name_dict.get(marker))
+    #         # rename samples to match the updated sample names
+    #         asv_table_samples_updated = asv_table.rename(columns=self.asv_samp_name_dict.get(marker))
 
-            # replace ASV names with hash
-            asv_hash_dict = self.create_asv_hash_dict(asvs_fasta_path=asvs_fa_path)
-            asv_table_hash_updated = asv_table_samples_updated.rename(index=asv_hash_dict)
+    #         # replace ASV names with hash
+    #         asv_hash_dict = self.create_asv_hash_dict(asvs_fasta_path=asvs_fa_path)
+    #         asv_table_hash_updated = asv_table_samples_updated.rename(index=asv_hash_dict)
 
-            # This part is primarly for OSU/run3 where there will be extra samples that aren't related
-            # Drops all samples in non_curated osu_table that does not exist in the final exp_df. And removes any hashes with 0 for all columns
-            valid_samples = final_exp_df[self.faire_sample_samp_name_col].tolist()
-            asv_table_has_updated_filtered = asv_table_hash_updated[asv_table_hash_updated.columns.intersection(valid_samples)]
-            asv_table_final = asv_table_has_updated_filtered[(asv_table_has_updated_filtered != 0).any(axis=1)]
-            asv_table_final.index.name = 'seq_id'
+    #         # This part is primarly for OSU/run3 where there will be extra samples that aren't related
+    #         # Drops all samples in non_curated osu_table that does not exist in the final exp_df. And removes any hashes with 0 for all columns
+    #         valid_samples = final_exp_df[self.faire_sample_samp_name_col].tolist()
+    #         asv_table_has_updated_filtered = asv_table_hash_updated[asv_table_hash_updated.columns.intersection(valid_samples)]
+    #         asv_table_final = asv_table_has_updated_filtered[(asv_table_has_updated_filtered != 0).any(axis=1)]
+    #         asv_table_final.index.name = 'seq_id'
 
-            # save the csv file
-            assay_name = self.convert_assay_to_standard(marker=marker)
-            non_curated_csv_path = (Path(self.final_faire_template_path)).parent / f"otuRaw_{assay_name}_{seq_run_id}.csv"
-            asv_table_final.to_csv(non_curated_csv_path, index='seq_id')
-            print(f"Saved {assay_name} otuRaw.csv")
+    #         if self.run_name == 'run2' and 'mifish' in marker:
+            
+    #         else:
+    #             # save the csv file
+    #             assay_name = self.convert_assay_to_standard(marker=marker)
+    #             non_curated_csv_path = (Path(self.final_faire_template_path)).parent / f"otuRaw_{assay_name}_{seq_run_id}.csv"
+    #             asv_table_final.to_csv(non_curated_csv_path, index='seq_id')
+    #             print(f"Saved {assay_name} otuRaw.csv")
+
 
     def create_asv_hash_dict(self, asvs_fasta_path: str):
         # creates a dictionary like {'ASV1': laksdjfalksdjfalksdjf}
