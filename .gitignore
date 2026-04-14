@@ -2,3 +2,4 @@ credentials.json
 faire_mapping/GEBCO_2024.nc
 __pycache__/
 otuRaw*
+validators/validation_results.log
