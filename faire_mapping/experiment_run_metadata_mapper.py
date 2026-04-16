@@ -384,14 +384,21 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                 raise NoAcceptableAssayMatch(f'The marker/assay {marker} does not match any of the {[v for v in marker_to_assay_mapping.values()]}, for an osu assay, please update marker_to_assay_mapping dict in list file.')
             elif 'mifish' in marker.lower():
                 # Identify if this is a "Special" case that needs 2xRSA
-                is_run1 = self.run_name == 'run1'
-                is_special_run2 = self.run_name == 'run2' and sample_name in ['E450.1B.WCOA21', 'E450.2B.WCOA21', 'E450.3B.WCOA21', 'E447.1B.WCOA21', 'E447.2B.WCOA21', 'E447.3B.WCOA21']
+                is_run1 = self.run_name == 'run1' # will get the 2xrsa misfish assay
+                # is_special_run2 gets regular mifish assay (these were originally labeled as mifishmod in samle names)
+                is_special_run2 = self.run_name == 'run2' and sample_name in ['E450.1B.WCOA21', 'E450.2B.WCOA21', 'E450.3B.WCOA21', 'E447.1B.WCOA21', 'E447.2B.WCOA21', 'E447.3B.WCOA21', 'E474.WCOA21', 'E491.WCOA21', 'E690.WCOA21']
 
                 for assay in potential_assays:
-                    if is_run1 or is_special_run2:
+                    if is_run1: # all of run1 gets 2xrsa mifish assay
                         if '2xrsa' in assay.lower():
                             return assay
-                    else:
+                    elif is_special_run2: # .MiFishMod samples get regular mifish assay
+                        if '2xrsa' not in assay.lower():
+                            return assay
+                    elif '.WCOA21' in sample_name: # rest of wcoa samples get 2xrsa assay
+                        if '2xrsa' in assay.lower():
+                            return assay
+                    else: # rest in run 2 get regular mifish assay
                         if '2xrsa' not in assay.lower():
                             return assay
             # else get the other assay name that does not have OSU in the run name if the run name is not an osu assay, but has an osu sibling assay

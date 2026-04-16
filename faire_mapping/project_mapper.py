@@ -495,6 +495,11 @@ class ProjectMapper(OmeFaireMapper):
                         new_row[self.faire_sample_derived_from_col] = derived_from_samps
                         
                         transformed_rows.append(new_row)
+
+                        # These samples were part of the .MiFishMod crowd but also had tech reps for other assays, so we still want to add their regular samp rows since they did not have tech reps
+                        mifishmod_samps_with_pcr_reps = ['E450.1B.WCOA21', 'E450.2B.WCOA21', 'E450.3B.WCOA21', 'E447.1B.WCOA21', 'E447.2B.WCOA21', 'E447.3B.WCOA21']
+                        if base_name in mifishmod_samps_with_pcr_reps:
+                            transformed_rows.append(r)
                 else:
                     transformed_rows.append(r)
 
@@ -584,8 +589,8 @@ class ProjectMapper(OmeFaireMapper):
         dropped_samples = exp_run_df.loc[~mask, self.faire_sample_name_col].unique()
 
         # Remove mifish mod samples from dropped samples (they are just PCR1 reps)
-        mifishmod_samps = ['E450.1B.WCOA21', 'E450.2B.WCOA21', 'E450.3B.WCOA21', 'E447.1B.WCOA21', 'E447.2B.WCOA21', 'E447.3B.WCOA21']
-        dropped_samples = [samp for samp in dropped_samples if samp not in mifishmod_samps]
+        # mifishmod_samps = ['E450.1B.WCOA21', 'E450.2B.WCOA21', 'E450.3B.WCOA21', 'E447.1B.WCOA21', 'E447.2B.WCOA21', 'E447.3B.WCOA21']
+        # dropped_samples = [samp for samp in dropped_samples if samp not in mifishmod_samps]
         
         return exp_run_df_filtered, dropped_samples
     
