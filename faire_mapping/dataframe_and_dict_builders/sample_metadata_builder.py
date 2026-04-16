@@ -16,10 +16,10 @@ class SampleMetadataBuilder(BaseDfBuilder):
     def __init__(self,
                  sample_name_metadata_col_name: str,
                  sample_metadata_file_neg_control_col_name: str,
-                 sample_metadata_cast_no_col_name: str,
                  extraction_df: pd.DataFrame,
                  header: int = 0, 
                  sep: str = ',',
+                 sample_metadata_cast_no_col_name: str = None,
                  csv_path: str = None,
                  google_sheet_id: str = None, 
                  json_creds_path: str = None,
@@ -112,8 +112,9 @@ class SampleMetadataBuilder(BaseDfBuilder):
             self._fix_samp_names)
 
         # Remove 'CTD' from Cast_No. value if present
-        self.df[self.sample_metadata_cast_no_col_name] = self.df[self.sample_metadata_cast_no_col_name].apply(
-            self.remove_extraneous_cast_no_chars)
+        if self.sample_metadata_cast_no_col_name:
+            self.df[self.sample_metadata_cast_no_col_name] = self.df[self.sample_metadata_cast_no_col_name].apply(
+                self.remove_extraneous_cast_no_chars)
         
         if self.desired_cruise_code:
             self.df = fix_cruise_code_in_samp_names(df=self.df, 
