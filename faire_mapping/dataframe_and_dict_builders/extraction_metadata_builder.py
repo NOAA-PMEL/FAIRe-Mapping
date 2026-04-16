@@ -183,12 +183,22 @@ class ExtractionMetadataBuilder:
         extract_method_additional_col is hard coded here. TODO: unhardcode if this may differ when being used.
         """
         cruise_key_mask = concated_extraction_df.apply(
-            lambda row: str(row[self.EXTRACT_CRUISE_KEY_COL]) in str(row[self.EXTRACT_SAMP_NAME_COL])
-            if pd.notna(row[self.EXTRACT_CRUISE_KEY_COL]) and pd.notna(row[self.EXTRACT_SAMP_NAME_COL])
-            else False,
-            axis = 1
+            lambda row: (
+                # Check for blank first (case-insensitive, handles whitespace)
+                ("blank" in str(row[self.EXTRACT_SAMP_NAME_COL]).lower().strip() 
+                 if pd.notna(row[self.EXTRACT_SAMP_NAME_COL]) else False)
+                or 
+                # Original cruise key logic (added strip for safety)
+                (str(row[self.EXTRACT_CRUISE_KEY_COL]).strip() in str(row[self.EXTRACT_SAMP_NAME_COL]).strip()
+                 if pd.notna(row[self.EXTRACT_CRUISE_KEY_COL]) and pd.notna(row[self.EXTRACT_SAMP_NAME_COL])
+                 else False)
+            ),
+            axis=1
         )
         
+        # Remove empty columns that will cause code to crash 
+        concated_extraction_df = concated_extraction_df.drop(columns=[col for col in concated_extraction_df.columns if col == ''])
+       
         # Then calculate average concentration
         extract_avg_df = concated_extraction_df[cruise_key_mask].groupby(
             self.EXTRACT_SAMP_NAME_COL).agg({
@@ -212,7 +222,7 @@ class ExtractionMetadataBuilder:
     
     def get_extraction_blanks_applicable_to_cruise_samps(self):
         """
-        Get extraction blank df (applicable to RC0083 cruise)
+        Get extraction blank df (applicable to RC0083 cruise). Should be applicable to 
         """
         self.extraction_blank_rel_cont_dict = {} # clear before buildilng - ran into caching issue from previous runs
         blank_df = pd.DataFrame(columns=self.extraction_df.columns)
@@ -230,6 +240,7 @@ class ExtractionMetadataBuilder:
                 ).any()
                 
                 if has_cruise_samps:
+
                     # find blank samples in this group ('Larson NC are extraction blanks for the SKQ23 cruise)
                     extraction_blank_samps = group_df[
                         (group_df[self.EXTRACT_SAMP_NAME_COL].str.contains('blank', case=False, na=False)) | 

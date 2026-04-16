@@ -142,16 +142,15 @@ jobs:
         fi
         
     - name: Comment on PR
-      if: always() && github.event_name == 'pull_request' && steps.changed-files.outputs.any_changed == 'true'
+      if: always() && github.event_name == 'pull_request' && steps.changed-files.outputs.any_change == 'true'
       uses: actions/github-script@v7
       env:
-        # Pass the output from the 'validation' step directly into the environment
-        VALIDATION_LOGS: ${{ steps.validation.outputs.SUMMARY }}
+        VALIDATION_SUMMARY: ${{ steps.validation.outputs.SUMMARY }}
       with:
         script: |
-          const summary = process.env.VALIDATION_SUMMARY;
+          const summary = process.env.VALIDATION_SUMMARY || 'No logs captured.';
           const outcome = '${{ steps.validation.outcome }}';
-          const success = '${{ steps.validation.outcome }}' === 'success';
+          const success = outcome === 'success';
           
           const emoji = success ? '✅' : '❌';
           const title = success ? 
@@ -163,7 +162,7 @@ jobs:
           **${title}**
           
           <details>
-          <summary>📋 Detailed Results</summary>
+          <summary>📋 Detailed Results (Click to expand)</summary>
           
           ${summary}
           
@@ -175,5 +174,3 @@ jobs:
             repo: context.repo.repo,
             body: body
           });
-      env:
-        VALIDATION_SUMMARY: ${{ steps.validation.outputs.SUMMARY }}
