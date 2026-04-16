@@ -42,25 +42,33 @@ class ExtractionMetadataBuilder:
     # Below Range standard value
     BELOW_RANGE_STD_VAL = "BDL"
 
-    def __init__(self, extractions_info: list, google_sheet_json_cred: str, sample_extract_mapping_builder: SampleExtractionMappingDictBuilder, unwanted_cruise_code: str = None, desired_cruise_code: str = None):
+    def __init__(self, extractions_info: list, 
+                 google_sheet_json_cred: str, 
+                 sample_extract_mapping_builder: SampleExtractionMappingDictBuilder = None, # Required unless update_mapping_dict is False
+                 unwanted_cruise_code: str = None, 
+                 desired_cruise_code: str = None,
+                 update_mapping_dict: bool = True):
         """
         extractions_info is the extraction is the list of dictionaries from the config.yaml file that outlines the extraction spreadsheet(s)
         google_sheet_json_cred is the path to the where the credentialss.json file lives for acessing google sheet programatically. Will be specified in the config.yaml file
         sample_extract_mapping_builder is an instance of the mapping_dict for the sample/extract metadata. This will need to get updated when column names in extractions are updated.
         unwanted_cruise_code is the cruise code in the sample names that is not desireable (see config.yaml files)
         desired_cruise_code is the desired cruise in the sample names (see config.yaml file)
-        google_sheet_mapping_file_id is the id of the google sheet mapping file
+        google_sheet_mapping_file_id is the id of the google sheet mapping file.
+        update_mapping_dict boolean is if this is needed. REally on True for the orphan samples where I was frankensteining code together and didn't need this part.
         """
         self.extractions_info = extractions_info
         self.google_sheet_json_cred = google_sheet_json_cred
-        self.sample_extract_mapping_builder = sample_extract_mapping_builder
         self.unwanted_cruise_code = unwanted_cruise_code
         self.desired_cruise_code = desired_cruise_code
         self.extract_new_old_col_mapping_dict = self.create_extract_old_new_col_master_mapping_dict() # Creates a dictionary with new extraction column names as keys and a set of old extraction column names as values
         self.extraction_df = self.create_finalized_extraction_df() # the standardized extraction_df that will be joined with the sample metadata df in other modules
         self.extraction_blank_rel_cont_dict = {} # Will get filled out in get_extraction_blanks_applicable_to_cruise_samps
         self.extraction_blanks_df = self.get_extraction_blanks_applicable_to_cruise_samps()
-        self.update_mapping_dictionary_col_names() # update sample_extract_mapping_builder dictionary with new extract column names
+        
+        if update_mapping_dict: # update_mapping_dict will always be False unless I am Frankensteingin code and don't need this (orphan samples)
+            self.sample_extract_mapping_builder = sample_extract_mapping_builder
+            self.update_mapping_dictionary_col_names() # update sample_extract_mapping_builder dictionary with new extract column names
 
     def create_finalized_extraction_df(self) -> pd.DataFrame:
         """
@@ -94,9 +102,10 @@ class ExtractionMetadataBuilder:
         for extraction in self.extractions_info:
 
             extraction_df = load_google_sheet_as_df(google_sheet_id=extraction[self.EXTRACT_METADATA_GOOGLE_SHEET_ID_KEY], sheet_name=extraction[self.EXTRACT_METADATA_SHEET_NAME_KEY], header=0, google_sheet_json_cred=self.google_sheet_json_cred)
-
+           
             # Update column names
             extraction_df = self.standardize_extraction_df_col_names(df=extraction_df)
+          
             if isinstance(extraction.get(self.EXTRACT_INFO_EXTRACTION_CRUISE_KEY), list):
                 extraction_df[self.EXTRACT_CRUISE_KEY_COL] = extraction_df[self.EXTRACT_SAMP_NAME_COL].apply(lambda x: self.find_matching_cruise_key(x, extraction))
             else:
@@ -107,7 +116,6 @@ class ExtractionMetadataBuilder:
             extraction_df[self.EXTRACT_ID_COL] = extraction_df[self.EXTRACT_NAME_COL].astype(str).replace(r'\s+', '_', regex=True) + "_" + extraction_df[self.EXTRACT_SET_COL].astype(str).replace(r'\s+', '_', regex=True)
             extraction_dfs.append(extraction_df)
 
-        # Concat dataframes
         final_extraction_df = pd.concat(extraction_dfs)
         
         return final_extraction_df
@@ -175,12 +183,22 @@ class ExtractionMetadataBuilder:
         extract_method_additional_col is hard coded here. TODO: unhardcode if this may differ when being used.
         """
         cruise_key_mask = concated_extraction_df.apply(
-            lambda row: str(row[self.EXTRACT_CRUISE_KEY_COL]) in str(row[self.EXTRACT_SAMP_NAME_COL])
-            if pd.notna(row[self.EXTRACT_CRUISE_KEY_COL]) and pd.notna(row[self.EXTRACT_SAMP_NAME_COL])
-            else False,
-            axis = 1
+            lambda row: (
+                # Check for blank first (case-insensitive, handles whitespace)
+                ("blank" in str(row[self.EXTRACT_SAMP_NAME_COL]).lower().strip() 
+                 if pd.notna(row[self.EXTRACT_SAMP_NAME_COL]) else False)
+                or 
+                # Original cruise key logic (added strip for safety)
+                (str(row[self.EXTRACT_CRUISE_KEY_COL]).strip() in str(row[self.EXTRACT_SAMP_NAME_COL]).strip()
+                 if pd.notna(row[self.EXTRACT_CRUISE_KEY_COL]) and pd.notna(row[self.EXTRACT_SAMP_NAME_COL])
+                 else False)
+            ),
+            axis=1
         )
         
+        # Remove empty columns that will cause code to crash 
+        concated_extraction_df = concated_extraction_df.drop(columns=[col for col in concated_extraction_df.columns if col == ''])
+       
         # Then calculate average concentration
         extract_avg_df = concated_extraction_df[cruise_key_mask].groupby(
             self.EXTRACT_SAMP_NAME_COL).agg({
@@ -204,7 +222,7 @@ class ExtractionMetadataBuilder:
     
     def get_extraction_blanks_applicable_to_cruise_samps(self):
         """
-        Get extraction blank df (applicable to RC0083 cruise)
+        Get extraction blank df (applicable to RC0083 cruise). Should be applicable to 
         """
         self.extraction_blank_rel_cont_dict = {} # clear before buildilng - ran into caching issue from previous runs
         blank_df = pd.DataFrame(columns=self.extraction_df.columns)
@@ -222,6 +240,7 @@ class ExtractionMetadataBuilder:
                 ).any()
                 
                 if has_cruise_samps:
+
                     # find blank samples in this group ('Larson NC are extraction blanks for the SKQ23 cruise)
                     extraction_blank_samps = group_df[
                         (group_df[self.EXTRACT_SAMP_NAME_COL].str.contains('blank', case=False, na=False)) | 

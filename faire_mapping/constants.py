@@ -73,8 +73,8 @@ marker_to_assay_mapping = {
     'COI': 'COI_1835-2198_lerayfolmer',
     '18S Machida': ['ssu18sv8_machida', 'ssu18sv8_machida_OSUmod'],
     'Machida18S': ['ssu18sv8_machida', 'ssu18sv8_machida_OSUmod'],
-    'MiFish 12S': 'ssu12sv5v6_mifish_u_sales',
-    'MiFish': 'ssu12sv5v6_mifish_u_sales',
+    'MiFish 12S': ['ssu12sv5v6_mifish_u_sales', 'ssu12sv5v6_mifish_u_sales_2xRSA'],
+    'MiFish': ['ssu12sv5v6_mifish_u_sales', 'ssu12sv5v6_mifish_u_sales_2xRSA'],
     '16S Furhman': ['ssu16sv4v5_parada', 'ssu16sv4v5_parada_OSUmod'],
     '16S Fuhrman': ['ssu16sv4v5_parada', 'ssu16sv4v5_parada_OSUmod'],
     '16S Furhman/Parada': ['ssu16sv4v5_parada', 'ssu16sv4v5_parada_OSUmod'],
@@ -293,5 +293,13 @@ update_cruise_codes = {
     '.SKQ2021': '.SKQ21-15S',
     '.DY20': '.DY20-12',
     '.DY2012': '.DY20-12',
-    '.SKQ21': '.SKQ21-15S'   
+    '.SKQ21': '.SKQ21-15S',
+    '.Chaba22': '.TN409',
+    '.L018': '.LO18',
+    '.OC0922': '.TH042-PPS-0822',
+    '.OC1021': '.TH042-PPS-0821',
+    '.OC1021_ce': '.CE042-PPS-0821', # The ce will get removed in code, since technically this should be .OC2021, but will be duplicate
+    '.OC0722': '.TH042-PPS-0622',
+    '.OC0723': '.TH042-PPS-0623', 
+    
 }

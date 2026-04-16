@@ -286,8 +286,8 @@ class OmeFaireMapper:
         cols_to_convert = list(set(cols_to_convert))
 
         for col in cols_to_convert:
-            if col in df.columns: # Bucket and Underway exception needed to be added for WCOA
-               df[col] = df[col].apply(lambda x: x if pd.isna(x) or x in self.faire_missing_values or (isinstance(x, str) and any(word in x for word in ['Bucket', 'Underway'])) else int(float(x)))
+            if col in df.columns: # Bucket and Underway exception needed to be added for WCOA, F12, F10, F15 exception for orphan sample
+               df[col] = df[col].apply(lambda x: x if pd.isna(x) or x in self.faire_missing_values or (isinstance(x, str) and any(word in x for word in ['Bucket', 'Underway', 'F12', 'F10', 'F15', 'RC56-V02', 'RC50-V1', 'RC50-V2', 'RC50-V3', 'RC50-V4'])) else int(float(x)))
 
         return df
     

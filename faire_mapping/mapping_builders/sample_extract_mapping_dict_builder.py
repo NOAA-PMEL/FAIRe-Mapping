@@ -17,13 +17,16 @@ class SampleExtractionMappingDictBuilder(BaseMappingBuilder):
 
     def create_sample_mapping_dict(self) -> dict:
         # creates a mapping dictionary and saves as self.mapping_dict
+        # extraction_sheet_separate used for orphan data where Sean made the mapping for extractions part of the same sheet.
+        # Is usually separate for other mappings.
 
         # First concat sample_mapping_df with extractions_mapping_df
         sample_mapping_df = load_google_sheet_as_df(
             google_sheet_id=self.google_sheet_mapping_file_id, sheet_name=self.SAMPLE_MAPPING_SHEET_NAME, header=0, google_sheet_json_cred=self.google_sheet_json_cred)
+        
         extractions_mapping_df = load_google_sheet_as_df(
             google_sheet_id=self.google_sheet_mapping_file_id, sheet_name=self.EXTRACT_MAPPING_SHEET_NAME, header=1, google_sheet_json_cred=self.google_sheet_json_cred)
- 
+        
         mapping_df = pd.concat([sample_mapping_df, extractions_mapping_df])
 
         # Group by the mapping type

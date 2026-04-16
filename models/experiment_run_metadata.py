@@ -12,7 +12,7 @@ class ExperimentRunMetadata(BaseModel):
     assay_name: Literal['ssu18sv9_amaralzettler', 'dloopv1.5v4_baker', 'lsu16s_2434-2571_kelly', 
                         'COI_1835-2198_lerayfolmer', 'ssu18sv8_machida', 'ssu18sv8_machida_OSUmod', 
                         'ssu16sv4v5_parada', 'ssu16sv4v5_parada_OSUmod', 'ssu18sv4_stoeck', 
-                        'ITS1_sterling', 'ssu12sv5v6_mifish_u_sales']
+                        'ITS1_sterling', 'ssu12sv5v6_mifish_u_sales', 'ssu12sv5v6_mifish_u_sales_2xRSA']
     pcr_plate_id: str
     lib_id: str
     seq_run_id: str
@@ -46,7 +46,7 @@ class ExperimentRunMetadata(BaseModel):
     def valdate_input_read_count_is_bigger_than_output_read_count(self):
         # Checks ito make sure that input_read_count is bigger than output_read_count
         if self.input_read_count < self.output_read_count:
-            raise ValueError(f"Sample: {self.samp_name} has an input_read_count of {self.input_read_count} which is less than the output_read_count of {self.output_read_count}")
+            raise ValueError(f"Sample: {self.samp_name} for {self.assay_name} has an input_read_count of {self.input_read_count} which is less than the output_read_count of {self.output_read_count}")
         return self
     
     @model_validator(mode='after')

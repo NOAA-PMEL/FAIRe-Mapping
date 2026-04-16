@@ -167,9 +167,12 @@ class TransformationPipeline:
         if 'related' in mapping_dict:
             related_columns = set(mapping_dict['related'].keys())
             unprocessed_related = related_columns - processed_columns
-        if unprocessed_related:
-            for col in unprocessed_related:
-                logger.warning(f"No rules matched for: {col}")
+        try:
+            if unprocessed_related:
+                for col in unprocessed_related:
+                    logger.warning(f"No rules matched for: {col}")
+        except:
+            pass
 
         logger.info(f"Pipeline exectuion complete. {len(self.results)} columns transformed.")
         return self.results
