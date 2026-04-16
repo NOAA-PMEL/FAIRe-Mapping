@@ -72,7 +72,7 @@ pooled_samps:
   - pooled_samp_name: BlankAlaskaSet_NC_pool
     samps_that_were_pooled:
     - Blank.Alaska.Set7
-    - BlankAlaska.Set9
+    - Blank.Alaska.Set9
     - Blank.Alaska.Set11
     sample_category: negative control
     cont_type: extraction negative

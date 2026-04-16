@@ -385,7 +385,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
             elif 'mifish' in marker.lower():
                 # Identify if this is a "Special" case that needs 2xRSA
                 is_run1 = self.run_name == 'run1'
-                is_special_run2 = self.run_name == 'run2' and any(x in sample_name for x in ['E450', 'E447', '.mifishmod'])
+                is_special_run2 = self.run_name == 'run2' and sample_name in ['E450.1B.WCOA21', 'E450.2B.WCOA21', 'E450.3B.WCOA21', 'E447.1B.WCOA21', 'E447.2B.WCOA21', 'E447.3B.WCOA21']
 
                 for assay in potential_assays:
                     if is_run1 or is_special_run2:

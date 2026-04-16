@@ -582,6 +582,10 @@ class ProjectMapper(OmeFaireMapper):
 
         # Get dropped samples
         dropped_samples = exp_run_df.loc[~mask, self.faire_sample_name_col].unique()
+
+        # Remove mifish mod samples from dropped samples (they are just PCR1 reps)
+        mifishmod_samps = ['E450.1B.WCOA21', 'E450.2B.WCOA21', 'E450.3B.WCOA21', 'E447.1B.WCOA21', 'E447.2B.WCOA21', 'E447.3B.WCOA21']
+        dropped_samples = [samp for samp in dropped_samples if samp not in mifishmod_samps]
         
         return exp_run_df_filtered, dropped_samples
     
