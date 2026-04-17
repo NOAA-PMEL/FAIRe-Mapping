@@ -53,7 +53,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                                              "pos_cont_type": "not applicable: sample group"}
     gebco_file = "/home/poseidon/zalmanek/FAIRe-Mapping/faire_mapping/GEBCO_2024.nc"
 
-    def __init__(self, config_yaml: yaml, additiona_rules:list = None, ome_auto_setup=True):
+    def __init__(self, config_yaml: yaml, additional_rules:list = None, ome_auto_setup=True):
         # TODO: used to have exp_metadata_df: pd.Series as init, but removed because of abstracting out sequencing yaml. See all associated commented out portions
         # May need to move this part into a separate class that combines after all sample_metadata is generated for each cruise
         super().__init__(config_yaml)
@@ -61,7 +61,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # LoOCAL IMPORT: prevents circular dependence
         from faire_mapping.transformers.sample_metadata_transformer import SampleMetadataTransformer
 
-        self.additional_rules = additiona_rules # list of SampleMetadataTransformer rules
+        self.additional_rules = additional_rules # list of SampleMetadataTransformer rules
         self.ome_auto_setup = ome_auto_setup # bool
 
         # Config file stuff
