@@ -106,9 +106,16 @@ class SampleMetadataBuilder(BaseDfBuilder):
 
         return metadata_df
 
-    def join_crazy_wcoa21net_tow_samp_extract_df(self, samp_df):
+    def join_crazy_wcoa21net_tow_samp_extract_df(self, samp_df, force_pe_lookup=None):
         """Joins the crazy sample naming changes for WCOA net tow"""
 
+        def build_canonical_samp_name(row):
+            if row['family'] == 'PE':
+                # P126.E.WCOA21 -? P126.E.PE.WCOA21
+                pattern = pe_pattern_lookup.get(row['p_num'], 'PE')
+                return re.sub(r'(\.WCOA21)', f'{pattern}\\1', row[self.sample_name_metadata_col_name], flags=re.IGNORECASE)
+            return row[self.sample_name_metadata_col_name]
+        
         def classify_and_normalize(sample_name): 
             """
             Returns a dict with:
@@ -119,10 +126,18 @@ class SampleMetadataBuilder(BaseDfBuilder):
             """
             s = str(sample_name).strip()
             is_pe = bool(re.search(r'\.PE', s, re.IGNORECASE))
+            
             p_match = re.match(r'(P\d+)', s, re.IGNORECASE)
-            ab_match = re.match(r'P\d+([AB])(?:\.|$)', s, re.IGNORECASE)
-
             p_num = p_match.group(1).upper() if p_match else None
+            
+            # Capture the PE pattern: E.PE or just .PE
+            e_pe_match = re.search(r'(\.E\.PE|\.PE)', s, re.IGNORECASE)
+            pe_pattern = e_pe_match.group(1).upper() if e_pe_match else None
+
+            if force_pe_lookup is not None:
+                is_pe = p_num in force_pe_lookup
+            
+            ab_match = re.match(r'P\d+([AB])(?:\.|$)', s, re.IGNORECASE)
             ab_suffix = ab_match.group(1).upper() if ab_match else None
 
             # Handel P184.a.PE / P184.b.PE - the a/b here is mid-string
@@ -137,7 +152,8 @@ class SampleMetadataBuilder(BaseDfBuilder):
                 'p_num': p_num,
                 'family': family,
                 'ab_suffix': ab_suffix,
-                'canonical_key': canonical_key
+                'canonical_key': canonical_key,
+                'pe_pattern': pe_pattern
                 }
         
         # --------- Normalize extraction df ------------
@@ -145,19 +161,28 @@ class SampleMetadataBuilder(BaseDfBuilder):
         self.extraction_df = pd.concat([self.extraction_df, extraction_meta], axis=1)
         # Filter out B suffix rows because we are only matching A rows
         self.extraction_df = self.extraction_df[self.extraction_df['ab_suffix'] != 'B'].copy()
+        # Drop sample name column from extraction df before merging
+        self.extraction_df = self.extraction_df.drop(columns=[self.EXTRACT_SAMP_NAME_COL])
+
+        # Build lookups from extraction_df now that its classified
+        pe_pe_numbers = set(self.extraction_df[self.extraction_df['family'] == 'PE']['p_num'])
+        pe_pattern_lookup = (
+            self.extraction_df[self.extraction_df['family'] == 'PE'].groupby('p_num')['pe_pattern'].first().to_dict()
+        )
 
 
         # -------- Normalize sample df -------------
-        samp_meta = samp_df[self.sample_name_metadata_col_name].apply(classify_and_normalize).apply(pd.Series)
+        samp_meta = samp_df[self.sample_name_metadata_col_name].apply(
+            lambda x: classify_and_normalize(x, force_pe_lookup=pe_pe_numbers)).apply(pd.Series)
         samp_df = pd.concat([samp_df, samp_meta], axis=1)
+        samp_df[self.sample_name_metadata_col_name] = samp_df.apply(build_canonical_samp_name, axis=1)
 
         # -------- Merge on Canonical P number ---------
         metadata_df = self.extraction_df.merge(
             samp_df, 
             on='canonical_key', 
-            how='right' # same number of 
+            how='right', # same number of 
             )
-        metadata_df[self.sample_name_metadata_col_name] = metadata_df[self.sample_name_metadata_col_name]
 
         return metadata_df
     
