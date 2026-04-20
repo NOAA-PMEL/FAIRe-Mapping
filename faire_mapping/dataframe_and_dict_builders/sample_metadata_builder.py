@@ -165,8 +165,9 @@ class SampleMetadataBuilder(BaseDfBuilder):
         def build_canonical_samp_name(row):
             if row['family'] == 'PE':
                 # P126.E.WCOA21 -? P126.E.PE.WCOA21
-                pattern = pe_pattern_lookup.get(row['p_num'], 'PE')
-                return re.sub(r'(\.WCOA21)', f'{pattern}\\1', row[self.sample_name_metadata_col_name], flags=re.IGNORECASE)
+                pattern = pe_pattern_lookup.get(row['p_num'], '.PE')
+                name = re.sub(r'\.E(\.WCOA21)', r'\1', row[self.sample_name_metadata_col_name], flags=re.IGNORECASE)
+                return re.sub(r'(\.WCOA21)', f'{pattern}\\1', name, flags=re.IGNORECASE)
             return row[self.sample_name_metadata_col_name]
 
     
@@ -180,7 +181,7 @@ class SampleMetadataBuilder(BaseDfBuilder):
         metadata_df = self.extraction_df.merge(
             samp_df, 
             on='canonical_key', 
-            how='right', # same number of 
+            how='left', # same number of 
             )
 
         return metadata_df
