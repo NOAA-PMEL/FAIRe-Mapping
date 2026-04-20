@@ -106,17 +106,10 @@ class SampleMetadataBuilder(BaseDfBuilder):
 
         return metadata_df
 
-    def join_crazy_wcoa21net_tow_samp_extract_df(self, samp_df, force_pe_lookup=None):
+    def join_crazy_wcoa21net_tow_samp_extract_df(self, samp_df):
         """Joins the crazy sample naming changes for WCOA net tow"""
-
-        def build_canonical_samp_name(row):
-            if row['family'] == 'PE':
-                # P126.E.WCOA21 -? P126.E.PE.WCOA21
-                pattern = pe_pattern_lookup.get(row['p_num'], 'PE')
-                return re.sub(r'(\.WCOA21)', f'{pattern}\\1', row[self.sample_name_metadata_col_name], flags=re.IGNORECASE)
-            return row[self.sample_name_metadata_col_name]
         
-        def classify_and_normalize(sample_name): 
+        def classify_and_normalize(sample_name, force_pe_lookup=None): 
             """
             Returns a dict with:
             - p_num: e.g. P188
@@ -169,8 +162,14 @@ class SampleMetadataBuilder(BaseDfBuilder):
         pe_pattern_lookup = (
             self.extraction_df[self.extraction_df['family'] == 'PE'].groupby('p_num')['pe_pattern'].first().to_dict()
         )
+        def build_canonical_samp_name(row):
+            if row['family'] == 'PE':
+                # P126.E.WCOA21 -? P126.E.PE.WCOA21
+                pattern = pe_pattern_lookup.get(row['p_num'], 'PE')
+                return re.sub(r'(\.WCOA21)', f'{pattern}\\1', row[self.sample_name_metadata_col_name], flags=re.IGNORECASE)
+            return row[self.sample_name_metadata_col_name]
 
-
+    
         # -------- Normalize sample df -------------
         samp_meta = samp_df[self.sample_name_metadata_col_name].apply(
             lambda x: classify_and_normalize(x, force_pe_lookup=pe_pe_numbers)).apply(pd.Series)
