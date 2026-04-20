@@ -1,6 +1,4 @@
-from faire_mapping.faire_mapper import OmeFaireMapper
-from faire_mapping.mapping_builders.sample_extract_mapping_dict_builder import SampleExtractionMappingDictBuilder
-from faire_mapping.dataframe_and_dict_builders.base_df_builder import BaseDfBuilder
+from faire_mapping.sample_metadata_mapper import FaireSampleMetadataMapper
 
 def main() -> None:
 
@@ -29,9 +27,10 @@ def main() -> None:
     #     get_date_ext_iso8601_rule,
     # ]
 
-    sample_mapper = FaireSampleMetadataMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2306/config.yaml',
-                                              additiona_rules=additional_rules,
-                                              ome_auto_setup=True)
+    sample_mapper = FaireSampleMetadataMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/projects/WCOA/wcoa21_net_tow/config.yaml',
+                                            #   additiona_rules=additional_rules,
+                                              ome_auto_setup=False,
+                                              net_tow_weirdness=True)
 
     sample_mapper.sample_metadata_df_builder.sample_metadata_df = fix_stations(df=sample_mapper.sample_metadata_df_builder.sample_metadata_df)
 

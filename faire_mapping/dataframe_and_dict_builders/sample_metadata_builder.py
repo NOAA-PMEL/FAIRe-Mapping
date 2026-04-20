@@ -1,4 +1,5 @@
 import pandas as pd
+import re
 from faire_mapping.dataframe_and_dict_builders.base_df_builder import BaseDfBuilder
 from faire_mapping.utils import fix_cruise_code_in_samp_names
 
@@ -19,6 +20,7 @@ class SampleMetadataBuilder(BaseDfBuilder):
                  extraction_df: pd.DataFrame,
                  header: int = 0, 
                  sep: str = ',',
+                 net_tow_weirness: str = False,
                  sample_metadata_cast_no_col_name: str = None,
                  csv_path: str = None,
                  google_sheet_id: str = None, 
@@ -44,6 +46,7 @@ class SampleMetadataBuilder(BaseDfBuilder):
         self.unwanted_cruise_code = unwanted_cruise_code
         self.desired_cruise_code = desired_cruise_code
         self.extraction_df = extraction_df
+        self.net_tow_weirness = net_tow_weirness
         self.sample_metadata_df, self.nc_metadata_df = self.filter_metadata_dfs()
         self.replicates_dict = self.create_biological_replicates_dict()
         
@@ -79,13 +82,17 @@ class SampleMetadataBuilder(BaseDfBuilder):
         """
         samp_df = self.transform_metadata_df()
 
-        metadata_df = pd.merge(
-            left=self.extraction_df,
-            right=samp_df,
-            left_on=self.EXTRACT_SAMP_NAME_COL,
-            right_on=self.sample_name_metadata_col_name,
-            how='left'
-        )
+        # For WCOA21 net tow samples with all kinds of crazy sample name changess
+        if self.net_tow_weirness:
+            metadata_df = self.join_crazy_wcoa21net_tow_samp_extract_df(samp_df=samp_df)
+        else:
+            metadata_df = pd.merge(
+                left=self.extraction_df,
+                right=samp_df,
+                left_on=self.EXTRACT_SAMP_NAME_COL,
+                right_on=self.sample_name_metadata_col_name,
+                how='left'
+            )
 
         # Drop rows where the sample name column value is NA. This is for cruises where samples were split up
         # e.g. PPS samples that were deployed from the DY2306 cruise. They will be a separate sample metadata file.
@@ -94,6 +101,63 @@ class SampleMetadataBuilder(BaseDfBuilder):
 
         if metadata_df.empty:
             raise ValueError(f"Something went wrong in sample df join with extraction df - most likely cruise code or sample naming issues!")
+        
+        metadata_df.to_csv('/home/poseidon/zalmanek/FAIRe-Mapping/projects/WCOA/wcoa21_net_tow.joined_data.csv', index=False)
+
+        return metadata_df
+
+    def join_crazy_wcoa21net_tow_samp_extract_df(self, samp_df):
+        """Joins the crazy sample naming changes for WCOA net tow"""
+
+        def classify_and_normalize(sample_name): 
+            """
+            Returns a dict with:
+            - p_num: e.g. P188
+            - family: 'PE' or 'standard'
+            - ab_suiffix: 'A' or 'B'
+            - canonical_key: the key to merge on (p_num + family)
+            """
+            s = str(sample_name).strip()
+            is_pe = bool(re.search(r'\.PE', s, re.IGNORECASE))
+            p_match = re.match(r'(P\d+)', s, re.IGNORECASE)
+            ab_match = re.match(r'P\d+([AB])(?:\.|$)', s, re.IGNORECASE)
+
+            p_num = p_match.group(1).upper() if p_match else None
+            ab_suffix = ab_match.group(1).upper() if ab_match else None
+
+            # Handel P184.a.PE / P184.b.PE - the a/b here is mid-string
+            mid_ab_match = re.search(r'\.(A|B)\.', s, re.IGNORECASE)
+            if mid_ab_match:
+                ab_suffix = mid_ab_match.group(1).upper()
+
+            family = 'PE' if is_pe else 'standard'
+            canonical_key = f"{p_num}_{family}" if p_num else None
+
+            return {
+                'p_num': p_num,
+                'family': family,
+                'ab_suffix': ab_suffix,
+                'canonical_key': canonical_key
+                }
+        
+        # --------- Normalize extraction df ------------
+        extraction_meta = self.extraction_df[self.EXTRACT_SAMP_NAME_COL].apply(classify_and_normalize).apply(pd.Series)
+        self.extraction_df = pd.concat([self.extraction_df, extraction_meta], axis=1)
+        # Filter out B suffix rows because we are only matching A rows
+        self.extraction_df = self.extraction_df[self.extraction_df['ab_suffix'] != 'B'].copy()
+
+
+        # -------- Normalize sample df -------------
+        samp_meta = samp_df[self.sample_name_metadata_col_name].apply(classify_and_normalize).apply(pd.Series)
+        samp_df = pd.concat([samp_df, samp_meta], axis=1)
+
+        # -------- Merge on Canonical P number ---------
+        metadata_df = self.extraction_df.merge(
+            samp_df, 
+            on='canonical_key', 
+            how='right' # same number of 
+            )
+        metadata_df[self.sample_name_metadata_col_name] = metadata_df[self.sample_name_metadata_col_name]
 
         return metadata_df
     

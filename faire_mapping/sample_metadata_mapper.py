@@ -53,9 +53,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                                              "pos_cont_type": "not applicable: sample group"}
     gebco_file = "/home/poseidon/zalmanek/FAIRe-Mapping/faire_mapping/GEBCO_2024.nc"
 
-    def __init__(self, config_yaml: yaml, additional_rules:list = None, ome_auto_setup=True):
+    def __init__(self, config_yaml: yaml, additional_rules:list = None, ome_auto_setup=True, net_tow_weirdness=False):
         # TODO: used to have exp_metadata_df: pd.Series as init, but removed because of abstracting out sequencing yaml. See all associated commented out portions
         # May need to move this part into a separate class that combines after all sample_metadata is generated for each cruise
+        # net_tow_weirdness is False and was only used for wCOA21 net tow. Suspect will never use again. Used to specify how to join sample and extraction metadata
         super().__init__(config_yaml)
 
         # LoOCAL IMPORT: prevents circular dependence
@@ -113,7 +114,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                                                                   extraction_df=self.extraction_metadata_builder.extraction_df,
                                                                   csv_path=self.config_file['sample_metadata_file'],
                                                                   unwanted_cruise_code=self.unwanted_cruise_code,
-                                                                  desired_cruise_code=self.desired_cruise_code)
+                                                                  desired_cruise_code=self.desired_cruise_code,
+                                                                  net_tow_weirness=net_tow_weirdness)
         
         # Set up Transformation stuff and rules
         self.transformer = SampleMetadataTransformer(
