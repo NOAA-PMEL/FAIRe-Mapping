@@ -175,14 +175,19 @@ class SampleMetadataBuilder(BaseDfBuilder):
         samp_meta = samp_df[self.sample_name_metadata_col_name].apply(
             lambda x: classify_and_normalize(x, force_pe_lookup=pe_pe_numbers)).apply(pd.Series)
         samp_df = pd.concat([samp_df, samp_meta], axis=1)
-        samp_df[self.sample_name_metadata_col_name] = samp_df.apply(build_canonical_samp_name, axis=1)
+        # samp_df[self.sample_name_metadata_col_name] = samp_df.apply(build_canonical_samp_name, axis=1)
+        samp_df = samp_df.drop(columns=['canonical_key', 'family', 'ab_suffix', 'pe_pattern'])
 
         # -------- Merge on Canonical P number ---------
         metadata_df = self.extraction_df.merge(
             samp_df, 
-            on='canonical_key', 
-            how='left', # same number of 
+            on='p_num', 
+            how='left', 
             )
+        
+        # Rename PE sample names post merge
+        metadata_df[self.sample_name_metadata_col_name] = metadata_df.apply(build_canonical_samp_name, axis=1)
+        metadata_df = metadata_df.drop(columns=['p_num', 'canonical_key', 'family', 'ab_suffix', 'pe_pattern'])
 
         return metadata_df
     
