@@ -446,6 +446,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             return env_local_scale
         except UnboundLocalError:
             return ''
+        except ValueError:
+            print(ValueError)
+            return ''
+            
 
     def format_dates_for_duration_calculation(self, date: str) -> datetime:
         if date in  [None, 'nan', 'missing: not collected', '', 'missing: not provided']:
