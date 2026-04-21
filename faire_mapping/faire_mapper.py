@@ -192,7 +192,19 @@ class OmeFaireMapper:
         else:
             return "not applicable"
             
-                  
+    def create_pipe_list_of_multiple_column_values(self, metadata_row: pd.Series, metadata_cols: str) -> str:
+        """ 
+        Will convert a list of metadata col values to a pipe separated list. E.g.
+        latitude 1 | latitude 2 | latitude 3. Used in WCOA21 net tow
+        """
+        metadata_col_parts = metadata_cols.split(' | ')
+        value_list = []
+        for col in metadata_col_parts:
+            value = metadata_row[col.strip()]
+            value_list.append(str(value))
+
+        return " | ".join(value_list)
+
     def convert_date_to_iso8601(self, date: str) -> datetime:
         # converts strings from 2021/11/08 00:00:00 to iso8601 format  to 2021-11-08T00:00:00Z
         # also converts strings from 5/1/2024 to 2024-01-05T00:00:00Z

@@ -36,6 +36,7 @@ from .miscellaneous_rules import(
     get_max_depth_with_pressure_fallback,
     get_condition_constant_rule,
     switch_sign_of_lat_or_lon_deg,
+    get_pipe_separated_list_of_multiple_values
 )
 
 from .station_rules import(
@@ -105,5 +106,6 @@ __all__ = [
     'get_well_position_from_well_field',
     'get_samp_store_dur_from_samp_name',
     'get_date_ext_iso8601_rule',
-    'get_decimalLatitude_Longitude_from_degree_decimal_seconds'
+    'get_decimalLatitude_Longitude_from_degree_decimal_seconds',
+    'get_pipe_separated_list_of_multiple_values'
 ]

@@ -300,6 +300,41 @@ def switch_sign_of_lat_or_lon_deg(mapper: FaireSampleMetadataMapper):
             .for_mapping_type('related')
             .update_source(True)
             .build()
-        )                 
+        )    
+
+def get_pipe_separated_list_of_multiple_values(mapper: FaireSampleMetadataMapper, faire_field_name: str):
+    """
+    Rule for returning a pipe separated string list of the values of multiple columns
+    Expects metadata_col to be something like col1_name | col2_name | col3_name.
+    Can be as many columns as needed. Will return 'col1_value | col2_value | col3_value'
+    """
+    def apply_pipe_list_of_col_values(df, faire_col, metadata_col):
+        """
+        Apply the pipe separated string list of various columns using the mapper's create_pipe_list_of_multiple_column_values method.
+        """
+        # Apply the calculation to each row
+        # Apply the calculation to each row
+        return df.apply(
+            lambda row: mapper.create_pipe_list_of_multiple_column_values(
+                metadata_row=row,
+                metadata_cols=metadata_col
+            ),
+            axis=1
+        )
+    
+    return (
+            TransformationBuilder('pipe_separated_list_col_values')
+            .when(lambda f, m, mt: (
+                f == faire_field_name and
+                mt == 'related'
+            ))
+            .apply(
+                apply_pipe_list_of_col_values,
+                mode='direct'
+            )
+            .for_mapping_type('related')
+            .build()
+        )
+
 
 
