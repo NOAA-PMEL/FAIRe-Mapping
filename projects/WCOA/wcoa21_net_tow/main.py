@@ -6,7 +6,8 @@ from faire_mapping.transformers.rules import (get_exact_mappings_rule,
                                               get_decimalLatitude_Longitude_from_degree_decimal_seconds,
                                               get_pipe_separated_list_of_multiple_values,
                                               get_geo_loc_name_by_lat_lon_rule,
-                                              get_iso8601_date_from_date_col_and_time_col_separately
+                                              get_iso8601_date_from_date_col_and_time_col_separately,
+                                              get_date_duration_rule
                                               )
 from functools import partial
 
@@ -21,7 +22,9 @@ def main() -> None:
         partial(get_pipe_separated_list_of_multiple_values, faire_field_name='verbatimLongitude'),
         partial(get_pipe_separated_list_of_multiple_values, faire_field_name='verbatimLatitude'),
         # get_geo_loc_name_by_lat_lon_rule,
-        get_iso8601_date_from_date_col_and_time_col_separately
+        get_iso8601_date_from_date_col_and_time_col_separately,
+        get_date_duration_rule,
+        partial(get_pipe_separated_list_of_multiple_values, faire_field_name='verbatimEventTime'),
     ]
     #     get_material_samp_id_by_cruisecode_cast_btlnum,
     #     partial(get_fallback_col_mapping_rule, faire_field_name='decimalLongitude'),

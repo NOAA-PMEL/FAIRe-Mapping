@@ -65,6 +65,7 @@ def get_date_duration_rule(mapper: FaireSampleMetadataMapper):
         Apply duration calculation using the mapper's calculate_date_duration method
         """
         date_cols = [col.strip() for col in metadata_col.split('|')]
+        print(f"date_cols are: {date_cols}")
 
         if len(date_cols) != 2:
             logger.error(f"Expected 2 date columns separated by '|' for duration calculation, got: {metadata_col}")
