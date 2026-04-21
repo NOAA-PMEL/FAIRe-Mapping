@@ -70,6 +70,10 @@ class ExtractionMetadataBuilder:
             self.sample_extract_mapping_builder = sample_extract_mapping_builder
             self.update_mapping_dictionary_col_names() # update sample_extract_mapping_builder dictionary with new extract column names
 
+        print("")
+        print(self.extraction_blank_rel_cont_dict)
+        print("")
+
     def create_finalized_extraction_df(self) -> pd.DataFrame:
         """
         An orchestrator method of the various methods to create the final extraction df that will

@@ -29,7 +29,7 @@ def main() -> None:
 
     sample_mapper = FaireSampleMetadataMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/projects/WCOA/wcoa21_net_tow/config.yaml',
                                             #   additiona_rules=additional_rules,
-                                              ome_auto_setup=False,
+                                              ome_auto_setup=True,
                                               net_tow_weirdness=True)
 
 

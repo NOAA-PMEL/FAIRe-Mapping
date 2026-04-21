@@ -54,6 +54,7 @@ class SampleMetadataBuilder(BaseDfBuilder):
 
         # Join sample metadata with extraction metadata to get samp_df
         samp_df = self.join_sample_and_extract_df()
+        samp_df.columns = samp_df.columns.str.strip()
 
         try:
             nc_mask = samp_df[self.sample_name_metadata_col_name].astype(
@@ -152,7 +153,7 @@ class SampleMetadataBuilder(BaseDfBuilder):
         self.extraction_df = pd.concat([self.extraction_df, extraction_meta], axis=1)
         # Filter out B suffix rows because we are only matching A rows
         self.extraction_df = self.extraction_df[self.extraction_df['ab_suffix'] != 'B'].copy()
-        # Drop sample name column from extraction df before merging
+        # # Drop sample name column from extraction df before merging
         self.extraction_df = self.extraction_df.drop(columns=[self.EXTRACT_SAMP_NAME_COL])
 
         # Build lookups from extraction_df now that its classified
@@ -190,6 +191,7 @@ class SampleMetadataBuilder(BaseDfBuilder):
         metadata_df[self.sample_name_metadata_col_name] = metadata_df.apply(build_canonical_samp_name, axis=1)
         metadata_df = metadata_df.drop(columns=['p_num', 'canonical_key', 'family', 'ab_suffix', 'pe_pattern'])
 
+        metadata_df[self.EXTRACT_SAMP_NAME_COL] = metadata_df[self.sample_name_metadata_col_name]
         return metadata_df
     
     def transform_metadata_df(self):

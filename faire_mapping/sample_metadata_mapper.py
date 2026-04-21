@@ -9,6 +9,7 @@ import numpy as np
 import xarray as xr
 import geopandas as gpd
 import gsw
+import re
 from shapely.geometry import Point
 # from geopy.distance import geodesic
 # from bs4 import BeautifulSoup
@@ -92,7 +93,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         
         #Instantiate mapping dict builder
         self.sample_extract_mapping_builder = SampleExtractionMappingDictBuilder(google_sheet_mapping_file_id=self.google_sheet_mapping_file_id, google_sheet_json_cred=self.google_json_creds)
-
+  
         self.nc_mapping_builder = NcMappingDictBuilder(google_sheet_mapping_file_id=self.google_sheet_mapping_file_id,
                                                   google_sheet_json_cred=self.google_json_creds,
                                                   sample_mapping_builder=self.sample_extract_mapping_builder,
@@ -905,9 +906,21 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                 for extraction_blank, associated_samples in self.extraction_metadata_builder.extraction_blank_rel_cont_dict.items():
                     if current_samp in associated_samples:
                         related_blanks.append(extraction_blank)
+
+                    # For crazy WCOA net tow samples:
+                    elif current_samp.startswith('P'):
+                        p_match = re.match(r'(P\d+)', current_samp, re.IGNORECASE)
+                        p_num = p_match.group(1).upper() if p_match else None
+
+                        is_pe_samp = '.PE' in current_samp
+                        for samp in associated_samples:
+                            if p_num in samp and 'EtOH' in extraction_blank and not is_pe_samp:
+                                related_blanks.append(extraction_blank)
+                            elif p_num in samp and 'Plankton' in extraction_blank and is_pe_samp:
+                                related_blanks.append(extraction_blank)
                 
                 # remove any "not applicable" if there are other ids in all_related_ids
-                final_samp_df.at[idx, self.faire_rel_cont_id_col_name] = ' | '.join(related_blanks)
+                final_samp_df.at[idx, self.faire_rel_cont_id_col_name] = ' | '.join(set(related_blanks))
 
         return final_samp_df
     
