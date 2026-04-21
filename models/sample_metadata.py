@@ -47,9 +47,11 @@ class SampleMetadata(BaseModel):
     rel_cont_id: Optional[str] # needs custom list validation
     biological_rep_relation: Optional[str] # needs custom list validation
     decimalLongitude: Optional[float]
+    decimalLongitudeEnd: Optional[float] = None
     decimalLongitude_standard_deviation: Optional[float] = Field(default=None)
     decimalLatitude: Optional[float]
     decimalLatitude_standard_deviation: Optional[float] = Field(default=None)
+    decimalLatitudeEnd: Optional[float] = None
     verbatimLongitude: Optional[str]
     verbatimLatitude: Optional[str]
     verbatimCoordinateSystem: Optional[Literal['decimal degrees', 'degrees minutes seconds', 'UTM']]

@@ -478,6 +478,28 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
 
         return -(float(lat_or_lon_deg))
 
+    def convert_lat_lon_from_degrees_degree_minutes_to_decimal_degrees(self, coord: str) ->float:
+        """
+        Will convert a value that is in degrees + decimal minutes (e.g. 52 01.0266 N or 125 40.5677W)
+        to decimal minutes.
+        """
+        parts = coord.strip().split(' ')
+        degrees = float(parts[0])
+
+        if parts[1][-1].isalpha(): # If there is no space between degree minutes and hemisphere
+            hemisphere = parts[1][-1].upper()
+            minutes = float(parts[1][:-1])
+        else:
+            hemisphere = parts[2].upper()
+            minutes = float(parts[1])
+
+        dd = round(degrees + (minutes/60), 6)
+
+        if hemisphere in ('S', 'W'):
+            dd = -dd
+
+        return dd
+
     def calculate_date_duration(self, metadata_row: pd.Series, start_date_col: str, end_date_col: str) -> datetime:
         # takes two dates and calcualtes the difference to find the duration of time in ISO 8601 format
         # Handles both simple date format (2021-04-01) and dattime format (2020-09-05T02:50:00Z)

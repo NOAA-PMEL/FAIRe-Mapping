@@ -3,6 +3,7 @@ from faire_mapping.transformers.rules import (get_exact_mappings_rule,
                                               get_constant_mappings_rule,
                                               get_samp_category_rule,
                                               get_net_tow_material_samp_id_by_short_cruise_code_and_net_num,
+                                              get_decimalLatitude_Longitude_from_degree_decimal_seconds,
                                               )
 
 def main() -> None:
@@ -11,7 +12,8 @@ def main() -> None:
         get_exact_mappings_rule,
         get_constant_mappings_rule,
         get_samp_category_rule,
-        get_net_tow_material_samp_id_by_short_cruise_code_and_net_num
+        get_net_tow_material_samp_id_by_short_cruise_code_and_net_num,
+        get_decimalLatitude_Longitude_from_degree_decimal_seconds
     ]
     #     get_material_samp_id_by_cruisecode_cast_btlnum,
     #     partial(get_fallback_col_mapping_rule, faire_field_name='decimalLongitude'),

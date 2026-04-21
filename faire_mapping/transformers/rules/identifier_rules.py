@@ -140,7 +140,7 @@ def get_net_tow_material_samp_id_by_short_cruise_code_and_net_num(mapper: FaireS
             )
     
     return (
-            TransformationBuilder('pps_materialSampleID_by_cast_and_cruise_prefix')
+            TransformationBuilder('net_tow_materialSampleID_by_cruise_code_and_net_num')
             .when(lambda f, m, mt: (
                 f == 'materialSampleID' and
                 mt == 'related'

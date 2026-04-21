@@ -11,6 +11,7 @@ from .geography_rules import(
     get_formatted_geo_loc_by_name,
     get_env_medium_for_coastal_waters_by_geo_loc_rule,
     get_env_local_scale_by_depth,
+    get_decimalLatitude_Longitude_from_degree_decimal_seconds
 )
 
 from .date_time_rules import(
@@ -103,5 +104,6 @@ __all__ = [
     'get_net_tow_material_samp_id_by_short_cruise_code_and_net_num',
     'get_well_position_from_well_field',
     'get_samp_store_dur_from_samp_name',
-    'get_date_ext_iso8601_rule'
+    'get_date_ext_iso8601_rule',
+    'get_decimalLatitude_Longitude_from_degree_decimal_seconds'
 ]
