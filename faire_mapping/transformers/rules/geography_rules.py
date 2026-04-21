@@ -155,7 +155,6 @@ def get_decimalLatitude_Longitude_from_degree_decimal_seconds(mapper: FaireSampl
         """
         Apply the samp_store_loc mapper's convert_lat_lon_from_degrees_decimal_minutes_to_decimal_degrees method.
         """
-        print(f"faire_col: {faire_col}, metadata_col: {metadata_col}")
         # Apply the calculation to each row
         return df[metadata_col].apply(mapper.convert_lat_lon_from_degrees_degree_minutes_to_decimal_degrees)
     return (
@@ -169,5 +168,6 @@ def get_decimalLatitude_Longitude_from_degree_decimal_seconds(mapper: FaireSampl
                 mode='direct'
             )
             .for_mapping_type('related')
+            .update_source(True)
             .build()
         )     

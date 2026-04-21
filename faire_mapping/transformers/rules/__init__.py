@@ -17,7 +17,8 @@ from .geography_rules import(
 from .date_time_rules import(
     get_eventDate_iso8601_rule,
     get_date_duration_rule,
-    get_date_ext_iso8601_rule
+    get_date_ext_iso8601_rule,
+    get_iso8601_date_from_date_col_and_time_col_separately
 )
 
 from .measurement_calculation_rules import(
@@ -107,5 +108,6 @@ __all__ = [
     'get_samp_store_dur_from_samp_name',
     'get_date_ext_iso8601_rule',
     'get_decimalLatitude_Longitude_from_degree_decimal_seconds',
-    'get_pipe_separated_list_of_multiple_values'
+    'get_pipe_separated_list_of_multiple_values',
+    'get_iso8601_date_from_date_col_and_time_col_separately'
 ]

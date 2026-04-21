@@ -245,29 +245,34 @@ class OmeFaireMapper:
         # --- FIX APPLIED HERE: Handle all dash-separated formats gracefully ---
         elif "-" in date:
             if ':' in date:
-                # 2.1. Try ISO-like T-separated time (e.g., 2023-04-24T08:51:00)
                 try:
-                    dt_obj = datetime.strptime(date, "%Y-%m-%dT%H:%M:%S")
+                    # %d-%b-%y %H:%M handles "1-Jul-21 6:53"
+                    dt_obj = datetime.strptime(date, "%d-%b-%y %H:%M")
                     has_time_component = True
                 except ValueError:
-                    # 2.2. Fallback: Try space-separated time (e.g., 2023-04-24 08:51:00)
+                    # 2.1. Try ISO-like T-separated time (e.g., 2023-04-24T08:51:00)
                     try:
-                        dt_obj = datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
+                        dt_obj = datetime.strptime(date, "%Y-%m-%dT%H:%M:%S")
                         has_time_component = True
                     except ValueError:
+                        # 2.2. Fallback: Try space-separated time (e.g., 2023-04-24 08:51:00)
                         try:
-                            # %z handles the +00:00 or +0000 part
-                            dt_obj = datetime.strptime(date, "%Y-%m-%d %H:%M:%S%z")
+                            dt_obj = datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
                             has_time_component = True
                         except ValueError:
                             try:
-                            # Try usin dateutil library
-                                from dateutil import parser
-                                dt_obj=parser.parse(date)
-                                return dt_obj.strftime("%Y-%m-%dT%H:%M:%SZ")
+                                # %z handles the +00:00 or +0000 part
+                                dt_obj = datetime.strptime(date, "%Y-%m-%d %H:%M:%S%z")
+                                has_time_component = True
                             except ValueError:
-                                # Failed both time formats, raise error
-                                raise ValueError(f"Unsupported dash-separated date/time format: {date}")
+                                try:
+                                # Try usin dateutil library
+                                    from dateutil import parser
+                                    dt_obj=parser.parse(date)
+                                    return dt_obj.strftime("%Y-%m-%dT%H:%M:%SZ")
+                                except ValueError:
+                                    # Failed both time formats, raise error
+                                    raise ValueError(f"Unsupported dash-separated date/time format: {date}")
             else:
                 # 2.3. Date-only format (e.g., 2024-04-10)
                 dt_obj = datetime.strptime(date, "%Y-%m-%d")
@@ -286,6 +291,14 @@ class OmeFaireMapper:
             return dt_obj.strftime("%Y-%m-%dT%H:%M:%SZ")
         else:
             return dt_obj.strftime("%Y-%m-%d")
+
+    def convert_date_and_time_cols_separately_to_iso8601(self, metadata_row: pd.Series, date_utc_col: str, time_utc_col: str) -> str:
+        """
+        Will take a date column and a time column (both expected to be in UTC) and will combine them and
+        format them into iso8061
+        """
+        date_time = f"{metadata_row[date_utc_col]} {metadata_row[time_utc_col]}"
+        return self.convert_date_to_iso8601(date=date_time)
 
     def fix_int_cols(self, df:pd.DataFrame) -> pd.DataFrame:
         # converts columns that are int to so will not save as float. May need to update list in .lists

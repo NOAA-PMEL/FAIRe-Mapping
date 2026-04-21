@@ -59,6 +59,7 @@ class SampleMetadata(BaseModel):
     geo_loc_name: Optional[str] # Needs custom validation - see mapping functions for this
     geo_loc_name_method: Optional[str] = None
     eventDate: Optional[str] 
+    eventDateEnd: Optional[str] = None
     eventDurationValue: Optional[str]
     verbatimEventDate: Optional[str]
     verbatimEventTime: Optional[str]
