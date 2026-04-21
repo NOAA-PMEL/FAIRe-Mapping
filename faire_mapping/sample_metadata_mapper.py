@@ -250,6 +250,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             prefix=prefix
         return f"{prefix}_Port{port_num}"
     
+    def add_material_samp_id_for_net_tow(self, metadata_row: pd.Series, short_cruise_code: str, net_num_col: str):
+        # Creates the material sample id for net tow samples by the short_cruise_code and net number
+        return f"{short_cruise_code}_{metadata_row[net_num_col].strip()}"
+    
     def add_material_samp_id_for_aquamonitor(self, station: str):
         """"Add the materialSampleID for aquamonitor which will be 'Aquamonitor_M18 (station)"""
         return f'Aquamonitor_{station}'

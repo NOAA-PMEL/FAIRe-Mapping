@@ -108,3 +108,47 @@ def get_aquamonitor_material_samp_id_by_station(mapper: FaireSampleMetadataMappe
             .for_mapping_type('related')
             .build()
         )
+
+def get_net_tow_material_samp_id_by_short_cruise_code_and_net_num(mapper: FaireSampleMetadataMapper):
+    """
+    Rule for creating the New Tow materialSampleID by the cruise_code prefex + net #.
+    E.g. WCOA21_V200_QC43
+    Expects metadata_col to be 'short cruise code | net # col name'
+    short cruise code should be hardcoded string
+    """
+    def apply_net_tow_materialSampleID_by_cruise_code_net_num(df, faire_col, metadata_col):
+            """
+            Apply Net Tow materialSampleID concatenation using the mapper's add_material_samp_id_for_net_tow method.
+            """
+            metadata_cols = metadata_col.split(' | ')
+
+            if len(metadata_cols) < 2: 
+                logger.error(f"Expected 2 values related to creating the pps cruise code: 'Short Cruise Code | net num col' got: {metadata_col}")
+                raise ValueError(f"MaterialSammpleID requires format 'short cruise code | net num col'")
+                 
+            cruise_code = metadata_cols[0]
+            net_num_col_name = metadata_cols[1]
+            
+            # Apply the calculation to each row
+            return df.apply(
+                lambda row: mapper.add_material_samp_id_for_net_tow(
+                  metadata_row=row,
+                  short_cruise_code=cruise_code,
+                  net_num_col=net_num_col_name
+                ),
+                axis=1
+            )
+    
+    return (
+            TransformationBuilder('pps_materialSampleID_by_cast_and_cruise_prefix')
+            .when(lambda f, m, mt: (
+                f == 'materialSampleID' and
+                mt == 'related'
+            ))
+            .apply(
+                apply_net_tow_materialSampleID_by_cruise_code_net_num,
+                mode='direct'
+            )
+            .for_mapping_type('related')
+            .build()
+        )

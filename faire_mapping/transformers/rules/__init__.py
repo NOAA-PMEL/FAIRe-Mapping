@@ -46,7 +46,8 @@ from .station_rules import(
 from .identifier_rules import(
     get_material_samp_id_by_cruisecode_cast_btlnum,
     get_pps_material_samp_id_by_code_prefix_and_cast,
-    get_aquamonitor_material_samp_id_by_station
+    get_aquamonitor_material_samp_id_by_station,
+    get_net_tow_material_samp_id_by_short_cruise_code_and_net_num,
 )
 
 from .controls_rules import(
@@ -97,5 +98,10 @@ __all__ = [
     'get_well_position_from_well_field'
     'get_samp_store_dur_from_samp_name',
     'get_samp_store_loc_from_samp_name',
-    'get_samp_store_temp_from_samp_name'
+    'get_samp_store_temp_from_samp_name',
+    'get_aquamonitor_material_samp_id_by_station',
+    'get_net_tow_material_samp_id_by_short_cruise_code_and_net_num',
+    'get_well_position_from_well_field',
+    'get_samp_store_dur_from_samp_name',
+    'get_date_ext_iso8601_rule'
 ]

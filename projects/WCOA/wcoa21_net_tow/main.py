@@ -1,9 +1,18 @@
 from faire_mapping.sample_metadata_mapper import FaireSampleMetadataMapper
+from faire_mapping.transformers.rules import (get_exact_mappings_rule,
+                                              get_constant_mappings_rule,
+                                              get_samp_category_rule,
+                                              get_net_tow_material_samp_id_by_short_cruise_code_and_net_num,
+                                              )
 
 def main() -> None:
 
-    # # sample_metadata = create_dy2306_sample_metadata()
-    # additional_rules = [
+    additional_rules = [
+        get_exact_mappings_rule,
+        get_constant_mappings_rule,
+        get_samp_category_rule,
+        get_net_tow_material_samp_id_by_short_cruise_code_and_net_num
+    ]
     #     get_material_samp_id_by_cruisecode_cast_btlnum,
     #     partial(get_fallback_col_mapping_rule, faire_field_name='decimalLongitude'),
     #     partial(get_fallback_col_mapping_rule, faire_field_name='decimalLatitude'),
@@ -28,8 +37,8 @@ def main() -> None:
     # ]
 
     sample_mapper = FaireSampleMetadataMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/projects/WCOA/wcoa21_net_tow/config.yaml',
-                                            #   additiona_rules=additional_rules,
-                                              ome_auto_setup=True,
+                                              additional_rules=additional_rules,
+                                              ome_auto_setup=False,
                                               net_tow_weirdness=True)
 
 
