@@ -101,8 +101,6 @@ class SampleMetadataBuilder(BaseDfBuilder):
 
         if metadata_df.empty:
             raise ValueError(f"Something went wrong in sample df join with extraction df - most likely cruise code or sample naming issues!")
-        
-        metadata_df.to_csv('/home/poseidon/zalmanek/FAIRe-Mapping/projects/WCOA/wcoa21_net_tow.joined_data.csv', index=False)
 
         return metadata_df
 
@@ -163,12 +161,15 @@ class SampleMetadataBuilder(BaseDfBuilder):
             self.extraction_df[self.extraction_df['family'] == 'PE'].groupby('p_num')['pe_pattern'].first().to_dict()
         )
         def build_canonical_samp_name(row):
+            samp_name = row[self.sample_name_metadata_col_name]
+            if pd.isna(samp_name):
+                return samp_name
             if row['family'] == 'PE':
                 # P126.E.WCOA21 -? P126.E.PE.WCOA21
                 pattern = pe_pattern_lookup.get(row['p_num'], '.PE')
-                name = re.sub(r'\.E(\.WCOA21)', r'\1', row[self.sample_name_metadata_col_name], flags=re.IGNORECASE)
+                name = re.sub(r'\.E(\.WCOA21)', r'\1', samp_name, flags=re.IGNORECASE)
                 return re.sub(r'(\.WCOA21)', f'{pattern}\\1', name, flags=re.IGNORECASE)
-            return row[self.sample_name_metadata_col_name]
+            return samp_name
 
     
         # -------- Normalize sample df -------------

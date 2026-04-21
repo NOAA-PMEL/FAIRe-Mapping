@@ -32,14 +32,10 @@ def main() -> None:
                                               ome_auto_setup=False,
                                               net_tow_weirdness=True)
 
-    sample_mapper.sample_metadata_df_builder.sample_metadata_df = fix_stations(df=sample_mapper.sample_metadata_df_builder.sample_metadata_df)
 
     df = sample_mapper.finalize_samp_metadata_df()
-    # Drop blank sample
-    final_df = drop_blank_alask_set_7(df=df)
-    final_df_with_nc_dates = add_nc_dates(df=final_df, sample_mapper=sample_mapper)
     
-    sample_mapper.save_final_df_as_csv(final_df=final_df_with_nc_dates, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/dy2306/data/dy2306_faire.csv')
+    sample_mapper.save_final_df_as_csv(final_df=df, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/WCOA/wcoa21_net_tow/data/wcoa21_nettow_faire.csv')
                 
 
 if __name__ == "__main__":

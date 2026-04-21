@@ -777,43 +777,49 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col,
             get_fallback_col_mapping_rule,
             get_date_ext_iso8601_rule)
-
-        eventDate_mapping = self.nc_mapping_builder.nc_mapping_dict.get('related', {}).get('eventDate', '')
-
-        # 2. Decide the rule
-        # Check if the mapping value contains 'fallback:' Had to add this for dy23-06
-        if 'fallback:' in str(eventDate_mapping):
-            event_date_rule = get_fallback_col_mapping_rule(self, faire_field_name='eventDate')
-        else:
-            event_date_rule = get_eventDate_iso8601_rule(self)
         
-        nc_transformer = SampleMetadataTransformer(sample_mapper=self, ome_auto_setup=True, nc_transformer=True)
-        additional_rules = [get_date_duration_rule(self),
-                            event_date_rule,
-                            get_neg_cont_type_from_ome_sample_name(self),
-                            get_dna_yield_from_conc_and_vol(self),
-                            get_well_number_from_well_field(self),
-                            get_well_position_from_well_field(self),
-                            get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col(self),
-                            get_date_ext_iso8601_rule(self)]
+        if not self.sample_metadata_df_builder.nc_metadata_df.empty:
         
-        nc_transformer.add_custom_rules(additional_rules)
-        print("\nNegative Controls Mapping:\n")
-        nc_metadata_df = nc_transformer.transform()
+            eventDate_mapping = self.nc_mapping_builder.nc_mapping_dict.get('related', {}).get('eventDate', '')
 
-       
-        # First concat with sample_faire_template to get rest of columns,
-        # # and add user_defined columnsthen
-        # Fill na and empty values with not applicable: control sample
-        try:
-            # compare columns in df to nc_faire_fields list and if value is missing, fill with missing: not provided
-            nc_results_updated = nc_metadata_df.reindex(columns=nc_faire_field_cols, fill_value="missing: not collected")
-            nc_results_updated = nc_results_updated.fillna("missing: not collected")
-            nc_df = pd.concat(
-                [self.sample_faire_template_df, nc_results_updated])
+            # 2. Decide the rule
+            # Check if the mapping value contains 'fallback:' Had to add this for dy23-06
+            if 'fallback:' in str(eventDate_mapping):
+                event_date_rule = get_fallback_col_mapping_rule(self, faire_field_name='eventDate')
+            else:
+                event_date_rule = get_eventDate_iso8601_rule(self)
             
-            return nc_df
-        except: # If empty just return empty dataframe
+            nc_transformer = SampleMetadataTransformer(sample_mapper=self, ome_auto_setup=True, nc_transformer=True)
+            additional_rules = [get_date_duration_rule(self),
+                                event_date_rule,
+                                get_neg_cont_type_from_ome_sample_name(self),
+                                get_dna_yield_from_conc_and_vol(self),
+                                get_well_number_from_well_field(self),
+                                get_well_position_from_well_field(self),
+                                get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col(self),
+                                get_date_ext_iso8601_rule(self)]
+            
+            nc_transformer.add_custom_rules(additional_rules)
+            print("\nNegative Controls Mapping:\n")
+            nc_metadata_df = nc_transformer.transform()
+
+        
+            # First concat with sample_faire_template to get rest of columns,
+            # # and add user_defined columnsthen
+            # Fill na and empty values with not applicable: control sample
+            try:
+                # compare columns in df to nc_faire_fields list and if value is missing, fill with missing: not provided
+                nc_results_updated = nc_metadata_df.reindex(columns=nc_faire_field_cols, fill_value="missing: not collected")
+                nc_results_updated = nc_results_updated.fillna("missing: not collected")
+                nc_df = pd.concat(
+                    [self.sample_faire_template_df, nc_results_updated])
+                
+                return nc_df
+            except: # If empty just return empty dataframe
+                return self.sample_faire_template_df # MAybe this isn't needed since the else statement below catcheds the empty df. But afraid to remove it if it works.
+            
+        else:
+            # If empty just return empty dataframe
             return self.sample_faire_template_df
 
     def finish_up_controls_df(self, final_sample_df: pd.DataFrame) -> pd.DataFrame:
