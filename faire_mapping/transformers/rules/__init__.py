@@ -28,6 +28,8 @@ from .measurement_calculation_rules import(
     get_dna_yield_from_conc_and_vol,
     get_tot_depth_water_col_from_lat_lon_or_exact_col,
     get_wind_direction_from_wind_degrees,
+    get_avg_from_list_of_cols,
+    get_stdev_from_list_of_cols
 )
 
 from .miscellaneous_rules import(
@@ -113,5 +115,7 @@ __all__ = [
     'get_pipe_separated_list_of_multiple_values',
     'get_iso8601_date_from_date_col_and_time_col_separately',
     'get_str_in_samp_name_mapping_rule',
-    'get_str_in_samp_name_dur_mapping_rule'
+    'get_str_in_samp_name_dur_mapping_rule',
+    'get_avg_from_list_of_cols',
+    'get_stdev_from_list_of_cols'
 ]

@@ -10,6 +10,7 @@ import xarray as xr
 import geopandas as gpd
 import gsw
 import re
+import statistics
 from shapely.geometry import Point
 # from geopy.distance import geodesic
 # from bs4 import BeautifulSoup
@@ -681,7 +682,42 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             else:
                 return else_metadata_range_cols_should_be
         
+    def get_average_of_col_vals(self, metadata_row: pd.Series, metadata_cols: str):
 
+        try:
+            values = []
+            metadata_cols = metadata_cols.split(' | ')
+            for col in metadata_cols:
+                try:
+                    num = float(metadata_row[col])
+                    if num == num: # will catch nan becaus NaN != NaN
+                        values.append(num)
+                except(ValueError, TypeError):
+                    pass
+            return round(statistics.mean(values), 2)
+        
+        except:
+            return "missing: not collected"
+    
+    def get_std_dev_of_col_vals(self, metadata_row: pd.Series, metadata_cols: str):
+
+        try:
+            values = []
+            metadata_cols = metadata_cols.split(' | ')
+            for col in metadata_cols:
+                try:
+                    num = float(metadata_row[col])
+                    if num == num: # will catch nan becaus NaN != NaN
+                        values.append(num)
+                except(ValueError, TypeError):
+                    pass
+            if len(values) > 1:
+                return round(statistics.stdev(values), 2)
+            else:
+                return "not applicable"
+        
+        except TypeError:
+            return "missing: not collected"
 
     def get_station_id_from_unstandardized_station_name(self, metadata_row: pd.Series, unstandardized_station_name_col: str) -> str:
         # Gets the standardized station name from the unstandardized station name
