@@ -33,6 +33,8 @@ cruise_code_fixes:
   unwanted_cruise_code: # No cruise code in samples, just need to append cruise code on.
   desired_cruise_code: '.WCOA21' 
 
+station_name_reference_google_sheet_id: 15hJkEr8QBLFL1xu5ZNFHh5oamPkLhodElJ1vJ5v55OE
+
 # mapping file related
 # No NC samps for net tow so those fields will be ignored
 google_sheet_mapping_file_id: 1P5OlbztMtBQyURpVeRmA5LQKsMtbkcyF5zI1eWP7DOY
