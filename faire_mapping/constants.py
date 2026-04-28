@@ -83,6 +83,7 @@ marker_to_assay_mapping = {
     '18Sv4': 'ssu18sv4_stoeck',
     'ITS': 'ITS1_sterling',
     'ITS1': 'ITS1_sterling', 
+    'MiDeca': 'lsu16s_2051-2438_mideca_komai'
 }
 
 # Dictionary that maps the JV metabarcoding marker in the run sample metadata to the actual directory names on Poseidon

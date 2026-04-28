@@ -35,7 +35,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         self.run_name = self.config_file['run_name']
         self.asv_counts_tsvs_for_run = self.config_file['asv_counts_tsvs_for_run']
         self.otu_num_tax_assigned_files_for_run = self.config_file['otu_num_tax_assigned_files_for_run']
-        self.ignore_markers = self.config_file['ignore_markers']
+        self.ignore_markers = self.config_file['ignore_markers'] if 'ignore_markers' in self.config_file else False
         self.google_sheet_mapping_file_id = self.config_file['google_sheet_mapping_file_id']
         self.merged = self.config_file['merged']  if 'merged' in self.config_file else False
         self.json_creds = self.config_file['json_creds']
