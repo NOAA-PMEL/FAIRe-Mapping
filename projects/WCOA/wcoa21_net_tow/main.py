@@ -30,7 +30,14 @@ def main() -> None:
         partial(get_pipe_separated_list_of_multiple_values, faire_field_name='verbatimEventTime'),
         get_env_local_scale_by_depth,
         partial(get_str_in_samp_name_mapping_rule, faire_field_name='samp_mat_process'),
-        partial(get_str_in_samp_name_dur_mapping_rule, faire_field_name='samp_store_dur')
+        partial(get_str_in_samp_name_dur_mapping_rule, faire_field_name='samp_store_dur'),
+        partial(get_str_in_samp_name_mapping_rule, faire_field_name='size_frac'),
+        partial(get_str_in_samp_name_mapping_rule, faire_field_name='filter_diameter'),
+        partial(get_str_in_samp_name_mapping_rule, faire_field_name='filter_surface_area'),
+        partial(get_str_in_samp_name_mapping_rule, faire_field_name='filter_material'),
+        partial(get_str_in_samp_name_mapping_rule, faire_field_name='filter_name'),
+        partial(get_str_in_samp_name_mapping_rule, faire_field_name='prepped_samp_store_temp'),
+        partial(get_str_in_samp_name_mapping_rule, faire_field_name='prepped_samp_store_sol'),
     ]
     #     get_material_samp_id_by_cruisecode_cast_btlnum,
     #     partial(get_fallback_col_mapping_rule, faire_field_name='decimalLongitude'),
@@ -62,6 +69,9 @@ def main() -> None:
 
 
     df = sample_mapper.finalize_samp_metadata_df()
+
+    # Custom/didn't want to write rules for
+    df['size_frac_low'] = (df['size_frac_low'].str.replace('Bongo', '').str.replace('Vertical', '').str.strip())
     
     sample_mapper.save_final_df_as_csv(final_df=df, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/WCOA/wcoa21_net_tow/data/wcoa21_nettow_faire.csv')
                 
