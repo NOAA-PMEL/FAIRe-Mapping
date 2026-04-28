@@ -37,7 +37,8 @@ from .miscellaneous_rules import(
     get_max_depth_with_pressure_fallback,
     get_condition_constant_rule,
     switch_sign_of_lat_or_lon_deg,
-    get_pipe_separated_list_of_multiple_values
+    get_pipe_separated_list_of_multiple_values,
+    get_str_in_samp_name_mapping_rule,
 )
 
 from .station_rules import(
@@ -109,5 +110,6 @@ __all__ = [
     'get_date_ext_iso8601_rule',
     'get_decimalLatitude_Longitude_from_degree_decimal_seconds',
     'get_pipe_separated_list_of_multiple_values',
-    'get_iso8601_date_from_date_col_and_time_col_separately'
+    'get_iso8601_date_from_date_col_and_time_col_separately',
+    'get_str_in_samp_name_mapping_rule'
 ]

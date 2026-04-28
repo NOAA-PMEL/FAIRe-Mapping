@@ -337,4 +337,58 @@ def get_pipe_separated_list_of_multiple_values(mapper: FaireSampleMetadataMapper
         )
 
 
+def get_str_in_samp_name_mapping_rule(mapper: FaireSampleMetadataMapper, faire_field_name: str):
+     """
+     Rule for mapping constant values based on the present of a string in a samp_name.
+     Expects metadata_col to be in format 'str_in_samp_name: if_val_in_samp_name | metadata_val_should_be | else_metadata_val_should_be'
+     Used in WCOA net tow samples where some were extracted with Plankton smoothie and this was denoted by 'PE' in samp_name
+     """
+     def apply_str_in_samp_name_mapping_rule(df, faire_col, metadata_col):
+        """
+        Apply str in samp_name rule using the mapper's map_based_on_str_in_samp_name method.
+        """
+        # Remove the 'fallback:' prefix
+        if not metadata_col.startswith('str_in_samp_name:'):
+             return None
+        # Parse the metadata_col to extract column names and options
+        columns_part = metadata_col.replace('str_in_samp_name:', '').strip()
+        parts = [part.strip() for part in columns_part.split('|')]
+
+        if len(parts) < 3:
+             logger.error(f"Str in samp name mapping rule requires at 3 values separated by '|'")
+             raise ValueError(f"Str in samp name mapping requires format 'str_in_samp_name: if_val_in_samp_name | metadata_val_should_be | else_metadata_val_should_be'")
+        
+        val_present_in_samp_name = parts[0]
+        present_val = parts[1]
+        if_not_present_val = parts[2]
+
+        # Apply the fallback logic to each row
+        return df.apply(
+             lambda row: mapper.map_based_on_str_in_samp_name(
+                metadata_row=row,
+                if_val_in_samp_name=val_present_in_samp_name,
+                metadata_val_should_be=present_val,
+                else_metadata_val_should_be=if_not_present_val
+             ),
+             axis=1
+        )
+     
+     return (
+        TransformationBuilder('str_in_samp_name_mapping')
+            .when(lambda f, m, mt: (
+                m.startswith('str_in_samp_name:') and
+                f == faire_field_name and
+                '|' in m and # contains pipe separator indicating str in samp name 
+                mt == 'related'
+                ))
+            .apply(
+                apply_str_in_samp_name_mapping_rule,
+                mode='direct'
+            )
+            .for_mapping_type('related')
+            .update_source(True)
+            .build()
+     )
+
+
 

@@ -618,6 +618,18 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             return 0
         else:
             return ''
+        
+    def map_based_on_str_in_samp_name(self, metadata_row: pd.Series, if_val_in_samp_name: str, metadata_val_should_be: str, else_metadata_val_should_be: str) -> str:
+        """
+        Specify a value present in the samp name (if_val_in_samp_name), such as .'PE' in plankton smoothie net tow samples. If that
+        value is present, then return the metadata_val_should_be, if that value is not present return else_metadata_val_should_be.
+        Calls the samp_name column so final samp names need to be in this columns. self.faire_sample_name_col. Need to include partial() and
+        faire_field_name in main.py to use.
+        """
+        if if_val_in_samp_name in metadata_row[self.faire_sample_name_col]:
+            return metadata_val_should_be
+        else: 
+            return else_metadata_val_should_be
 
     def get_station_id_from_unstandardized_station_name(self, metadata_row: pd.Series, unstandardized_station_name_col: str) -> str:
         # Gets the standardized station name from the unstandardized station name

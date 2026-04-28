@@ -205,6 +205,7 @@ class OmeFaireMapper:
 
         return " | ".join(value_list)
 
+
     def convert_date_to_iso8601(self, date: str) -> datetime:
         # converts strings from 2021/11/08 00:00:00 to iso8601 format  to 2021-11-08T00:00:00Z
         # also converts strings from 5/1/2024 to 2024-01-05T00:00:00Z

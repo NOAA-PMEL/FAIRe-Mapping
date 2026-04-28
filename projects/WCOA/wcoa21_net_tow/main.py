@@ -8,7 +8,8 @@ from faire_mapping.transformers.rules import (get_exact_mappings_rule,
                                               get_geo_loc_name_by_lat_lon_rule,
                                               get_iso8601_date_from_date_col_and_time_col_separately,
                                               get_date_duration_rule,
-                                              get_env_local_scale_by_depth
+                                              get_env_local_scale_by_depth,
+                                              get_str_in_samp_name_mapping_rule
                                               )
 from functools import partial
 
@@ -26,7 +27,8 @@ def main() -> None:
         get_iso8601_date_from_date_col_and_time_col_separately,
         get_date_duration_rule,
         partial(get_pipe_separated_list_of_multiple_values, faire_field_name='verbatimEventTime'),
-        get_env_local_scale_by_depth
+        get_env_local_scale_by_depth,
+        partial(get_str_in_samp_name_mapping_rule, faire_field_name='samp_mat_process')
     ]
     #     get_material_samp_id_by_cruisecode_cast_btlnum,
     #     partial(get_fallback_col_mapping_rule, faire_field_name='decimalLongitude'),
