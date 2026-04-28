@@ -630,6 +630,58 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             return metadata_val_should_be
         else: 
             return else_metadata_val_should_be
+        
+    def get_date_dur_based_on_str_in_samp_name(self, metadata_row: pd.Series, if_val_in_samp_name: str, if_metadata_range_cols_should_be: str, else_metadata_range_cols_should_be: str):
+        """"
+        Specify a value present in the samp name (if_val_in_samp_name), such as '.PE' in planktons moothie net tow samples. If that 
+        value is present, then will check for '-' in metadata_range_cols and find the duration, expecting the start value/col to be first followed by the end value/date col,
+        if no '-' in either metadata_range_cols or else_metadata_range_cols_sould_be. Calls the samp_name column so final samp names need to be in this columns. 
+        self.faire_sample_name_col. Need to include partial() and faire_field_name in main.py to use. Dates can be hardcoded or refer to a date column.
+        """
+
+        if if_val_in_samp_name in metadata_row[self.faire_sample_name_col]:
+            if '-' in if_metadata_range_cols_should_be:
+                date_cols = if_metadata_range_cols_should_be.split(' - ')
+                start_date = date_cols[0]
+                end_date = date_cols[1]
+                if '/' in start_date:
+                    start_date = self.format_dates_for_duration_calculation(date=start_date)
+                else:
+                    start_date = self.format_dates_for_duration_calculation(metadata_row[start_date])
+                if '/' in end_date:
+                    end_date = self.format_dates_for_duration_calculation(date=end_date)
+                else:
+                    end_date = self.format_dates_for_duration_calculation(metadata_row[end_date])
+
+                print(f"start_date: {start_date}, end_date:{end_date}")
+                duration = end_date - start_date
+                # Convert to ISO 8061
+                iso_duration = isodate.duration_isoformat(duration)
+                return iso_duration
+            else:
+                return if_metadata_range_cols_should_be
+        else:
+            if '-' in else_metadata_range_cols_should_be:
+                date_cols = else_metadata_range_cols_should_be.split(' - ')
+                start_date = date_cols[0]
+                end_date = date_cols[1]
+                if '/' in start_date:
+                    start_date = self.format_dates_for_duration_calculation(date=start_date)
+                else:
+                    start_date = self.format_dates_for_duration_calculation(metadata_row[start_date])
+                if '/' in end_date:
+                    end_date = self.format_dates_for_duration_calculation(date=end_date)
+                else:
+                    end_date = self.format_dates_for_duration_calculation(metadata_row[end_date])
+                
+                duration = end_date - start_date
+                # Convert to ISO 8061
+                iso_duration = isodate.duration_isoformat(duration)
+                return iso_duration
+            else:
+                return else_metadata_range_cols_should_be
+        
+
 
     def get_station_id_from_unstandardized_station_name(self, metadata_row: pd.Series, unstandardized_station_name_col: str) -> str:
         # Gets the standardized station name from the unstandardized station name

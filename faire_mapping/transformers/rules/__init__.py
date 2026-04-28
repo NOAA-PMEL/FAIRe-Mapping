@@ -66,7 +66,8 @@ from .extraction_rules import(
 from .samp_store_rules import(
     get_samp_store_dur_from_samp_name,
     get_samp_store_loc_from_samp_name,
-    get_samp_store_temp_from_samp_name
+    get_samp_store_temp_from_samp_name,
+    get_str_in_samp_name_dur_mapping_rule
 )
 __all__ = [
     'get_all_ome_default_rules',
@@ -111,5 +112,6 @@ __all__ = [
     'get_decimalLatitude_Longitude_from_degree_decimal_seconds',
     'get_pipe_separated_list_of_multiple_values',
     'get_iso8601_date_from_date_col_and_time_col_separately',
-    'get_str_in_samp_name_mapping_rule'
+    'get_str_in_samp_name_mapping_rule',
+    'get_str_in_samp_name_dur_mapping_rule'
 ]
