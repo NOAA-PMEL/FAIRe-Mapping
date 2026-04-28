@@ -15,6 +15,7 @@ from faire_mapping.transformers.rules import (get_exact_mappings_rule,
                                               get_stdev_from_list_of_cols,
                                               get_standardized_station_id_from_nonstandardized_station_name,
                                               get_stations_within_5km_of_lat_lon,
+                                              get_line_id_from_standardized_station
                                               )
 from functools import partial
 
@@ -48,6 +49,8 @@ def main() -> None:
         partial(get_stdev_from_list_of_cols, faire_field_name='wind_speed_standard_deviation'),
         get_standardized_station_id_from_nonstandardized_station_name,
         get_stations_within_5km_of_lat_lon,
+        get_line_id_from_standardized_station
+        
     ]
     #     get_material_samp_id_by_cruisecode_cast_btlnum,
     #     partial(get_fallback_col_mapping_rule, faire_field_name='decimalLongitude'),
