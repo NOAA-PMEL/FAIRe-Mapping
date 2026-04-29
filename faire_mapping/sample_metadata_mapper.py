@@ -747,8 +747,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         lon = metadata_row[lon_col]
         listed_station = metadata_row[station_name_col]
         sample_name = metadata_row[self.sample_metadata_sample_name_column]
-
-        
+   
         try:
             if 'NC' not in sample_name or 'blank' not in sample_name.lower():
             
