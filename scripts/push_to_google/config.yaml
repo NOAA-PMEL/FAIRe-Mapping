@@ -33,6 +33,10 @@ datasets: # a list of sample_metadata.csvs and their associated experimentRun cs
       sample_metadata_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/OCNMS/pps_ocnms21-23/data/pps_ocnms21-23_faire.csv
     - cruise_name: wcoa21
       sample_metadata_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/WCOA/wcoa21/data/wcoa21_faire.csv
+    - cruise_name: wcoa21_nettow
+      sample_metadata_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/WCOA/wcoa21_net_tow/data/wcoa21_nettow_faire.csv
+    - cruise_name: DCM
+      sample_metadata_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/projects/FloatingSamples/DCM/data/DCM_faire.csv
   associated_sequencing_csvs:
     - sequencing_run_name: osu867
       sequence_run_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/osu867/data/osu867_faire.csv
@@ -56,6 +60,8 @@ datasets: # a list of sample_metadata.csvs and their associated experimentRun cs
       sequence_run_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/run3/data/run3_faire.csv
     - sequencing_run_name: run4
       sequence_run_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/run4/data/run4_faire.csv
+    - sequencing_run_name: run5
+      sequence_run_csv_path: /home/poseidon/zalmanek/FAIRe-Mapping/runs/run5/data/run5_faire.csv
 
 # Add samples that have mismatching names between the Sample Metadata and the Experiment Run Metadata
 # Add sample metadata name as key, and experiment run metadata name as value
@@ -103,6 +109,13 @@ pooled_samps:
     - E1500.NC.RC0083
     sample_category: negative control
     cont_type: field negative
+  - pooled_samp_name: WCOA21.Pool18Sv9.COI.ExtBlanks
+    samps_that_were_pooled:
+    - Blank.Alaska.Set7
+    - Blank.Alaska.Set9
+    - Blank.Alaska.Set11
+    sample_category: negative control
+    cont_type: extraction negative
 
 # AnalysisMetadata # NONE OF THIS MATTERS FOR ALL OF THE DATA 
 bioinformatics_bebop_path: /home/poseidon/zalmanek/BeBOPs/BioinformticsBeBops/NOAA-PMEL-OME-Bioinformatics-Metabarcoding-Protocol-BeBOP/NOAA-PMEL-OME-Bioinformatics-Metabarcoding-Protocol-BEBOP.md

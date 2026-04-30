@@ -4,6 +4,7 @@ from .ome_sample_default_rules import (
     get_biological_rep_relation_rule,
     get_constant_mappings_rule,
     get_exact_mappings_rule,
+    get_replicte_num_from_ome_sample_name,
 )
 
 from .geography_rules import(
@@ -117,5 +118,6 @@ __all__ = [
     'get_str_in_samp_name_mapping_rule',
     'get_str_in_samp_name_dur_mapping_rule',
     'get_avg_from_list_of_cols',
-    'get_stdev_from_list_of_cols'
+    'get_stdev_from_list_of_cols',
+    'get_replicte_num_from_ome_sample_name'
 ]

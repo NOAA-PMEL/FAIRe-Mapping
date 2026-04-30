@@ -682,6 +682,17 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             else:
                 return else_metadata_range_cols_should_be
         
+    def get_replicate_number_from_samp_name(self, sample_name: str) -> str:
+        """Gets the replicate number from the sample name. I.e. 1B, 2B, 3B, 1T, 2T, 3T -> 1, 2 or 3 """
+        
+        match = re.search(r'\.(\d+)[BT]\.', sample_name)
+    
+        if match:
+            # group(1) refers to the digits inside the (\d+) parenthesis
+            return match.group(1)
+            
+        return "not applicable"
+            
     def get_average_of_col_vals(self, metadata_row: pd.Series, metadata_cols: str):
 
         try:

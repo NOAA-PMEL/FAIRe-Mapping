@@ -95,3 +95,17 @@ oc0919_enums = [
     'E2136.1B', 'E2136.2B', 'E2136.3B', 'E2136.4B', 'E2136.5B',
     'E2137.1B'
 ]
+
+# only for samples with .PE not .E.PE just ones that look lie P126.PE
+wcoa_net_tow_pe_only_pnums = [
+    'P126.PE', 'P170.PE', 'P172.PE', 'P174.PE', 'P125.PE', 'P122.PE', 
+    'P123.PE', 'P124.PE', 'P133.PE', 'P134.PE', 'P135.PE', 'P184.PE',
+    'P131.PE'
+]
+
+# only for sample with .E.PE not just .E and not just .PE for P samples in WCOA net tow
+wcoa_net_tow_e_plus_pe_pnums = [
+    'P104.E.PE', 'P102.E.PE', 'P101.E.PE', 'P106.E.PE', 'P103.E.PE', 'P107.E.PE',
+    'P114.E.PE', 'P111.E.PE', 'P110.E.PE', 'P105.E.PE', 'P115.E.PE', 'P113.E.PE',
+    'P109.E.PE', 'P112.E.PE'
+]
