@@ -111,9 +111,14 @@ pooled_samps:
     cont_type: field negative
   - pooled_samp_name: WCOA21.Pool18Sv9.COI.ExtBlanks
     samps_that_were_pooled:
-    - Blank.Alaska.Set7
-    - Blank.Alaska.Set9
-    - Blank.Alaska.Set11
+    - WCOA21.Blank.Set26
+    - WCOA21.Blank.Set27
+    - WCOA21.Blank.Set28
+    - WCOA21.Blank.Set29
+    - WCOA21.Blank.Set30
+    - WCOA21.Blank.Set31
+    - WCOA21.Blank.Set32
+    - WCOA21.Blank.Set37
     sample_category: negative control
     cont_type: extraction negative
 
