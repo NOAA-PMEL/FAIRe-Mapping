@@ -8,8 +8,8 @@ sample_metadata_bottle_no_col_name: 'Niskin_Bottle_No'
 vessel_name: RV Ronald H. Brown
 
 extractions: 
-  - extraction_name:  WCOA_Run5 # the name of the extraction performed (for the extract_id)
-    extraction_metadata_google_sheet_id: 1K4XrXplTNukaeIY_UQ_XXuYLBuvJwJmaeEbAZvHSiEI
+  - extraction_name:  WCOArun5_DCM # the name of the extraction performed (for the extract_id)
+    extraction_metadata_google_sheet_id: 15Jd_v_XELHrzRxyOS-BMECY0vs3kWgm0UJjhmaDr0x4
     extraction_cruise_key: .WCOA21
     extraction_sample_name_col: FINAL Sample NAME
     extraction_conc_col_name: Qubit Conc. (ng/μL) #to calculate average of extraction concentration

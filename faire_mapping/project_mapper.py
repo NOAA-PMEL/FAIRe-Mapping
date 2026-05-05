@@ -13,6 +13,7 @@ import hashlib
 from astral import LocationInfo
 from astral.sun import sun
 import pytz
+import logging
 
 
 # TODO: add project_id to process_whole_project_and_save_to_excel when calling process_analysis_metadata when extracted from projectMetadata input
@@ -20,6 +21,12 @@ import pytz
 # TODO: Find what happend to the Mid.NC.SKQ21 sample (in SampleMetadataMapper)
 # TODO: Check 'Arctic Ocean' geo_loc for E1082.SKQ2021, E1083.SKQ2021, E1084.SKQ2021 and maybe other values
 # TODO: Add assay1, assay2, etc. to column headers in projectMetadata
+
+logging.basicConfig(
+    filename='data_discrepancies.log',
+    level=logging.ERROR,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
 class ProjectMapper(OmeFaireMapper):
     
@@ -172,6 +179,7 @@ class ProjectMapper(OmeFaireMapper):
         # If there are still duplicates (can happen when PPS is split apart from cruise, and values are annotated differently), throw an error
         duplicates = sample_df_cleaned[sample_df_cleaned[self.faire_sample_name_col].duplicated(keep=False)][self.faire_sample_name_col].unique()
         if len(duplicates) > 0:
+            self.log_duplicate_samps(df=sample_df_cleaned)
             raise ValueError(f"Duplicate samples in the sample df: {duplicates}. Please check how these differ and fix!")
         
         # Update pool_dna_num for extraction_negatives
@@ -234,6 +242,35 @@ class ProjectMapper(OmeFaireMapper):
         cleaned_df = exp_run_df_with_merged_counts.map(lambda x: x.strip() if isinstance(x, str) else x)
 
         return cleaned_df
+
+    def log_duplicate_samps(self, df: pd.DataFrame):
+
+        # 1. Identify rows with duplicate sample names
+        duplicate_mask = df.duplicated(subset=[self.faire_sample_name_col], keep=False)
+        if duplicate_mask.any():
+            dup_groups = df[duplicate_mask].groupby(self.faire_sample_name_col)
+            
+            error_details = []
+
+            for name, group in dup_groups:
+                # Find columns where values are not all the same
+                # .nunique() handles NaNs differently, so we use .duplicated() logic or compare to first
+                diff_cols = []
+                for col in group.columns:
+                    if group[col].nunique(dropna=False) > 1:
+                        diff_cols.append(col)
+                
+                if diff_cols:
+                    msg = f"Sample '{name}' has mismatches in columns: {diff_cols}"
+                    logging.error(f"{msg}\nValues:\n{group[diff_cols]}\n")
+                    error_details.append(msg)
+
+            # 2. Raise the error after logging all issues
+            if error_details:
+                raise ValueError(
+                    f"Found {len(error_details)} samples with conflicting data. "
+                    "Check 'data_discrepancies.log' for the specific column mismatches."
+                )
     
     def update_output_input_counts_for_merged_runs(self, exp_df: pd.DataFrame) -> pd.DataFrame:
         # For OSU/Run3 where there will be the same sample_name and assay_name (part of assay name since different for runs)
