@@ -69,10 +69,12 @@ marker_to_assay_mapping = {
     '16S Kelley': 'lsu16s_2434-2571_kelly',
     'Kelly16S': 'lsu16s_2434-2571_kelly',
     'Kelly 16S': 'lsu16s_2434-2571_kelly',
+    '16S Kelly':  'lsu16s_2434-2571_kelly',
     'Leray CO1': 'COI_1835-2198_lerayfolmer', #geller and folmer is same region
     'COI': 'COI_1835-2198_lerayfolmer',
     '18S Machida': ['ssu18sv8_machida', 'ssu18sv8_machida_OSUmod'],
     'Machida18S': ['ssu18sv8_machida', 'ssu18sv8_machida_OSUmod'],
+    'Machida 18S':  ['ssu18sv8_machida', 'ssu18sv8_machida_OSUmod'],
     'MiFish 12S': ['ssu12sv5v6_mifish_u_sales', 'ssu12sv5v6_mifish_u_sales_2xRSA'],
     'MiFish': ['ssu12sv5v6_mifish_u_sales', 'ssu12sv5v6_mifish_u_sales_2xRSA'],
     '16S Furhman': ['ssu16sv4v5_parada', 'ssu16sv4v5_parada_OSUmod'],
@@ -83,6 +85,8 @@ marker_to_assay_mapping = {
     '18Sv4': 'ssu18sv4_stoeck',
     'ITS': 'ITS1_sterling',
     'ITS1': 'ITS1_sterling', 
+    'ITS Marker': 'ITS1_sterling',
+    'MiDeca': 'lsu16s_2051-2438_mideca_komai'
 }
 
 # Dictionary that maps the JV metabarcoding marker in the run sample metadata to the actual directory names on Poseidon
@@ -96,10 +100,14 @@ marker_to_shorthand_mapping = {
     '16S Fuhrman': 'Parada16S',
     '16S Furhman/Parada': 'Parada16S',
     '18S Machida': 'Machida18S',
+    'Machida 18S': 'Machida18S',
     'ITS': 'ITS1',
+    'ITS Marker': 'ITS1',
     'dLoop': 'dLoop',
     '16S Kelley': 'Kelly16S',
-    'Kelly 16S': 'Kelly16S'
+    'Kelly 16S': 'Kelly16S',
+    '16S Kelly': 'Kelly16S',
+    'MiDeca': 'MiDeca',
 }
 
 # marker shorthand to gblock name - based on this spreadsheet: https://docs.google.com/spreadsheets/d/1sdShcSBPvAcIWXBXJpCfjirv57FNjJFOfOYFd5_I3gM/edit?gid=0#gid=0
@@ -112,7 +120,8 @@ marker_shorthand_to_pos_cont_gblcok_name = {
     'Machida18S': 'Halo_pos_18Sv89',
     'ITS1': 'LuV_pos_ITS1',
     'dLoop': 'Obre_pos_dLoop',
-    'Kelly16S': 'Dodo_pos_16SKelly'
+    'Kelly16S': 'Dodo_pos_16SKelly',
+    'MiDeca': 'MiDeca'
 }
 
 # Mismatched samples metadata to raw data file matching

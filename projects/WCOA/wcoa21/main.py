@@ -338,7 +338,7 @@ def main() -> None:
     ]
 
     sample_mapper = FaireSampleMetadataMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/projects/WCOA/wcoa21/config.yaml',
-                                              additiona_rules=additional_rules,
+                                              additional_rules=additional_rules,
                                               ome_auto_setup=True)
     
     sample_mapper.sample_metadata_df_builder.sample_metadata_df["altitude_method"] = np.where(

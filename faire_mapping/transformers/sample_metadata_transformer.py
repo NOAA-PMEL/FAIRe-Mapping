@@ -26,6 +26,7 @@ class SampleMetadataTransformer:
                 mapper=sample_mapper
             )
             self.mapping_dict=self.mapper.sample_extract_mapping_builder.sample_mapping_dict
+ 
         # For nc_df
         elif nc_transformer:
             self.pipeline = TransformationPipeline(

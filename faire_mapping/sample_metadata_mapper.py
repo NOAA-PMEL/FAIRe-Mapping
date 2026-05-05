@@ -9,6 +9,8 @@ import numpy as np
 import xarray as xr
 import geopandas as gpd
 import gsw
+import re
+import statistics
 from shapely.geometry import Point
 # from geopy.distance import geodesic
 # from bs4 import BeautifulSoup
@@ -53,15 +55,16 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                                              "pos_cont_type": "not applicable: sample group"}
     gebco_file = "/home/poseidon/zalmanek/FAIRe-Mapping/faire_mapping/GEBCO_2024.nc"
 
-    def __init__(self, config_yaml: yaml, additiona_rules:list = None, ome_auto_setup=True):
+    def __init__(self, config_yaml: yaml, additional_rules:list = None, ome_auto_setup=True, net_tow_weirdness=False):
         # TODO: used to have exp_metadata_df: pd.Series as init, but removed because of abstracting out sequencing yaml. See all associated commented out portions
         # May need to move this part into a separate class that combines after all sample_metadata is generated for each cruise
+        # net_tow_weirdness is False and was only used for wCOA21 net tow. Suspect will never use again. Used to specify how to join sample and extraction metadata
         super().__init__(config_yaml)
 
         # LoOCAL IMPORT: prevents circular dependence
         from faire_mapping.transformers.sample_metadata_transformer import SampleMetadataTransformer
 
-        self.additional_rules = additiona_rules # list of SampleMetadataTransformer rules
+        self.additional_rules = additional_rules # list of SampleMetadataTransformer rules
         self.ome_auto_setup = ome_auto_setup # bool
 
         # Config file stuff
@@ -91,7 +94,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         
         #Instantiate mapping dict builder
         self.sample_extract_mapping_builder = SampleExtractionMappingDictBuilder(google_sheet_mapping_file_id=self.google_sheet_mapping_file_id, google_sheet_json_cred=self.google_json_creds)
-
+  
         self.nc_mapping_builder = NcMappingDictBuilder(google_sheet_mapping_file_id=self.google_sheet_mapping_file_id,
                                                   google_sheet_json_cred=self.google_json_creds,
                                                   sample_mapping_builder=self.sample_extract_mapping_builder,
@@ -113,7 +116,8 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                                                                   extraction_df=self.extraction_metadata_builder.extraction_df,
                                                                   csv_path=self.config_file['sample_metadata_file'],
                                                                   unwanted_cruise_code=self.unwanted_cruise_code,
-                                                                  desired_cruise_code=self.desired_cruise_code)
+                                                                  desired_cruise_code=self.desired_cruise_code,
+                                                                  net_tow_weirness=net_tow_weirdness)
         
         # Set up Transformation stuff and rules
         self.transformer = SampleMetadataTransformer(
@@ -246,6 +250,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         except KeyError:
             prefix=prefix
         return f"{prefix}_Port{port_num}"
+    
+    def add_material_samp_id_for_net_tow(self, metadata_row: pd.Series, short_cruise_code: str, net_num_col: str):
+        # Creates the material sample id for net tow samples by the short_cruise_code and net number
+        return f"{short_cruise_code}_{metadata_row[net_num_col].strip()}"
     
     def add_material_samp_id_for_aquamonitor(self, station: str):
         """"Add the materialSampleID for aquamonitor which will be 'Aquamonitor_M18 (station)"""
@@ -439,6 +447,10 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             return env_local_scale
         except UnboundLocalError:
             return ''
+        except ValueError:
+            print(ValueError)
+            return ''
+            
 
     def format_dates_for_duration_calculation(self, date: str) -> datetime:
         if date in  [None, 'nan', 'missing: not collected', '', 'missing: not provided']:
@@ -470,6 +482,28 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         # If the sign is positive and should be negative, switch the sign of longitude or latitude
 
         return -(float(lat_or_lon_deg))
+
+    def convert_lat_lon_from_degrees_degree_minutes_to_decimal_degrees(self, coord: str) ->float:
+        """
+        Will convert a value that is in degrees + decimal minutes (e.g. 52 01.0266 N or 125 40.5677W)
+        to decimal minutes.
+        """
+        parts = coord.strip().split(' ')
+        degrees = float(parts[0])
+
+        if parts[1][-1].isalpha(): # If there is no space between degree minutes and hemisphere
+            hemisphere = parts[1][-1].upper()
+            minutes = float(parts[1][:-1])
+        else:
+            hemisphere = parts[2].upper()
+            minutes = float(parts[1])
+
+        dd = round(degrees + (minutes/60), 6)
+
+        if hemisphere in ('S', 'W'):
+            dd = -dd
+
+        return dd
 
     def calculate_date_duration(self, metadata_row: pd.Series, start_date_col: str, end_date_col: str) -> datetime:
         # takes two dates and calcualtes the difference to find the duration of time in ISO 8601 format
@@ -585,6 +619,116 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             return 0
         else:
             return ''
+        
+    def map_based_on_str_in_samp_name(self, metadata_row: pd.Series, if_val_in_samp_name: str, metadata_val_should_be: str, else_metadata_val_should_be: str) -> str:
+        """
+        Specify a value present in the samp name (if_val_in_samp_name), such as .'PE' in plankton smoothie net tow samples. If that
+        value is present, then return the metadata_val_should_be, if that value is not present return else_metadata_val_should_be.
+        Calls the samp_name column so final samp names need to be in this columns. self.faire_sample_name_col. Need to include partial() and
+        faire_field_name in main.py to use.
+        """
+        if if_val_in_samp_name in metadata_row[self.faire_sample_name_col]:
+            return metadata_val_should_be
+        else: 
+            return else_metadata_val_should_be
+        
+    def get_date_dur_based_on_str_in_samp_name(self, metadata_row: pd.Series, if_val_in_samp_name: str, if_metadata_range_cols_should_be: str, else_metadata_range_cols_should_be: str):
+        """"
+        Specify a value present in the samp name (if_val_in_samp_name), such as '.PE' in planktons moothie net tow samples. If that 
+        value is present, then will check for '-' in metadata_range_cols and find the duration, expecting the start value/col to be first followed by the end value/date col,
+        if no '-' in either metadata_range_cols or else_metadata_range_cols_sould_be. Calls the samp_name column so final samp names need to be in this columns. 
+        self.faire_sample_name_col. Need to include partial() and faire_field_name in main.py to use. Dates can be hardcoded or refer to a date column.
+        """
+
+        if if_val_in_samp_name in metadata_row[self.faire_sample_name_col]:
+            if '-' in if_metadata_range_cols_should_be:
+                date_cols = if_metadata_range_cols_should_be.split(' - ')
+                start_date = date_cols[0]
+                end_date = date_cols[1]
+                if '/' in start_date:
+                    start_date = self.format_dates_for_duration_calculation(date=start_date)
+                else:
+                    start_date = self.format_dates_for_duration_calculation(metadata_row[start_date])
+                if '/' in end_date:
+                    end_date = self.format_dates_for_duration_calculation(date=end_date)
+                else:
+                    end_date = self.format_dates_for_duration_calculation(metadata_row[end_date])
+
+                print(f"start_date: {start_date}, end_date:{end_date}")
+                duration = end_date - start_date
+                # Convert to ISO 8061
+                iso_duration = isodate.duration_isoformat(duration)
+                return iso_duration
+            else:
+                return if_metadata_range_cols_should_be
+        else:
+            if '-' in else_metadata_range_cols_should_be:
+                date_cols = else_metadata_range_cols_should_be.split(' - ')
+                start_date = date_cols[0]
+                end_date = date_cols[1]
+                if '/' in start_date:
+                    start_date = self.format_dates_for_duration_calculation(date=start_date)
+                else:
+                    start_date = self.format_dates_for_duration_calculation(metadata_row[start_date])
+                if '/' in end_date:
+                    end_date = self.format_dates_for_duration_calculation(date=end_date)
+                else:
+                    end_date = self.format_dates_for_duration_calculation(metadata_row[end_date])
+                
+                duration = end_date - start_date
+                # Convert to ISO 8061
+                iso_duration = isodate.duration_isoformat(duration)
+                return iso_duration
+            else:
+                return else_metadata_range_cols_should_be
+        
+    def get_replicate_number_from_samp_name(self, sample_name: str) -> str:
+        """Gets the replicate number from the sample name. I.e. 1B, 2B, 3B, 1T, 2T, 3T -> 1, 2 or 3 """
+        
+        match = re.search(r'\.(\d+)[BT]\.', sample_name)
+    
+        if match:
+            # group(1) refers to the digits inside the (\d+) parenthesis
+            return match.group(1)
+            
+        return "not applicable"
+            
+    def get_average_of_col_vals(self, metadata_row: pd.Series, metadata_cols: str):
+
+        try:
+            values = []
+            metadata_cols = metadata_cols.split(' | ')
+            for col in metadata_cols:
+                try:
+                    num = float(metadata_row[col])
+                    if num == num: # will catch nan becaus NaN != NaN
+                        values.append(num)
+                except(ValueError, TypeError):
+                    pass
+            return round(statistics.mean(values), 2)
+        
+        except:
+            return "missing: not collected"
+    
+    def get_std_dev_of_col_vals(self, metadata_row: pd.Series, metadata_cols: str):
+
+        try:
+            values = []
+            metadata_cols = metadata_cols.split(' | ')
+            for col in metadata_cols:
+                try:
+                    num = float(metadata_row[col])
+                    if num == num: # will catch nan becaus NaN != NaN
+                        values.append(num)
+                except(ValueError, TypeError):
+                    pass
+            if len(values) > 1:
+                return round(statistics.stdev(values), 2)
+            else:
+                return "not applicable"
+        
+        except TypeError:
+            return "missing: not collected"
 
     def get_station_id_from_unstandardized_station_name(self, metadata_row: pd.Series, unstandardized_station_name_col: str) -> str:
         # Gets the standardized station name from the unstandardized station name
@@ -614,8 +758,7 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
         lon = metadata_row[lon_col]
         listed_station = metadata_row[station_name_col]
         sample_name = metadata_row[self.sample_metadata_sample_name_column]
-
-        
+   
         try:
             if 'NC' not in sample_name or 'blank' not in sample_name.lower():
             
@@ -775,43 +918,49 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
             get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col,
             get_fallback_col_mapping_rule,
             get_date_ext_iso8601_rule)
-
-        eventDate_mapping = self.nc_mapping_builder.nc_mapping_dict.get('related', {}).get('eventDate', '')
-
-        # 2. Decide the rule
-        # Check if the mapping value contains 'fallback:' Had to add this for dy23-06
-        if 'fallback:' in str(eventDate_mapping):
-            event_date_rule = get_fallback_col_mapping_rule(self, faire_field_name='eventDate')
-        else:
-            event_date_rule = get_eventDate_iso8601_rule(self)
         
-        nc_transformer = SampleMetadataTransformer(sample_mapper=self, ome_auto_setup=True, nc_transformer=True)
-        additional_rules = [get_date_duration_rule(self),
-                            event_date_rule,
-                            get_neg_cont_type_from_ome_sample_name(self),
-                            get_dna_yield_from_conc_and_vol(self),
-                            get_well_number_from_well_field(self),
-                            get_well_position_from_well_field(self),
-                            get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col(self),
-                            get_date_ext_iso8601_rule(self)]
+        if not self.sample_metadata_df_builder.nc_metadata_df.empty:
         
-        nc_transformer.add_custom_rules(additional_rules)
-        print("\nNegative Controls Mapping:\n")
-        nc_metadata_df = nc_transformer.transform()
+            eventDate_mapping = self.nc_mapping_builder.nc_mapping_dict.get('related', {}).get('eventDate', '')
 
-       
-        # First concat with sample_faire_template to get rest of columns,
-        # # and add user_defined columnsthen
-        # Fill na and empty values with not applicable: control sample
-        try:
-            # compare columns in df to nc_faire_fields list and if value is missing, fill with missing: not provided
-            nc_results_updated = nc_metadata_df.reindex(columns=nc_faire_field_cols, fill_value="missing: not collected")
-            nc_results_updated = nc_results_updated.fillna("missing: not collected")
-            nc_df = pd.concat(
-                [self.sample_faire_template_df, nc_results_updated])
+            # 2. Decide the rule
+            # Check if the mapping value contains 'fallback:' Had to add this for dy23-06
+            if 'fallback:' in str(eventDate_mapping):
+                event_date_rule = get_fallback_col_mapping_rule(self, faire_field_name='eventDate')
+            else:
+                event_date_rule = get_eventDate_iso8601_rule(self)
             
-            return nc_df
-        except: # If empty just return empty dataframe
+            nc_transformer = SampleMetadataTransformer(sample_mapper=self, ome_auto_setup=True, nc_transformer=True)
+            additional_rules = [get_date_duration_rule(self),
+                                event_date_rule,
+                                get_neg_cont_type_from_ome_sample_name(self),
+                                get_dna_yield_from_conc_and_vol(self),
+                                get_well_number_from_well_field(self),
+                                get_well_position_from_well_field(self),
+                                get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col(self),
+                                get_date_ext_iso8601_rule(self)]
+            
+            nc_transformer.add_custom_rules(additional_rules)
+            print("\nNegative Controls Mapping:\n")
+            nc_metadata_df = nc_transformer.transform()
+
+        
+            # First concat with sample_faire_template to get rest of columns,
+            # # and add user_defined columnsthen
+            # Fill na and empty values with not applicable: control sample
+            try:
+                # compare columns in df to nc_faire_fields list and if value is missing, fill with missing: not provided
+                nc_results_updated = nc_metadata_df.reindex(columns=nc_faire_field_cols, fill_value="missing: not collected")
+                nc_results_updated = nc_results_updated.fillna("missing: not collected")
+                nc_df = pd.concat(
+                    [self.sample_faire_template_df, nc_results_updated])
+                
+                return nc_df
+            except: # If empty just return empty dataframe
+                return self.sample_faire_template_df # MAybe this isn't needed since the else statement below catcheds the empty df. But afraid to remove it if it works.
+            
+        else:
+            # If empty just return empty dataframe
             return self.sample_faire_template_df
 
     def finish_up_controls_df(self, final_sample_df: pd.DataFrame) -> pd.DataFrame:
@@ -897,9 +1046,21 @@ class FaireSampleMetadataMapper(OmeFaireMapper):
                 for extraction_blank, associated_samples in self.extraction_metadata_builder.extraction_blank_rel_cont_dict.items():
                     if current_samp in associated_samples:
                         related_blanks.append(extraction_blank)
+
+                    # For crazy WCOA net tow samples:
+                    elif current_samp.startswith('P'):
+                        p_match = re.match(r'(P\d+)', current_samp, re.IGNORECASE)
+                        p_num = p_match.group(1).upper() if p_match else None
+
+                        is_pe_samp = '.PE' in current_samp
+                        for samp in associated_samples:
+                            if p_num in samp and 'EtOH' in extraction_blank and not is_pe_samp:
+                                related_blanks.append(extraction_blank)
+                            elif p_num in samp and 'Plankton' in extraction_blank and is_pe_samp:
+                                related_blanks.append(extraction_blank)
                 
                 # remove any "not applicable" if there are other ids in all_related_ids
-                final_samp_df.at[idx, self.faire_rel_cont_id_col_name] = ' | '.join(related_blanks)
+                final_samp_df.at[idx, self.faire_rel_cont_id_col_name] = ' | '.join(set(related_blanks))
 
         return final_samp_df
     

@@ -130,6 +130,15 @@ def extract_cast_number(value):
         # Fallback if the string format is unexpected
         return value
 
+def get_replicate_number_from_samp_name(sample_name: str) -> str:
+        """Gets the replicate number from the sample name. I.e. 1B, 2B, 3B, 1T, 2T, 3T -> 1, 2 or 3 """
+        
+        rep_strs = ['.1B.', '.2B.', '.3B.', '.1T.', '.2T.', '.3T.']
+        for rep_str in rep_strs:
+            if rep_str in sample_name:
+                rep_num = rep_str.replace('.', '').replace('B', '').replace('T', '')
+                return rep_num
+            
 def remove_cruise_codes_from_samp_dict(samp_dict: dict) -> dict:
     for control_samp, list_of_samps in samp_dict.items():
         updated_list_of_samps = []
@@ -430,7 +439,10 @@ def main() -> None:
 
         elif faire_col == "ctd_cast_number":
              # Create the new column
-            sample_faire_metadata_results[faire_col] = metadata_df_builder.df[faire_col].apply(extract_cast_number)       
+            sample_faire_metadata_results[faire_col] = metadata_df_builder.df[faire_col].apply(extract_cast_number)  
+
+        elif faire_col == 'replicate_number':
+            sample_faire_metadata_results[faire_col] = metadata_df_builder.df[metadata_col].apply(get_replicate_number_from_samp_name)
 
     faire_sample_df = pd.DataFrame(sample_faire_metadata_results)
     rel_cont_id_df, blanks_to_be_added, extraction_df, blank_dict = figure_out_rel_cont_ids(faire_mapper=faire_mapper, metadata_df=faire_sample_df)

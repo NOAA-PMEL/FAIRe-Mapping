@@ -1,4 +1,5 @@
 import pandas as pd
+import re
 from faire_mapping.dataframe_and_dict_builders.base_df_builder import BaseDfBuilder
 from faire_mapping.utils import fix_cruise_code_in_samp_names
 
@@ -16,10 +17,11 @@ class SampleMetadataBuilder(BaseDfBuilder):
     def __init__(self,
                  sample_name_metadata_col_name: str,
                  sample_metadata_file_neg_control_col_name: str,
-                 sample_metadata_cast_no_col_name: str,
                  extraction_df: pd.DataFrame,
                  header: int = 0, 
                  sep: str = ',',
+                 net_tow_weirness: str = False,
+                 sample_metadata_cast_no_col_name: str = None,
                  csv_path: str = None,
                  google_sheet_id: str = None, 
                  json_creds_path: str = None,
@@ -44,6 +46,7 @@ class SampleMetadataBuilder(BaseDfBuilder):
         self.unwanted_cruise_code = unwanted_cruise_code
         self.desired_cruise_code = desired_cruise_code
         self.extraction_df = extraction_df
+        self.net_tow_weirness = net_tow_weirness
         self.sample_metadata_df, self.nc_metadata_df = self.filter_metadata_dfs()
         self.replicates_dict = self.create_biological_replicates_dict()
         
@@ -51,6 +54,7 @@ class SampleMetadataBuilder(BaseDfBuilder):
 
         # Join sample metadata with extraction metadata to get samp_df
         samp_df = self.join_sample_and_extract_df()
+        samp_df.columns = samp_df.columns.str.strip()
 
         try:
             nc_mask = samp_df[self.sample_name_metadata_col_name].astype(
@@ -79,13 +83,17 @@ class SampleMetadataBuilder(BaseDfBuilder):
         """
         samp_df = self.transform_metadata_df()
 
-        metadata_df = pd.merge(
-            left=self.extraction_df,
-            right=samp_df,
-            left_on=self.EXTRACT_SAMP_NAME_COL,
-            right_on=self.sample_name_metadata_col_name,
-            how='left'
-        )
+        # For WCOA21 net tow samples with all kinds of crazy sample name changess
+        if self.net_tow_weirness:
+            metadata_df = self.join_crazy_wcoa21net_tow_samp_extract_df(samp_df=samp_df)
+        else:
+            metadata_df = pd.merge(
+                left=self.extraction_df,
+                right=samp_df,
+                left_on=self.EXTRACT_SAMP_NAME_COL,
+                right_on=self.sample_name_metadata_col_name,
+                how='left'
+            )
 
         # Drop rows where the sample name column value is NA. This is for cruises where samples were split up
         # e.g. PPS samples that were deployed from the DY2306 cruise. They will be a separate sample metadata file.
@@ -95,6 +103,95 @@ class SampleMetadataBuilder(BaseDfBuilder):
         if metadata_df.empty:
             raise ValueError(f"Something went wrong in sample df join with extraction df - most likely cruise code or sample naming issues!")
 
+        return metadata_df
+
+    def join_crazy_wcoa21net_tow_samp_extract_df(self, samp_df):
+        """Joins the crazy sample naming changes for WCOA net tow"""
+        
+        def classify_and_normalize(sample_name, force_pe_lookup=None): 
+            """
+            Returns a dict with:
+            - p_num: e.g. P188
+            - family: 'PE' or 'standard'
+            - ab_suiffix: 'A' or 'B'
+            - canonical_key: the key to merge on (p_num + family)
+            """
+            s = str(sample_name).strip()
+            is_pe = bool(re.search(r'\.PE', s, re.IGNORECASE))
+            
+            p_match = re.match(r'(P\d+)', s, re.IGNORECASE)
+            p_num = p_match.group(1).upper() if p_match else None
+            
+            # Capture the PE pattern: E.PE or just .PE
+            e_pe_match = re.search(r'(\.E\.PE|\.PE)', s, re.IGNORECASE)
+            pe_pattern = e_pe_match.group(1).upper() if e_pe_match else None
+
+            if force_pe_lookup is not None:
+                is_pe = p_num in force_pe_lookup
+            
+            ab_match = re.match(r'P\d+([AB])(?:\.|$)', s, re.IGNORECASE)
+            ab_suffix = ab_match.group(1).upper() if ab_match else None
+
+            # Handel P184.a.PE / P184.b.PE - the a/b here is mid-string
+            mid_ab_match = re.search(r'\.(A|B)\.', s, re.IGNORECASE)
+            if mid_ab_match:
+                ab_suffix = mid_ab_match.group(1).upper()
+
+            family = 'PE' if is_pe else 'standard'
+            canonical_key = f"{p_num}_{family}" if p_num else None
+
+            return {
+                'p_num': p_num,
+                'family': family,
+                'ab_suffix': ab_suffix,
+                'canonical_key': canonical_key,
+                'pe_pattern': pe_pattern
+                }
+        
+        # --------- Normalize extraction df ------------
+        extraction_meta = self.extraction_df[self.EXTRACT_SAMP_NAME_COL].apply(classify_and_normalize).apply(pd.Series)
+        self.extraction_df = pd.concat([self.extraction_df, extraction_meta], axis=1)
+        # Filter out B suffix rows because we are only matching A rows
+        self.extraction_df = self.extraction_df[self.extraction_df['ab_suffix'] != 'B'].copy()
+        # # Drop sample name column from extraction df before merging
+        self.extraction_df = self.extraction_df.drop(columns=[self.EXTRACT_SAMP_NAME_COL])
+
+        # Build lookups from extraction_df now that its classified
+        pe_pe_numbers = set(self.extraction_df[self.extraction_df['family'] == 'PE']['p_num'])
+        pe_pattern_lookup = (
+            self.extraction_df[self.extraction_df['family'] == 'PE'].groupby('p_num')['pe_pattern'].first().to_dict()
+        )
+        def build_canonical_samp_name(row):
+            samp_name = row[self.sample_name_metadata_col_name]
+            if pd.isna(samp_name):
+                return samp_name
+            if row['family'] == 'PE':
+                # P126.E.WCOA21 -? P126.E.PE.WCOA21
+                pattern = pe_pattern_lookup.get(row['p_num'], '.PE')
+                name = re.sub(r'\.E(\.WCOA21)', r'\1', samp_name, flags=re.IGNORECASE)
+                return re.sub(r'(\.WCOA21)', f'{pattern}\\1', name, flags=re.IGNORECASE)
+            return samp_name
+
+    
+        # -------- Normalize sample df -------------
+        samp_meta = samp_df[self.sample_name_metadata_col_name].apply(
+            lambda x: classify_and_normalize(x, force_pe_lookup=pe_pe_numbers)).apply(pd.Series)
+        samp_df = pd.concat([samp_df, samp_meta], axis=1)
+        # samp_df[self.sample_name_metadata_col_name] = samp_df.apply(build_canonical_samp_name, axis=1)
+        samp_df = samp_df.drop(columns=['canonical_key', 'family', 'ab_suffix', 'pe_pattern'])
+
+        # -------- Merge on Canonical P number ---------
+        metadata_df = self.extraction_df.merge(
+            samp_df, 
+            on='p_num', 
+            how='left', 
+            )
+        
+        # Rename PE sample names post merge
+        metadata_df[self.sample_name_metadata_col_name] = metadata_df.apply(build_canonical_samp_name, axis=1)
+        metadata_df = metadata_df.drop(columns=['p_num', 'canonical_key', 'family', 'ab_suffix', 'pe_pattern'])
+
+        metadata_df[self.EXTRACT_SAMP_NAME_COL] = metadata_df[self.sample_name_metadata_col_name]
         return metadata_df
     
     def transform_metadata_df(self):
@@ -112,8 +209,9 @@ class SampleMetadataBuilder(BaseDfBuilder):
             self._fix_samp_names)
 
         # Remove 'CTD' from Cast_No. value if present
-        self.df[self.sample_metadata_cast_no_col_name] = self.df[self.sample_metadata_cast_no_col_name].apply(
-            self.remove_extraneous_cast_no_chars)
+        if self.sample_metadata_cast_no_col_name:
+            self.df[self.sample_metadata_cast_no_col_name] = self.df[self.sample_metadata_cast_no_col_name].apply(
+                self.remove_extraneous_cast_no_chars)
         
         if self.desired_cruise_code:
             self.df = fix_cruise_code_in_samp_names(df=self.df, 

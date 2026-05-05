@@ -145,3 +145,29 @@ def get_env_local_scale_by_depth(mapper: FaireSampleMetadataMapper):
             .for_mapping_type('related')
             .build()
         )
+
+def get_decimalLatitude_Longitude_from_degree_decimal_seconds(mapper: FaireSampleMetadataMapper):
+    """
+    Rule for getting the decimalLatitude/decimalLongitude from a value in degree decimal minutes.
+    Expects metadata_col to be 'latitude/longitude_col'.
+    """
+    def apply_lat_lon_decimal_degrees(df, faire_col, metadata_col):
+        """
+        Apply the samp_store_loc mapper's convert_lat_lon_from_degrees_decimal_minutes_to_decimal_degrees method.
+        """
+        # Apply the calculation to each row
+        return df[metadata_col].apply(mapper.convert_lat_lon_from_degrees_degree_minutes_to_decimal_degrees)
+    return (
+            TransformationBuilder('convert_lat_lon_from_degrees_decimal_minutes_to_decimal_degrees')
+            .when(lambda f, m, mt: (
+                f in ['decimalLatitude', 'decimalLongitude', 'decimalLongitudeEnd', 'decimalLatitudeEnd'] and
+                mt == 'related'
+            ))
+            .apply(
+                apply_lat_lon_decimal_degrees,
+                mode='direct'
+            )
+            .for_mapping_type('related')
+            .update_source(True)
+            .build()
+        )     

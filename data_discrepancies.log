@@ -1,0 +1,112 @@
+2026-05-05 12:55:25,771 - ERROR - Sample 'WCOA21.Blank.Set26' has mismatches in columns: ['verbatimEventTime', 'date_ext', 'samp_vol_we_dna_ext', 'nucl_acid_ext', 'nucl_acid_ext_modify', 'nucl_acid_ext_method_additional', 'extract_id']
+Values:
+                   verbatimEventTime    date_ext samp_vol_we_dna_ext  ...                               nucl_acid_ext_modify                    nucl_acid_ext_method_additional    extract_id
+2969                     applicable:  2024-11-13                1000  ...      Modified for sterivex, reagent volume altered  Extractions completed in a Biosafety Cabinet f...   WCOArun5_26
+3202  not applicable: control sample     2022-07              1000.0  ...  The standard kit protocol was used with slight...  Extractions performed by Tanner Waters and Car...  WCOA_Run5_26
+
+[2 rows x 7 columns]
+
+2026-05-05 12:55:25,784 - ERROR - Sample 'WCOA21.Blank.Set27' has mismatches in columns: ['verbatimEventTime', 'date_ext', 'samp_vol_we_dna_ext', 'nucl_acid_ext', 'nucl_acid_ext_modify', 'nucl_acid_ext_method_additional', 'extract_id']
+Values:
+                   verbatimEventTime    date_ext samp_vol_we_dna_ext  ...                               nucl_acid_ext_modify                    nucl_acid_ext_method_additional    extract_id
+2970                     applicable:  2024-11-14                1000  ...      Modified for sterivex, reagent volume altered  Extractions completed in a Biosafety Cabinet f...   WCOArun5_27
+3203  not applicable: control sample     2022-07              1000.0  ...  The standard kit protocol was used with slight...  Extractions performed by Tanner Waters and Car...  WCOA_Run5_27
+
+[2 rows x 7 columns]
+
+2026-05-05 12:55:25,796 - ERROR - Sample 'WCOA21.Blank.Set28' has mismatches in columns: ['verbatimEventTime', 'date_ext', 'samp_vol_we_dna_ext', 'nucl_acid_ext', 'nucl_acid_ext_modify', 'nucl_acid_ext_method_additional', 'extract_id']
+Values:
+                   verbatimEventTime    date_ext samp_vol_we_dna_ext  ...                               nucl_acid_ext_modify                    nucl_acid_ext_method_additional    extract_id
+2971                     applicable:  2024-11-19                1000  ...      Modified for sterivex, reagent volume altered  Extractions completed in a Biosafety Cabinet f...   WCOArun5_28
+3204  not applicable: control sample     2022-07              1000.0  ...  The standard kit protocol was used with slight...  Extractions performed by Tanner Waters and Car...  WCOA_Run5_28
+
+[2 rows x 7 columns]
+
+2026-05-05 12:55:25,808 - ERROR - Sample 'WCOA21.Blank.Set29' has mismatches in columns: ['verbatimEventTime', 'date_ext', 'samp_vol_we_dna_ext', 'nucl_acid_ext', 'nucl_acid_ext_modify', 'nucl_acid_ext_method_additional', 'extract_id']
+Values:
+                   verbatimEventTime    date_ext samp_vol_we_dna_ext  ...                               nucl_acid_ext_modify                    nucl_acid_ext_method_additional    extract_id
+2972                     applicable:  2024-12-03                1000  ...      Modified for sterivex, reagent volume altered  Extractions completed in a Biosafety Cabinet f...   WCOArun5_29
+3205  not applicable: control sample     2022-07              1000.0  ...  The standard kit protocol was used with slight...  Extractions performed by Tanner Waters and Car...  WCOA_Run5_29
+
+[2 rows x 7 columns]
+
+2026-05-05 12:55:25,820 - ERROR - Sample 'WCOA21.Blank.Set30' has mismatches in columns: ['verbatimEventTime', 'date_ext', 'samp_vol_we_dna_ext', 'nucl_acid_ext', 'nucl_acid_ext_modify', 'nucl_acid_ext_method_additional', 'extract_id']
+Values:
+                   verbatimEventTime    date_ext samp_vol_we_dna_ext  ...                               nucl_acid_ext_modify                    nucl_acid_ext_method_additional    extract_id
+2973                     applicable:  2024-12-05                1000  ...      Modified for sterivex, reagent volume altered  Extractions completed in a Biosafety Cabinet f...   WCOArun5_30
+3206  not applicable: control sample     2022-07              1000.0  ...  The standard kit protocol was used with slight...  Extractions performed by Tanner Waters and Car...  WCOA_Run5_30
+
+[2 rows x 7 columns]
+
+2026-05-05 12:55:25,833 - ERROR - Sample 'WCOA21.Blank.Set31' has mismatches in columns: ['verbatimEventTime', 'date_ext', 'samp_vol_we_dna_ext', 'nucl_acid_ext', 'nucl_acid_ext_modify', 'nucl_acid_ext_method_additional', 'extract_id']
+Values:
+                   verbatimEventTime    date_ext samp_vol_we_dna_ext  ...                               nucl_acid_ext_modify                    nucl_acid_ext_method_additional    extract_id
+2974                     applicable:  2024-11-13                1000  ...      Modified for sterivex, reagent volume altered  Extractions completed in a Biosafety Cabinet f...   WCOArun5_31
+3207  not applicable: control sample     2022-07              1000.0  ...  The standard kit protocol was used with slight...  Extractions performed by Tanner Waters and Car...  WCOA_Run5_31
+
+[2 rows x 7 columns]
+
+2026-05-05 12:55:25,845 - ERROR - Sample 'WCOA21.Blank.Set32' has mismatches in columns: ['verbatimEventTime', 'date_ext', 'samp_vol_we_dna_ext', 'nucl_acid_ext', 'nucl_acid_ext_modify', 'nucl_acid_ext_method_additional', 'extract_id']
+Values:
+                   verbatimEventTime    date_ext samp_vol_we_dna_ext  ...                               nucl_acid_ext_modify                    nucl_acid_ext_method_additional    extract_id
+2975                     applicable:  2024-12-06                1000  ...      Modified for sterivex, reagent volume altered  Extractions completed in a Biosafety Cabinet f...   WCOArun5_32
+3208  not applicable: control sample     2022-07              1000.0  ...  The standard kit protocol was used with slight...  Extractions performed by Tanner Waters and Car...  WCOA_Run5_32
+
+[2 rows x 7 columns]
+
+2026-05-05 12:55:25,858 - ERROR - Sample 'WCOA21.Blank.Set33.A' has mismatches in columns: ['rel_cont_id', 'verbatimEventTime', 'date_ext', 'samp_vol_we_dna_ext', 'nucl_acid_ext', 'nucl_acid_ext_modify', 'nucl_acid_ext_method_additional', 'extract_id']
+Values:
+                         rel_cont_id               verbatimEventTime    date_ext  ...                               nucl_acid_ext_modify                    nucl_acid_ext_method_additional    extract_id
+2976                  E610.NC.WCOA21                     applicable:  2024-12-17  ...      Modified for sterivex, reagent volume altered  Extractions completed in a Biosafety Cabinet f...   WCOArun5_33
+3209  not applicable: control sample  not applicable: control sample     2022-07  ...  The standard kit protocol was used with slight...  Extractions performed by Tanner Waters and Car...  WCOA_Run5_33
+
+[2 rows x 8 columns]
+
+2026-05-05 12:55:25,871 - ERROR - Sample 'WCOA21.Blank.Set33.B' has mismatches in columns: ['rel_cont_id', 'verbatimEventTime', 'date_ext', 'samp_vol_we_dna_ext', 'nucl_acid_ext', 'nucl_acid_ext_modify', 'nucl_acid_ext_method_additional', 'extract_id']
+Values:
+                         rel_cont_id               verbatimEventTime    date_ext  ...                               nucl_acid_ext_modify                    nucl_acid_ext_method_additional    extract_id
+2977                  E610.NC.WCOA21                     applicable:  2024-12-18  ...      Modified for sterivex, reagent volume altered  Extractions completed in a Biosafety Cabinet f...   WCOArun5_33
+3210  not applicable: control sample  not applicable: control sample     2022-07  ...  The standard kit protocol was used with slight...  Extractions performed by Tanner Waters and Car...  WCOA_Run5_33
+
+[2 rows x 8 columns]
+
+2026-05-05 12:55:25,884 - ERROR - Sample 'WCOA21.Blank.Set34. A' has mismatches in columns: ['rel_cont_id', 'verbatimEventTime', 'date_ext', 'samp_vol_we_dna_ext', 'nucl_acid_ext', 'nucl_acid_ext_modify', 'nucl_acid_ext_method_additional', 'extract_id']
+Values:
+                         rel_cont_id               verbatimEventTime    date_ext  ...                               nucl_acid_ext_modify                    nucl_acid_ext_method_additional    extract_id
+2978                  E610.NC.WCOA21                     applicable:  2025-01-10  ...      Modified for sterivex, reagent volume altered  Extractions completed in a Biosafety Cabinet f...   WCOArun5_34
+3211  not applicable: control sample  not applicable: control sample     2022-07  ...  The standard kit protocol was used with slight...  Extractions performed by Tanner Waters and Car...  WCOA_Run5_34
+
+[2 rows x 8 columns]
+
+2026-05-05 12:55:25,897 - ERROR - Sample 'WCOA21.Blank.Set34.B' has mismatches in columns: ['rel_cont_id', 'verbatimEventTime', 'date_ext', 'samp_vol_we_dna_ext', 'nucl_acid_ext', 'nucl_acid_ext_modify', 'nucl_acid_ext_method_additional', 'extract_id']
+Values:
+                         rel_cont_id               verbatimEventTime    date_ext  ...                               nucl_acid_ext_modify                    nucl_acid_ext_method_additional    extract_id
+2979                  E610.NC.WCOA21                     applicable:  2025-01-10  ...      Modified for sterivex, reagent volume altered  Extractions completed in a Biosafety Cabinet f...   WCOArun5_34
+3212  not applicable: control sample  not applicable: control sample     2022-07  ...  The standard kit protocol was used with slight...  Extractions performed by Tanner Waters and Car...  WCOA_Run5_34
+
+[2 rows x 8 columns]
+
+2026-05-05 12:55:25,909 - ERROR - Sample 'WCOA21.Blank.Set35' has mismatches in columns: ['rel_cont_id', 'verbatimEventTime', 'date_ext', 'samp_vol_we_dna_ext', 'nucl_acid_ext', 'nucl_acid_ext_modify', 'nucl_acid_ext_method_additional', 'extract_id']
+Values:
+                         rel_cont_id               verbatimEventTime    date_ext  ...                               nucl_acid_ext_modify                    nucl_acid_ext_method_additional    extract_id
+2980                  E610.NC.WCOA21                     applicable:  2025-01-28  ...      Modified for sterivex, reagent volume altered  Extractions completed in a Biosafety Cabinet f...   WCOArun5_35
+3213  not applicable: control sample  not applicable: control sample     2022-07  ...  The standard kit protocol was used with slight...  Extractions performed by Tanner Waters and Car...  WCOA_Run5_35
+
+[2 rows x 8 columns]
+
+2026-05-05 12:55:25,922 - ERROR - Sample 'WCOA21.Blank.Set36' has mismatches in columns: ['rel_cont_id', 'verbatimEventTime', 'date_ext', 'samp_vol_we_dna_ext', 'nucl_acid_ext', 'nucl_acid_ext_modify', 'nucl_acid_ext_method_additional', 'extract_id']
+Values:
+                         rel_cont_id               verbatimEventTime    date_ext  ...                               nucl_acid_ext_modify                    nucl_acid_ext_method_additional    extract_id
+2981                  E610.NC.WCOA21                     applicable:  2025-01-23  ...      Modified for sterivex, reagent volume altered  Extractions completed in a Biosafety Cabinet f...   WCOArun5_36
+3214  not applicable: control sample  not applicable: control sample     2022-07  ...  The standard kit protocol was used with slight...  Extractions performed by Tanner Waters and Car...  WCOA_Run5_36
+
+[2 rows x 8 columns]
+
+2026-05-05 12:55:25,937 - ERROR - Sample 'WCOA21.Blank.Set37' has mismatches in columns: ['verbatimEventTime', 'date_ext', 'samp_vol_we_dna_ext', 'nucl_acid_ext', 'nucl_acid_ext_modify', 'nucl_acid_ext_method_additional', 'extract_id']
+Values:
+                   verbatimEventTime    date_ext samp_vol_we_dna_ext  ...                               nucl_acid_ext_modify                    nucl_acid_ext_method_additional    extract_id
+2982                     applicable:  2024-11-07                1000  ...      Modified for sterivex, reagent volume altered  Extractions completed in a Biosafety Cabinet f...   WCOArun5_37
+3215  not applicable: control sample     2022-07              1000.0  ...  The standard kit protocol was used with slight...  Extractions performed by Tanner Waters and Car...  WCOA_Run5_37
+
+[2 rows x 7 columns]
+

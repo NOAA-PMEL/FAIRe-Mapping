@@ -10,7 +10,8 @@ import subprocess
 import re
 import hashlib
 import shutil 
-from faire_mapping.e_num_samps_to_update import wcoa_samp_e_nums, chaba_enums, OC0722_enums, QiAVATest_enums, oc0919_enums
+import logging
+from faire_mapping.e_num_samps_to_update import wcoa_samp_e_nums, chaba_enums, OC0722_enums, QiAVATest_enums, oc0919_enums, wcoa_net_tow_pe_only_pnums, wcoa_net_tow_e_plus_pe_pnums
 from faire_mapping.utils import load_google_sheet_as_df
 
 # TODO: update for PCR replicates? - MAke sample name the same, change lib_id?
@@ -35,10 +36,19 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         self.run_name = self.config_file['run_name']
         self.asv_counts_tsvs_for_run = self.config_file['asv_counts_tsvs_for_run']
         self.otu_num_tax_assigned_files_for_run = self.config_file['otu_num_tax_assigned_files_for_run']
-        self.ignore_markers = self.config_file['ignore_markers']
+        self.ignore_markers = self.config_file['ignore_markers'] if 'ignore_markers' in self.config_file else False
         self.google_sheet_mapping_file_id = self.config_file['google_sheet_mapping_file_id']
         self.merged = self.config_file['merged']  if 'merged' in self.config_file else False
         self.json_creds = self.config_file['json_creds']
+
+        # set up logging
+        log_path = Path(self.final_faire_template_path).parent / "run.log"
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format="%(asctime)s - %(levelname)s - %(message)s",
+            filename=log_path,
+            filemode = "w"
+        )
 
         self.mapping_dict = self._create_experiment_run_mapping_dict()
         self.run_metadata_df = self._create_experiment_metadata_df()
@@ -315,6 +325,12 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                 pattern = re.compile(f"^{re.escape(sample_name_lookup)}[_.]R[{file_num}].+")
                 matching_files = [f for f in all_files if pattern.match(f)]
 
+            # For wCOA net tow samples that did only kinds of crazy sample naming bonkers stuff
+            if not matching_files:
+                sample_name_lookup = sample_name.replace('.E.WCOA21', '')
+                pattern = re.compile(f"^{re.escape(sample_name_lookup)}[_.]R[{file_num}].+")
+                matching_files = [f for f in all_files if pattern.match(f)]
+
             # FOR OC0919 samples
             if not matching_files:
                 sample_name_lookup = sample_name.replace('.OC0919', '')
@@ -335,11 +351,11 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                     "filepath": filepath
                 }
         else:
-            print(f"Warning: No matching files found for sample {sample_name} in marker {marker}, using sample lookup name {sample_name_lookup}, pattern {pattern}.")
+            logging.warning(f"Warning: No matching files found for sample {sample_name} in marker {marker}, using sample lookup name {sample_name_lookup}, pattern {pattern}.")
 
         for k, v in target_dict.items():
             if 'E1866' in k:
-                print(f"trouble samp is {k}: {v}")
+                logging.debug(f"trouble samp is {k}: {v}")
     
     def _create_marker_sample_raw_data_file_dicts(self):
         # Finds all matching data files by marker for each sample returns two nested dict one for forward raw data files, and one for reverse raw data files
@@ -354,7 +370,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                 raise ValueError(f"No shorthand marker exists for {marker}, please update shorthand_marker dict in lists file")
             marker_raw_data_dir = self.run_raw_data_path.get(shorthand_marker)
             if os.path.exists(marker_raw_data_dir):
-                print(f"raw data for {shorthand_marker} in folder: {marker_raw_data_dir}")
+                logging.info(f"raw data for {shorthand_marker} in folder: {marker_raw_data_dir}")
             else:
                 raise ValueError(f"{marker_raw_data_dir} does not exist!")
             
@@ -461,7 +477,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         # Returns the count of records in the FASTQ file
 
         if not os.path.exists(fastq_file):
-            print(f"Error: File {fastq_file} does not exist.")
+            logging.error(f"Error: File {fastq_file} does not exist.")
 
         cmd = f"bioawk -t -c fastx 'END {{print NR}}' {fastq_file}"
 
@@ -471,14 +487,14 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
 
             # check if command executed successfully
             if result.returncode != 0:
-                print(f"Error executing bioawk {result.stderr}")
+                logging.error(f"Error executing bioawk {result.stderr}")
             
             # parse the output to get the count
             count = int(result.stdout.strip())
             return count
         
         except Exception as e:
-            print(f"Error executing command: {e}")
+            logging.error(f"Error executing command: {e}")
     
     def _clean_asv_samp_names(self, sample_name: str, marker: str) -> str:
         # Cleans sample names in asv data to match other data (e.g. removed MP_ and replaces other _ with .)
@@ -618,7 +634,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                     try: 
                         self.asv_data_dict[marker][updated_sample_name]["otu_num_tax_assigned"] = non_zero_otu_num_tax_assinged.item()
                     except:
-                        print(f"sample: {updated_sample_name} is missing from asv_data_dict - double check that this sample is not part of this merged Run!")
+                        logging.warning(f"sample: {updated_sample_name} is missing from asv_data_dict - double check that this sample is not part of this merged Run!")
                         pass
 
     def process_paired_end_fastq_files(self, metadata_row: pd.Series) -> int:
@@ -689,12 +705,12 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
 
                         count = count_data.get(faire_col)
                         if count:
-                            print(f'\033[32m{sample_name} cant find a match in the asv_data_dict exactly for marker {marker}, but did find a match based on similarity: {samp_name}. If this is incorrect please look into!\033[0m')
+                            logging.info(f'{sample_name} cant find a match in the asv_data_dict exactly for marker {marker}, but did find a match based on similarity: {samp_name}. If this is incorrect please look into!')
                         break
                         
         
         except Exception as e:
-            print(f"No count data for {sample_name} with {marker} {e}")
+            logging.warning(f"No count data for {sample_name} with {marker} {e}")
             count = 0
 
         return count
@@ -787,7 +803,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         current_asv = None
         sequence = ''
 
-        print(f"Creating ASV hash dict for {asvs_fasta_path}")
+        logging.info(f"Creating ASV hash dict for {asvs_fasta_path}")
         with open(asvs_fasta_path, 'r') as f:
             for line in f:
                 line = line.strip()
@@ -812,8 +828,40 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
 
     def change_or_add_cruise_codes_by_e_num(self, df: pd.DataFrame) -> pd.DataFrame:
         # Changes the cruise code, or possibly adds the cruise code to the sample name based on the E number
+        # --- E nums ----
         e_nums = df[self.run_metadata_sample_name_column].str.extract(r'E(\d+)')[0].astype('Int64') # For looking at the enum integers
         str_e_nums = df[self.run_metadata_sample_name_column].str.extract(r'(E\d+(?:\.(?:\d[A-Z]|NC))?)')[0]
+
+        # ----- P nums -----
+        # Extracts the digits (115) from "P115" or "P115.E"
+        # By using ^ and $, we ensure "P115.PE" or "P115.E.PE" return NaN
+        p_nums_no_pe = df[self.run_metadata_sample_name_column].str.extract(r'^P(\d+)(?:\.E)?$')[0].astype('Int64')
+        # This will NOT match "P126", "P126.E", or "P126.E.PE"
+        str_pe_only = df[self.run_metadata_sample_name_column].str.extract(r'^(P\d+\.PE)$')[0]
+        # Matches P104.E.PE
+        # Rejects P104.PE, P104.E, or P104
+        str_e_pe_nums = df[self.run_metadata_sample_name_column].str.extract(r'^(P\d+\.E\.PE)$')[0]
+        # --------------------------------
+
+        # For WCOA net tow P116 -> P116.E.WCOA21 or P115.E -> P115.E.WCOA21
+        wcoa_net_tow_e_mask= (p_nums_no_pe.notna()) & (
+            (p_nums_no_pe >= 116) & (p_nums_no_pe <= 210) | 
+            (p_nums_no_pe >= 101) & (p_nums_no_pe <= 115)
+        )
+        df.loc[wcoa_net_tow_e_mask, self.run_metadata_sample_name_column] = df.loc[wcoa_net_tow_e_mask, self.run_metadata_sample_name_column].str.replace('.E', '') + '.E.WCOA21'
+
+        # For WCOA .PE samples (not E.PE samples)
+        wcoa_net_tow_pe_only_mask = (str_pe_only.isin(wcoa_net_tow_pe_only_pnums))
+        df.loc[wcoa_net_tow_pe_only_mask, self.run_metadata_sample_name_column] = df.loc[wcoa_net_tow_pe_only_mask, self.run_metadata_sample_name_column] + '.WCOA21'
+
+        # For WCOA .E.PE samples (not .E or P (no E) samples)
+        wcoa_net_tow_pe_plus_e_mask = (str_e_pe_nums.isin(wcoa_net_tow_e_plus_pe_pnums))
+        df.loc[wcoa_net_tow_pe_plus_e_mask, self.run_metadata_sample_name_column] = df.loc[wcoa_net_tow_pe_plus_e_mask, self.run_metadata_sample_name_column] + '.WCOA21'
+        
+        # For WCOA DCM sample
+        wcoa_dcm_mask = (e_nums >= 2265) & (e_nums <= 2296)
+        df.loc[wcoa_dcm_mask, self.run_metadata_sample_name_column] = df.loc[wcoa_dcm_mask, self.run_metadata_sample_name_column] + '.WCOA21'
+    
         # for M2-PPS-0423 sample names E1820 - E1842
         mask = (e_nums >= 1820) & (e_nums <= 1842)
         df.loc[mask, self.run_metadata_sample_name_column] = df.loc[mask, self.run_metadata_sample_name_column].str.replace('.DY23-06', '.M2-PPS-0423')
@@ -887,6 +935,10 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
                 sample_name = sample_name.replace('SKQ23-12S', 'CEO-AquaM-0923')
             if 2030 == number:
                 sample_name = 'E2030.NC.SKQ23-12S'
+        elif sample_name.startswith('P') and '.PE' not in sample_name:
+            sample_name = sample_name.replace('.E', '') + '.E.WCOA21'
+        elif sample_name.startswith('P') and 'PE' in sample_name:
+            sample_name = sample_name + '.WCOA21'
 
         return sample_name
         
@@ -921,7 +973,7 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
 
         # Check if targe_file already exists
         if target_file.exists():
-            print(f"Skipping copying raw data file: File '{new_filename} already exists")
+            logging.info(f"Skipping copying raw data file: File '{new_filename} already exists")
             return new_filename
 
         # Create directory if it doesn't exist
@@ -929,10 +981,10 @@ class ExperimentRunMetadataMapper(OmeFaireMapper):
         try:
             # Copy file with new name
             shutil.copy2(original_file_path, target_file)
-            print(f"\033[92mSuccussfully copied '{filename} to {target_file}\033[0m")
+            logging.info(f"Succussfully copied '{filename} to {target_file}")
             return new_filename
         except Exception as e:
-            print(f"\033[91mError copying file: {e}\033[0m")
+            logging.error(f"Error copying file: {e}")
             return False
 
         

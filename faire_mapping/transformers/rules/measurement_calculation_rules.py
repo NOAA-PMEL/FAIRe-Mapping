@@ -238,3 +238,98 @@ def get_wind_direction_from_wind_degrees(mapper: FaireSampleMetadataMapper):
             .for_mapping_type('related')
             .build()
         )
+
+def get_avg_from_list_of_cols(mapper: FaireSampleMetadataMapper, faire_field_name: str):
+     """
+     Rule for calculating an avergae from a list of column values.
+     Expects metadata_col to be in format 'find_avg: col1 | col2 | col3... etc.'
+     Can have unlimited number fo columns
+     """
+     def apply_avg_calculation_rule(df, faire_col, metadata_col):
+        """
+        Apply average calculation rule using the mapper's get_average_of_col_vals method.
+        """
+        # Remove the 'fallback:' prefix
+        if not metadata_col.startswith('find_avg:'):
+             return None
+        # Parse the metadata_col to extract column names and options
+        metadata_cols = metadata_col.replace('find_avg:', '').strip()
+        parts = [part.strip() for part in metadata_col.split('|')]
+
+        if len(parts) < 2:
+             logger.error(f"Average calculation rule requires at least 2 values separated by '|'")
+             raise ValueError(f"Average calculation rule requires format 'find_avg: col1 | col2 | col3... etc.'")
+        
+        # Apply the fallback logic to each row
+        return df.apply(
+             lambda row: mapper.get_average_of_col_vals(
+                metadata_row=row,
+                metadata_cols=metadata_cols
+             ),
+             axis=1
+        )
+     
+     return (
+        TransformationBuilder('calculate_avg_mapping')
+            .when(lambda f, m, mt: (
+                m.startswith('find_avg:') and
+                f == faire_field_name and
+                '|' in m and # contains pipe separator indicating str in samp name 
+                mt == 'related'
+                ))
+            .apply(
+                apply_avg_calculation_rule,
+                mode='direct'
+            )
+            .for_mapping_type('related')
+            .update_source(True)
+            .build()
+     )
+
+def get_stdev_from_list_of_cols(mapper: FaireSampleMetadataMapper, faire_field_name: str):
+    """
+    Rule for calculating an standard deviation. Use with the get_avg_from_list_of_cols rule aboce.
+    from a list of column values.
+    Expects metadata_col to be in format 'find_stdev: col1 | col2 | col3... etc.'
+    Can have unlimited number fo columns
+    """
+    def apply_avg_calculation_rule(df, faire_col, metadata_col):
+        """
+        Apply standard deviation calculation rule using the mapper's get_std_dev_of_col_vals method.
+        """
+        # Remove the 'fallback:' prefix
+        if not metadata_col.startswith('find_stdev:'):
+                return None
+        # Parse the metadata_col to extract column names and options
+        metadata_cols = metadata_col.replace('find_stdev:', '').strip()
+        parts = [part.strip() for part in metadata_col.split('|')]
+
+        if len(parts) < 2:
+                logger.error(f"Standard deviation calculation rule requires at least 2 values separated by '|'")
+                raise ValueError(f"Standard deviation rule requires format 'find_stdev: col1 | col2 | col3... etc.'")
+        
+        # Apply the fallback logic to each row
+        return df.apply(
+                lambda row: mapper.get_std_dev_of_col_vals(
+                metadata_row=row,
+                metadata_cols=metadata_cols
+                ),
+                axis=1
+        )
+        
+    return (
+    TransformationBuilder('calculate_stdev_mapping')
+        .when(lambda f, m, mt: (
+            m.startswith('find_stdev:') and
+            f == faire_field_name and
+            '|' in m and # contains pipe separator indicating str in samp name 
+            mt == 'related'
+            ))
+        .apply(
+            apply_avg_calculation_rule,
+            mode='direct'
+        )
+        .for_mapping_type('related')
+        .update_source(True)
+        .build()
+    )

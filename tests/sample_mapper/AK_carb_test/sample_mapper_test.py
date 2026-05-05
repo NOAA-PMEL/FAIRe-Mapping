@@ -191,7 +191,7 @@ def main() -> None:
                         ]
 
     sample_mapper = FaireSampleMetadataMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/projects/AK_Carbon/rc0083/config.yaml',
-                                              additiona_rules=additional_rules,
+                                              additional_rules=additional_rules,
                                               ome_auto_setup=True)
 
     df = sample_mapper.finalize_samp_metadata_df()

@@ -5,6 +5,8 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
+# TODO: Change get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col rule to be just if str present rule and add in a prequalifier str for partial functionality and 
+
 def get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col(mapper: FaireSampleMetadataMapper):
     """
     Rule for deducing the nucl_acid_ext and nucl_acid_ext_modify based on a word in a specified column
@@ -41,13 +43,13 @@ def get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col(mapper: Fa
                 axis=1
             )
     
-    cols_applicable = ['nucl_acid_ext', 'nucl_acid_ext_modify']
+    cols_applicable = ['nucl_acid_ext', 'nucl_acid_ext_modify', 'samp_collect_device']
     
     return (
             TransformationBuilder('nucl_acid_ext_or_modify_from_word_in_notes')
             .when(lambda f, m, mt: (
                 f in cols_applicable and
-                mt == 'related'
+                mt == 'related' and 'str_in_samp_name:' not in m
             ))
             .apply(
                 apply_constant_val_based_on_str_method,
@@ -300,6 +302,97 @@ def switch_sign_of_lat_or_lon_deg(mapper: FaireSampleMetadataMapper):
             .for_mapping_type('related')
             .update_source(True)
             .build()
-        )                 
+        )    
+
+def get_pipe_separated_list_of_multiple_values(mapper: FaireSampleMetadataMapper, faire_field_name: str):
+    """
+    Rule for returning a pipe separated string list of the values of multiple columns
+    Expects metadata_col to be something like col1_name | col2_name | col3_name.
+    Can be as many columns as needed. Will return 'col1_value | col2_value | col3_value'
+    """
+    def apply_pipe_list_of_col_values(df, faire_col, metadata_col):
+        """
+        Apply the pipe separated string list of various columns using the mapper's create_pipe_list_of_multiple_column_values method.
+        """
+        # Apply the calculation to each row
+        # Apply the calculation to each row
+        return df.apply(
+            lambda row: mapper.create_pipe_list_of_multiple_column_values(
+                metadata_row=row,
+                metadata_cols=metadata_col
+            ),
+            axis=1
+        )
+    
+    return (
+            TransformationBuilder('pipe_separated_list_col_values')
+            .when(lambda f, m, mt: (
+                f == faire_field_name and
+                mt == 'related'
+            ))
+            .apply(
+                apply_pipe_list_of_col_values,
+                mode='direct'
+            )
+            .for_mapping_type('related')
+            .build()
+        )
+
+
+def get_str_in_samp_name_mapping_rule(mapper: FaireSampleMetadataMapper, faire_field_name: str):
+     """
+     Rule for mapping constant values based on the present of a string in a samp_name.
+     Expects metadata_col to be in format 'str_in_samp_name: if_val_in_samp_name | metadata_val_should_be | else_metadata_val_should_be'
+     Used in WCOA net tow samples where some were extracted with Plankton smoothie and this was denoted by 'PE' in samp_name. Use a double pipe to
+     spearate values if one of the values themselves contain a pipe (e.g. 'str_in_samp_name: if_val_in_samp_name || metadata_val_should_be.a | metadata_val_should_be.b || else_metadata_val_should_be')
+     """
+     def apply_str_in_samp_name_mapping_rule(df, faire_col, metadata_col):
+        """
+        Apply str in samp_name rule using the mapper's map_based_on_str_in_samp_name method.
+        """
+        # Remove the 'fallback:' prefix
+        if not metadata_col.startswith('str_in_samp_name:'):
+             return None
+        # Parse the metadata_col to extract column names and options
+        columns_part = metadata_col.replace('str_in_samp_name:', '').strip()
+
+        parts = [part.strip() for part in columns_part.split('|')] if '||' not in columns_part else [part.strip() for part in columns_part.split('||')]
+
+        if len(parts) < 3:
+             logger.error(f"Str in samp name mapping rule requires at 3 values separated by '|'")
+             raise ValueError(f"Str in samp name mapping requires format 'str_in_samp_name: if_val_in_samp_name | metadata_val_should_be | else_metadata_val_should_be'")
+        
+        val_present_in_samp_name = parts[0]
+        present_val = parts[1]
+        if_not_present_val = parts[2]
+
+        # Apply the fallback logic to each row
+        return df.apply(
+             lambda row: mapper.map_based_on_str_in_samp_name(
+                metadata_row=row,
+                if_val_in_samp_name=val_present_in_samp_name,
+                metadata_val_should_be=present_val,
+                else_metadata_val_should_be=if_not_present_val
+             ),
+             axis=1
+        )
+     
+     return (
+        TransformationBuilder('str_in_samp_name_mapping')
+            .when(lambda f, m, mt: (
+                m.startswith('str_in_samp_name:') and
+                f == faire_field_name and
+                '|' in m and # contains pipe separator indicating str in samp name 
+                mt == 'related'
+                ))
+            .apply(
+                apply_str_in_samp_name_mapping_rule,
+                mode='direct'
+            )
+            .for_mapping_type('related')
+            .update_source(True)
+            .build()
+     )
+
 
 
