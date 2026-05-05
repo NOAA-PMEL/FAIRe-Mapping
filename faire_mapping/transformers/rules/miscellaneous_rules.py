@@ -5,6 +5,8 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
+# TODO: Change get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col rule to be just if str present rule and add in a prequalifier str for partial functionality and 
+
 def get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col(mapper: FaireSampleMetadataMapper):
     """
     Rule for deducing the nucl_acid_ext and nucl_acid_ext_modify based on a word in a specified column
@@ -41,13 +43,13 @@ def get_nucl_acid_ext_and_nucl_acid_ext_modify_by_word_in_extract_col(mapper: Fa
                 axis=1
             )
     
-    cols_applicable = ['nucl_acid_ext', 'nucl_acid_ext_modify']
+    cols_applicable = ['nucl_acid_ext', 'nucl_acid_ext_modify', 'samp_collect_device']
     
     return (
             TransformationBuilder('nucl_acid_ext_or_modify_from_word_in_notes')
             .when(lambda f, m, mt: (
                 f in cols_applicable and
-                mt == 'related'
+                mt == 'related' and 'str_in_samp_name:' not in m
             ))
             .apply(
                 apply_constant_val_based_on_str_method,
@@ -341,7 +343,8 @@ def get_str_in_samp_name_mapping_rule(mapper: FaireSampleMetadataMapper, faire_f
      """
      Rule for mapping constant values based on the present of a string in a samp_name.
      Expects metadata_col to be in format 'str_in_samp_name: if_val_in_samp_name | metadata_val_should_be | else_metadata_val_should_be'
-     Used in WCOA net tow samples where some were extracted with Plankton smoothie and this was denoted by 'PE' in samp_name
+     Used in WCOA net tow samples where some were extracted with Plankton smoothie and this was denoted by 'PE' in samp_name. Use a double pipe to
+     spearate values if one of the values themselves contain a pipe (e.g. 'str_in_samp_name: if_val_in_samp_name || metadata_val_should_be.a | metadata_val_should_be.b || else_metadata_val_should_be')
      """
      def apply_str_in_samp_name_mapping_rule(df, faire_col, metadata_col):
         """
@@ -352,7 +355,8 @@ def get_str_in_samp_name_mapping_rule(mapper: FaireSampleMetadataMapper, faire_f
              return None
         # Parse the metadata_col to extract column names and options
         columns_part = metadata_col.replace('str_in_samp_name:', '').strip()
-        parts = [part.strip() for part in columns_part.split('|')]
+
+        parts = [part.strip() for part in columns_part.split('|')] if '||' not in columns_part else [part.strip() for part in columns_part.split('||')]
 
         if len(parts) < 3:
              logger.error(f"Str in samp name mapping rule requires at 3 values separated by '|'")

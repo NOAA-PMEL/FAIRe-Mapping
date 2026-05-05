@@ -534,7 +534,11 @@ class ProjectMapper(OmeFaireMapper):
                         transformed_rows.append(new_row)
 
                         # These samples were part of the .MiFishMod crowd but also had tech reps for other assays, so we still want to add their regular samp rows since they did not have tech reps
-                        mifishmod_samps_with_pcr_reps = ['E450.1B.WCOA21', 'E450.2B.WCOA21', 'E450.3B.WCOA21', 'E447.1B.WCOA21', 'E447.2B.WCOA21', 'E447.3B.WCOA21']
+                        # And some were just part of other runs.
+                        mifishmod_samps_with_pcr_reps = ['E450.1B.WCOA21', 'E450.2B.WCOA21', 'E450.3B.WCOA21', 'E447.1B.WCOA21', 'E447.2B.WCOA21', 'E447.3B.WCOA21', 'E448.1B.WCOA21',
+                                                         'E448.2B.WCOA21', 'E448.3B.WCOA21', 'E496.1T.WCOA21', 'E496.2T.WCOA21', 'E496.3T.WCOA21', 'E498.1B.WCOA21', 'E498.2B.WCOA21',
+                                                         'E498.3B.WCOA21', 'E575.1B.WCOA21', 'E575.2B.WCOA21', 'E575.3B.WCOA21', 'E600.1B.WCOA21', 'E600.2B.WCOA21', 'E600.3B.WCOA21',
+                                                         'E496.3B.WCOA21']
                         if base_name in mifishmod_samps_with_pcr_reps:
                             transformed_rows.append(r)
                 else:
@@ -615,6 +619,10 @@ class ProjectMapper(OmeFaireMapper):
         
         # Get list of reference names
         reference_names = set(final_sample_df[self.faire_sample_name_col].astype(str).unique())
+        
+        with open("sample_metadata_samps.txt", "w") as f:
+            for item in reference_names:
+                f.write(f"{item}\n")
 
         # Create mask of rows to keep
         mask = exp_run_df[self.faire_sample_name_col].astype(str).isin(reference_names)
