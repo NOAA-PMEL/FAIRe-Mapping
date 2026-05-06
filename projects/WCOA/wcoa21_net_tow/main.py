@@ -71,6 +71,7 @@ def main() -> None:
 
     # Custom/didn't want to write rules for
     df['size_frac_low'] = (df['size_frac_low'].str.replace('Bongo', '').str.replace('Vertical', '').str.strip())
+    df = df.replace([118.248928, '118.248928'], -118.248928)
     
     sample_mapper.save_final_df_as_csv(final_df=df, sheet_name=sample_mapper.sample_mapping_sheet_name, header=2, csv_path='/home/poseidon/zalmanek/FAIRe-Mapping/projects/WCOA/wcoa21_net_tow/data/wcoa21_nettow_faire.csv')
                 

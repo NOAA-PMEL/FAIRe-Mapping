@@ -619,10 +619,6 @@ class ProjectMapper(OmeFaireMapper):
         
         # Get list of reference names
         reference_names = set(final_sample_df[self.faire_sample_name_col].astype(str).unique())
-        
-        with open("sample_metadata_samps.txt", "w") as f:
-            for item in reference_names:
-                f.write(f"{item}\n")
 
         # Create mask of rows to keep
         mask = exp_run_df[self.faire_sample_name_col].astype(str).isin(reference_names)
