@@ -73,17 +73,6 @@ class OmeFaireMapper:
         
         return pd.read_excel(file_path, sheet_name=sheet_name, header=header)
     
-    # def load_csv_as_df(self, file_path: Path, header=0, sep=',') -> pd. DataFrame:
-    #     # Load csv files as a data frame
-
-    #     return pd.read_csv(file_path, header=header, sep=sep)
-    
-    def load_beBop_yaml_terms(self, path_to_bebop: str):
-        # read BeBOP yaml terms
-        with open(path_to_bebop, 'r', encoding='utf-8') as f:
-            post = frontmatter.load(f)
-            return post
-    
     def extract_controlled_vocab(self, faire_attribute: str) -> list:
         
         # filter dataframe by the FAIRe attribute and get all allowable terms

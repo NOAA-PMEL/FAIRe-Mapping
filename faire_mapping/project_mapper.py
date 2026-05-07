@@ -1,15 +1,11 @@
 from faire_mapping.faire_mapper import OmeFaireMapper
 from faire_mapping.analysis_metadata_mapper import AnalysisMetadataMapper
 from faire_mapping.constants import marker_shorthand_to_pos_cont_gblcok_name, project_pcr_library_prep_mapping_dict
-from faire_mapping.utils import load_google_sheet_as_df, load_csv_as_df
+from faire_mapping.utils import load_google_sheet_as_df, load_csv_as_df, retrive_github_bebop
 from datetime import date, datetime
 import pandas as pd
-import requests
-import base64
-import tempfile
 import openpyxl
 import os
-import hashlib
 from astral import LocationInfo
 from astral.sun import sun
 import pytz
@@ -635,34 +631,6 @@ class ProjectMapper(OmeFaireMapper):
         
         return exp_run_df_filtered, dropped_samples
     
-    def retrive_github_bebop(self, owner: str, repo: str, file_path: str):
-        url = f"https://api.github.com/repos/{owner}/{repo}/contents/{file_path}"
-
-        headers = {
-            'Authorization': f"token {self.gh_token}",
-            'Accept': 'application/vnd.github.v3+json'
-        }
-
-        try:
-            response = requests.get(url, headers=headers)
-            response.raise_for_status()
-            data = response.json()
-
-            if 'content' in data:
-                # Decode base64 to get the raw markdown file
-                base64_content = data['content'].replace('\n', '').replace(' ', '')
-                markdown_content = base64.b64decode(base64_content).decode('utf-8')
-                
-                with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=True, encoding='utf-8') as temp_file:
-                    temp_file.write(markdown_content)
-                    temp_file_path = temp_file.name
-                    post = self.load_beBop_yaml_terms(path_to_bebop=temp_file_path)
-                    return post.metadata
-        
-        except requests.exceptions.RequestException as e:
-            print(f"Error fetching bebop: {e}")
-            return None
-    
     def load_assay_level_metadata_to_excel(self, final_exp_run_df: pd.DataFrame) -> None:
 
         # create list of assays from experiment_run_metadata so only grabbing assays that are actually in the project
@@ -675,13 +643,13 @@ class ProjectMapper(OmeFaireMapper):
                 pcr_owner = bebops['pcr_bebop']['owner']
                 pcr_repo = bebops['pcr_bebop']['repo']
                 pcr_file_path = bebops['pcr_bebop']['file_path']
-                pcr_bebop = self.retrive_github_bebop(owner=pcr_owner, repo=pcr_repo, file_path=pcr_file_path)
+                pcr_bebop = retrive_github_bebop(owner=pcr_owner, repo=pcr_repo, file_path=pcr_file_path, gh_token=self.gh_token)
             
                 # Get library preparation bebop dict
                 lib_owner = bebops['library_bebop']['owner']
                 lib_repo = bebops['library_bebop']['repo']
                 lib_file_path = bebops['library_bebop']['file_path']
-                lib_bebop = self.retrive_github_bebop(owner=lib_owner, repo=lib_repo, file_path=lib_file_path)
+                lib_bebop = retrive_github_bebop(owner=lib_owner, repo=lib_repo, file_path=lib_file_path, gh_token=self.gh_token)
                 
                 assay_col_num = self.project_sheet_assay_start_col_num + col_index
                 self.map_pcr_library_prep_to_excel(pcr_bebop, lib_bebop, assay_col_num)
