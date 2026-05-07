@@ -78,19 +78,20 @@ class AnalysisMetadataMapper(OmeFaireMapper):
                     analysis_metadata.update({k: v for k, v in self.bio_bebop.items() if not isinstance(v, (list, dict))})
 
                     # Tackle default/source_value/source_term
-                    for faire_field, faire_value in self.bio_bebop.items():
-                        if isinstance(faire_value, dict) and self.BEBOP_SOURCE_TERM in faire_value.keys() and self.BEBOP_SOURCE_FILE in faire_value.keys():
-                            source_term = faire_value.get(self.BEBOP_SOURCE_TERM)
+                    analysis_metadata = self.get_source_term_value_from_revamp_config(assay=assay, run=run, analysis_metadata_dict=analysis_metadata)
+                    # for faire_field, faire_value in self.bio_bebop.items():
+                    #     if isinstance(faire_value, dict) and self.BEBOP_SOURCE_TERM in faire_value.keys() and self.BEBOP_SOURCE_FILE in faire_value.keys():
+                    #         source_term = faire_value.get(self.BEBOP_SOURCE_TERM)
                             
-                            # #TODO: trim param special add code here
-                            if faire_field == self.FAIRE_TRIM_PARAM:
-                                continue
-                            # TODO: special case where need to get two
-                            elif '|' in source_term:
-                                continue
-                            else:
-                                actual_faire_value = self.bioinformatics_config_df.loc[(self.bioinformatics_config_df[self.REVAMP_CONFIG_RUN_COL_NAME] == run) & (self.bioinformatics_config_df[self.REVAMP_CONFIG_ASSAY_COL_NAME] == assay), source_term].values[0]
-                                analysis_metadata[faire_field] = actual_faire_value
+                    #         # #TODO: trim param special add code here
+                    #         if faire_field == self.FAIRE_TRIM_PARAM:
+                    #             continue
+                    #         # TODO: special case where need to get two
+                    #         elif '|' in source_term:
+                    #             continue
+                    #         else:
+                    #             actual_faire_value = self.bioinformatics_config_df.loc[(self.bioinformatics_config_df[self.REVAMP_CONFIG_RUN_COL_NAME] == run) & (self.bioinformatics_config_df[self.REVAMP_CONFIG_ASSAY_COL_NAME] == assay), source_term].values[0]
+                    #             analysis_metadata[faire_field] = actual_faire_value
 
                     bebops_untangled.append(analysis_metadata)
 
@@ -98,13 +99,25 @@ class AnalysisMetadataMapper(OmeFaireMapper):
         self.analysis_metadata_df = pd.concat([self.analysis_metadata_df, pd.DataFrame(bebops_untangled)], ignore_index=True)[self.analysis_metadata_df.columns]
         self.analysis_metadata_df.to_csv('/home/poseidon/zalmanek/FAIRe-Mapping/scripts/test_analysis_metadata/analysis_metadata.csv', index=False)
 
-                    
-   
+    
+    def get_source_term_value_from_revamp_config(self, assay: str, run: str, analysis_metadata_dict: dict) -> dict:
 
+        # Tackle default/source_value/source_term
+        for faire_field, faire_value in self.bio_bebop.items():
+            if isinstance(faire_value, dict) and self.BEBOP_SOURCE_TERM in faire_value.keys() and self.BEBOP_SOURCE_FILE in faire_value.keys():
+                source_term = faire_value.get(self.BEBOP_SOURCE_TERM)
+                
+                # #TODO: trim param special add code here
+                if faire_field == self.FAIRE_TRIM_PARAM:
+                    continue
+                # TODO: special case where need to get two
+                elif '|' in source_term:
+                    continue
+                else:
+                    actual_faire_value = self.bioinformatics_config_df.loc[(self.bioinformatics_config_df[self.REVAMP_CONFIG_RUN_COL_NAME] == run) & (self.bioinformatics_config_df[self.REVAMP_CONFIG_ASSAY_COL_NAME] == assay), source_term].values[0]
+                    analysis_metadata_dict[faire_field] = actual_faire_value
 
-
-            
-
+        return analysis_metadata_dict
 
             # self.analysis_metadata_df = self.analysis_metadata_df.assign(**{col: bio_bebop[col] for col in self.analysis_metadata_df.columns if col in bio_bebop})
 
