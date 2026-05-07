@@ -7,6 +7,7 @@ from faire_mapping.utils import retrive_github_bebop, load_google_sheet_as_df
 from faire_mapping.constants import bioinformatics_bebop
 
 # TODO: will need to update anlayis_run_id to be project_id_assay_name_seq_run_id (but we need to have db in here too). Right now have assay_name_run_db
+# TODO: Add trim_param special code
 
 class AnalysisMetadataMapper(OmeFaireMapper):
 
@@ -15,6 +16,11 @@ class AnalysisMetadataMapper(OmeFaireMapper):
     BEBOP_ASSAY_FIELD_NAME = 'assay_name'
     BEBOP_TAX_METHOD_FIELD_NAME = 'taxonomy_method_list'
     FAIRE_ANALYSIS_RUN_NAME = 'analysis_run_name'
+    FAIRE_TRIM_PARAM = 'trim_param'
+
+    BEBOP_SOURCE_FILE = "source_file"
+    BEBOP_SOURCE_TERM = "source_term"
+    BEBOP_DEFAULT = "default"
 
     faire_template_analysis_sheet_name = 'analysisMetadata'
     project_id_col = 'project_id'
@@ -70,6 +76,21 @@ class AnalysisMetadataMapper(OmeFaireMapper):
 
                     # copy non-lists/dicts values over
                     analysis_metadata.update({k: v for k, v in self.bio_bebop.items() if not isinstance(v, (list, dict))})
+
+                    # Tackle default/source_value/source_term
+                    for faire_field, faire_value in self.bio_bebop.items():
+                        if isinstance(faire_value, dict) and self.BEBOP_SOURCE_TERM in faire_value.keys() and self.BEBOP_SOURCE_FILE in faire_value.keys():
+                            source_term = faire_value.get(self.BEBOP_SOURCE_TERM)
+                            
+                            # #TODO: trim param special add code here
+                            if faire_field == self.FAIRE_TRIM_PARAM:
+                                continue
+                            # TODO: special case where need to get two
+                            elif '|' in source_term:
+                                continue
+                            else:
+                                actual_faire_value = self.bioinformatics_config_df.loc[(self.bioinformatics_config_df[self.REVAMP_CONFIG_RUN_COL_NAME] == run) & (self.bioinformatics_config_df[self.REVAMP_CONFIG_ASSAY_COL_NAME] == assay), source_term].values[0]
+                                analysis_metadata[faire_field] = actual_faire_value
 
                     bebops_untangled.append(analysis_metadata)
 
