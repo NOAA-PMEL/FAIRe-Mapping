@@ -16,6 +16,7 @@ class AnalysisMetadataMapper(OmeFaireMapper):
     REVAMP_CONFIG_RUN_COL_NAME = 'Run'
     BEBOP_ASSAY_FIELD_NAME = 'assay_name'
     BEBOP_TAX_METHOD_FIELD_NAME = 'taxonomy_method_list'
+    BEBOP_TAX_METHOD_OTHER_NAME = 'taxonomy_method'
     FAIRE_ANALYSIS_RUN_NAME = 'analysis_run_name'
     FAIRE_TRIM_PARAM = 'trim_param'
 
@@ -79,7 +80,7 @@ class AnalysisMetadataMapper(OmeFaireMapper):
                     analysis_metadata.update({k: v for k, v in self.bio_bebop.items() if not isinstance(v, (list, dict))})
 
                     # Tackle default/source_value/source_term
-                    analysis_metadata = self.get_source_term_value_from_revamp_config(assay=assay, run=run, analysis_metadata_dict=analysis_metadata)
+                    analysis_metadata = self.get_source_term_value_from_revamp_config(assay=assay, run=run, db=db, analysis_metadata_dict=analysis_metadata)
               
                     bebops_untangled.append(analysis_metadata)
 
@@ -87,8 +88,7 @@ class AnalysisMetadataMapper(OmeFaireMapper):
         self.analysis_metadata_df = pd.concat([self.analysis_metadata_df, pd.DataFrame(bebops_untangled)], ignore_index=True)[self.analysis_metadata_df.columns]
         self.analysis_metadata_df.to_csv('/home/poseidon/zalmanek/FAIRe-Mapping/scripts/test_analysis_metadata/analysis_metadata.csv', index=False)
 
-    
-    def get_source_term_value_from_revamp_config(self, assay: str, run: str, analysis_metadata_dict: dict) -> dict:
+    def get_source_term_value_from_revamp_config(self, assay: str, run: str, db: str, analysis_metadata_dict: dict) -> dict:
         """
         Uses the revamp config to get the values for any terms that have source_term source_file listed. trim_param is 
         a special case. Anything with | in the source_term is special, because requerires searching more than one term in 
@@ -121,6 +121,25 @@ class AnalysisMetadataMapper(OmeFaireMapper):
                 else:
                     actual_faire_value = self.bioinformatics_config_df.loc[(self.bioinformatics_config_df[self.REVAMP_CONFIG_RUN_COL_NAME] == run) & (self.bioinformatics_config_df[self.REVAMP_CONFIG_ASSAY_COL_NAME] == assay), source_term].values[0]
                     analysis_metadata_dict[faire_field] = actual_faire_value
+
+            # Get db specific info.
+            elif isinstance(faire_value, dict) and faire_field == self.BEBOP_TAX_METHOD_OTHER_NAME and db in faire_value.keys():
+                taxa_info = faire_value.get(db)
+                # Update with just regular key/value pairs
+                analysis_metadata_dict.update({k: v for k, v in taxa_info.items() if not isinstance(v, (list, dict))})
+                for nested_faire_field, nested_faire_value in taxa_info.items():
+
+                    # Update just key/value pairs
+                    if not isinstance(nested_faire_value, (list, dict)):
+                        analysis_metadata_dict[nested_faire_value] = nested_faire_field
+
+                    elif self.BEBOP_SOURCE_TERM in nested_faire_value.keys() and self.BEBOP_SOURCE_FILE in nested_faire_value.keys():
+                        actual_faire_value = self.bioinformatics_config_df.loc[(self.bioinformatics_config_df[self.REVAMP_CONFIG_RUN_COL_NAME] == run) & (self.bioinformatics_config_df[self.REVAMP_CONFIG_ASSAY_COL_NAME] == assay), source_term].values[0]
+                        analysis_metadata_dict[nested_faire_field] = actual_faire_value
+
+                    # If just default here / TODO: not sure why default is even needed, can remove and just have the key value pair
+                    elif self.BEBOP_DEFAULT in nested_faire_value.keys() and self.BEBOP_SOURCE_TERM not in nested_faire_value.keys() and self.BEBOP_SOURCE_FILE not in nested_faire_value.keys():
+                        analysis_metadata_dict[nested_faire_field] = nested_faire_value.get(self.BEBOP_DEFAULT)
 
         return analysis_metadata_dict
 
