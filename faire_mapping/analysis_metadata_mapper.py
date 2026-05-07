@@ -8,6 +8,7 @@ from faire_mapping.constants import bioinformatics_bebop
 
 # TODO: will need to update anlayis_run_id to be project_id_assay_name_seq_run_id (but we need to have db in here too). Right now have assay_name_run_db
 # TODO: Add trim_param special code
+# TODO: Double check with Sean about error_rate_cutoff - did I do it the way he envisioned?
 
 class AnalysisMetadataMapper(OmeFaireMapper):
 
@@ -79,20 +80,7 @@ class AnalysisMetadataMapper(OmeFaireMapper):
 
                     # Tackle default/source_value/source_term
                     analysis_metadata = self.get_source_term_value_from_revamp_config(assay=assay, run=run, analysis_metadata_dict=analysis_metadata)
-                    # for faire_field, faire_value in self.bio_bebop.items():
-                    #     if isinstance(faire_value, dict) and self.BEBOP_SOURCE_TERM in faire_value.keys() and self.BEBOP_SOURCE_FILE in faire_value.keys():
-                    #         source_term = faire_value.get(self.BEBOP_SOURCE_TERM)
-                            
-                    #         # #TODO: trim param special add code here
-                    #         if faire_field == self.FAIRE_TRIM_PARAM:
-                    #             continue
-                    #         # TODO: special case where need to get two
-                    #         elif '|' in source_term:
-                    #             continue
-                    #         else:
-                    #             actual_faire_value = self.bioinformatics_config_df.loc[(self.bioinformatics_config_df[self.REVAMP_CONFIG_RUN_COL_NAME] == run) & (self.bioinformatics_config_df[self.REVAMP_CONFIG_ASSAY_COL_NAME] == assay), source_term].values[0]
-                    #             analysis_metadata[faire_field] = actual_faire_value
-
+              
                     bebops_untangled.append(analysis_metadata)
 
 
@@ -101,7 +89,11 @@ class AnalysisMetadataMapper(OmeFaireMapper):
 
     
     def get_source_term_value_from_revamp_config(self, assay: str, run: str, analysis_metadata_dict: dict) -> dict:
-
+        """
+        Uses the revamp config to get the values for any terms that have source_term source_file listed. trim_param is 
+        a special case. Anything with | in the source_term is special, because requerires searching more than one term in 
+        the revamp config.
+        """
         # Tackle default/source_value/source_term
         for faire_field, faire_value in self.bio_bebop.items():
             if isinstance(faire_value, dict) and self.BEBOP_SOURCE_TERM in faire_value.keys() and self.BEBOP_SOURCE_FILE in faire_value.keys():
@@ -109,10 +101,23 @@ class AnalysisMetadataMapper(OmeFaireMapper):
                 
                 # #TODO: trim param special add code here
                 if faire_field == self.FAIRE_TRIM_PARAM:
-                    continue
-                # TODO: special case where need to get two
+                    default = faire_value.get(self.BEBOP_DEFAULT)
+                    source_terms = source_term.split(' | ')
+                    for term in source_terms:
+                        actual_faire_value = self.bioinformatics_config_df.loc[(self.bioinformatics_config_df[self.REVAMP_CONFIG_RUN_COL_NAME] == run) & (self.bioinformatics_config_df[self.REVAMP_CONFIG_ASSAY_COL_NAME] == assay), term].values[0]
+                        default = default.replace(term, actual_faire_value)
+                    default = default.replace('{', '').replace('}', '')
+                    analysis_metadata_dict[faire_field] = default
+
                 elif '|' in source_term:
-                    continue
+                    source_terms = source_term.split(' | ')
+                    actual_faire_values = []
+                    for term in source_terms:
+                        actual_faire_value = self.bioinformatics_config_df.loc[(self.bioinformatics_config_df[self.REVAMP_CONFIG_RUN_COL_NAME] == run) & (self.bioinformatics_config_df[self.REVAMP_CONFIG_ASSAY_COL_NAME] == assay), term].values[0]
+                        actual_faire_values.append(actual_faire_value)
+                    final_actual_faire_value = ' | '.join(actual_faire_values)
+                    analysis_metadata_dict[faire_field] = final_actual_faire_value
+                
                 else:
                     actual_faire_value = self.bioinformatics_config_df.loc[(self.bioinformatics_config_df[self.REVAMP_CONFIG_RUN_COL_NAME] == run) & (self.bioinformatics_config_df[self.REVAMP_CONFIG_ASSAY_COL_NAME] == assay), source_term].values[0]
                     analysis_metadata_dict[faire_field] = actual_faire_value
