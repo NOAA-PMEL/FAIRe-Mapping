@@ -52,7 +52,7 @@ def main() -> None:
                                     google_sheet_json_cred='/home/poseidon/zalmanek/FAIRe-Mapping/credentials.json')
 
     # Calling spearatly because need to fix zenodo links
-    sample_df, exp_df = project_creator.process_sample_run_data()
+    sample_df, exp_df, analysis_df = project_creator.process_sample_run_data()
 
     # Fix Zenodo links
     sample_df_zenodo_fixed = fix_zenodo_version(df=sample_df)

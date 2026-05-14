@@ -2,7 +2,7 @@ from faire_mapping.project_mapper import ProjectMapper
 import argparse
 import pandas as pd
 
-def fix_zenodo_version(df: pd.DataFrame) -> pd.DataFrame:
+def fix_zenodo_version_carbon(df: pd.DataFrame) -> pd.DataFrame:
     nucl_acid_ext_and_samp_method_updates = {"https://doi.org/10.5281/zenodo.11398154": "https://doi.org/10.5281/zenodo.17655148",
                              "https://doi.org/10.5281/zenodo.15793435": "https://doi.org/10.5281/zenodo.17655184",
                              "https://doi.org/10.5281/zenodo.16850033": "https://doi.org/10.5281/zenodo.17401131",
@@ -14,7 +14,7 @@ def fix_zenodo_version(df: pd.DataFrame) -> pd.DataFrame:
 
     return df_replaced
 
-def fix_nc_dates(df: pd.DataFrame) -> pd.DataFrame:
+def fix_nc_dates_carbon(df: pd.DataFrame) -> pd.DataFrame:
 
     nc_date_update_mapping_dict = mapping_dict = {
         "E24.NC.DY20-12": {"eventDate": "2020-09-05T02:50:00Z", "verbatimEventDate": "9/5/2020", "verbatimEventTime": "2:50"},
@@ -55,8 +55,8 @@ def main() -> None:
     sample_df, exp_df = project_creator.process_sample_run_data()
 
     # Fix Zenodo links
-    sample_df_zenodo_fixed = fix_zenodo_version(df=sample_df)
-    sample_df_nc_dates_fixed = fix_nc_dates(df=sample_df_zenodo_fixed)
+    sample_df_zenodo_fixed = fix_zenodo_version_carbon(df=sample_df)
+    sample_df_nc_dates_fixed = fix_nc_dates_carbon(df=sample_df_zenodo_fixed)
 
     project_creator.process_whole_project_and_save_to_excel(sample_metadata_df=sample_df_nc_dates_fixed, experiment_run_metadata_df=exp_df)
 

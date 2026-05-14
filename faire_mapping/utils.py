@@ -4,6 +4,10 @@ from google.oauth2.service_account import Credentials
 from datetime import datetime
 import re
 import numpy as np
+import requests
+import base64
+import tempfile
+import frontmatter
 
 # TODO: outline keys that need to be present in the google_sheet_json_cred (see credentials.json to speicify how it should look)
 def load_google_sheet_as_df(google_sheet_id: str, sheet_name: str, header: int, google_sheet_json_cred: str) -> pd.DataFrame:
@@ -156,3 +160,37 @@ def convert_mdy_date_to_iso8061(date_string: str) -> str:
                 # Print the error for debugging
                 print(f"Error converting {date_string}: {str(e)}!")
                 return date_string
+
+def load_beBop_yaml_terms(path_to_bebop: str):
+        # read BeBOP yaml terms
+        with open(path_to_bebop, 'r', encoding='utf-8') as f:
+            post = frontmatter.load(f)
+            return post
+              
+def retrive_github_bebop(owner: str, repo: str, file_path: str, gh_token, branch: str = "main") -> dict:
+        url = f"https://api.github.com/repos/{owner}/{repo}/contents/{file_path}?ref={branch}"
+
+        headers = {
+            'Authorization': f"token {gh_token}",
+            'Accept': 'application/vnd.github.v3+json'
+        }
+
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            data = response.json()
+
+            if 'content' in data:
+                # Decode base64 to get the raw markdown file
+                base64_content = data['content'].replace('\n', '').replace(' ', '')
+                markdown_content = base64.b64decode(base64_content).decode('utf-8')
+                
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=True, encoding='utf-8') as temp_file:
+                    temp_file.write(markdown_content)
+                    temp_file_path = temp_file.name
+                    post = load_beBop_yaml_terms(path_to_bebop=temp_file_path)
+                    return post.metadata
+                
+        except requests.exceptions.RequestException as e:
+            print(f"Error fetching bebop: {e}")
+            return None

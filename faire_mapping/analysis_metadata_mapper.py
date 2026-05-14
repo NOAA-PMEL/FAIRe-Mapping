@@ -2,34 +2,163 @@ import pandas as pd
 import openpyxl
 import copy
 from openpyxl.styles import PatternFill
-from .faire_mapper import OmeFaireMapper
+from faire_mapping.faire_mapper import OmeFaireMapper
+from faire_mapping.utils import retrive_github_bebop, load_google_sheet_as_df
+from faire_mapping.constants import bioinformatics_bebop, run_mapping
 
-# TODO: change 'config file' not in value in fill_out_analysis_metadata() method when BeBOP is finished an we know what it will say to reference config file
+
+# TODO: will need to update anlayis_run_id to be project_id_assay_name_seq_run_id (but we need to have db in here too). Right now have assay_name_run_db
+# TODO: Add trim_param special code
+# TODO: Double check with Sean about error_rate_cutoff - did I do it the way he envisioned?
 
 class AnalysisMetadataMapper(OmeFaireMapper):
+
+    REVAMP_CONFIG_ASSAY_COL_NAME = 'assay'
+    REVAMP_CONFIG_RUN_COL_NAME = 'Run'
+    BEBOP_ASSAY_FIELD_NAME = 'assay_name'
+    BEBOP_TAX_METHOD_FIELD_NAME = 'taxonomy_method_list'
+    BEBOP_TAX_METHOD_OTHER_NAME = 'taxonomy_method'
+    FAIRE_ANALYSIS_RUN_NAME = 'analysis_run_name'
+    FAIRE_TRIM_PARAM = 'trim_param'
+
+    BEBOP_SOURCE_FILE = "source_file"
+    BEBOP_SOURCE_TERM = "source_term"
+    BEBOP_DEFAULT = "default"
 
     faire_template_analysis_sheet_name = 'analysisMetadata'
     project_id_col = 'project_id'
     assay_name_col = 'assay_name'
     analysis_run_name_col = 'analysis_run_name'
 
-    def __init__(self, config_yaml, bioinformatics_bebop_path: str, bioinformatics_config_google_sheet_id: str, experiment_run_metadata_df: pd.DataFrame,
-                 project_id: str, bioinformatics_software_name: str, bebop_config_run_col_name: str, bebop_config_marker_col_name: str):
+    def __init__(self, config_yaml, project_id: str, experiment_run_metadata_df: pd.DataFrame, tax_method_dict: dict, gh_token: str, google_sheet_json_cred: str):
+                #  project_id: str, bioinformatics_software_name: str, bebop_config_run_col_name: str, bebop_config_marker_col_name: str):
         
         super().__init__(config_yaml)
 
-        self.bioiformatics_bebop = self.load_beBop_yaml_terms(path_to_bebop=bioinformatics_bebop_path)
-        self.bioinformatics_config_df = self.load_google_sheet_as_df(google_sheet_id=bioinformatics_config_google_sheet_id, sheet_name='Sheet1', header=0)
-        self.experiment_run_df = experiment_run_metadata_df
-        self.bioinformatics_software_name = bioinformatics_software_name
+        self.gh_token = gh_token
         self.project_id = project_id
-        self.bebop_config_run_col_name = bebop_config_run_col_name
-        self.bebop_config_marker_col_name = bebop_config_marker_col_name
-        self.analysis_run_dict = self.create_analysis_run_dict()
+        self.tax_method_dict = tax_method_dict # A dictionary of assays and lists of taxonomy methods to filter the analysis metadadata_df by
+
+        self.bio_bebop = retrive_github_bebop(owner=bioinformatics_bebop.get('bebop').get('owner'),
+                                            repo=bioinformatics_bebop.get('bebop').get('repo'),
+                                            file_path=bioinformatics_bebop.get('bebop').get('file_path'),
+                                            gh_token=self.gh_token,
+                                            branch=bioinformatics_bebop.get('bebop').get('branch'))
+        self.bioinformatics_config_df = load_google_sheet_as_df(google_sheet_id=bioinformatics_bebop.get('bebop_config_file_google_sheet_id'), sheet_name='Sheet1', header=0, google_sheet_json_cred=google_sheet_json_cred)
+        self.experiment_run_df = experiment_run_metadata_df
+
+
+        # dictionary of assay to list of runs its associated with (e.g. {parada: [run1, run2]})
+        self.assay_runs = self.bioinformatics_config_df.groupby(self.REVAMP_CONFIG_ASSAY_COL_NAME)[self.REVAMP_CONFIG_RUN_COL_NAME].apply(list).to_dict()
+        # Get dict of assys and dbs {assay: [db1, db2]}
+        self.assay_dbs = {
+            assay: values[self.BEBOP_TAX_METHOD_FIELD_NAME] 
+            for assay, values in self.bio_bebop.get(self.BEBOP_ASSAY_FIELD_NAME, {}).items()
+        }
+
+        self.analysis_metadata_df = self.process_analysis_metadata()
+        
 
     def process_analysis_metadata(self):
-        analysis_metadata_df = self.fill_out_analysis_metadata()
-        self.save_to_excel(final_analysis_metadata_df=analysis_metadata_df, excel_file_to_save_to=self.final_faire_template_path)
+
+        # 1. Create all the analysis in a single df based on the BeBOP
+        analysis_metadata_df = self.format_analysis_metadata_from_bebop()
+
+        # 2. Filter the df by the analyses that are desired
+        final_analysis_df = self.filter_df_to_desired_analyses(analysis_metadata_df=analysis_metadata_df)
+
+        return final_analysis_df
+
+        # self.save_to_excel(final_analysis_metadata_df=analysis_metadata_df, excel_file_to_save_to=self.final_faire_template_path)
+
+    def format_analysis_metadata_from_bebop(self):
+        """ Formats into all the different analysis metadata from the single BeBOP """
+
+        analysis_metadata_df = self.load_analyis_metadata_df()
+
+        bebops_untangled = []
+        for assay, runs in self.assay_runs.items():
+            for run in runs:
+                dbs = self.assay_dbs.get(assay)
+                std_run = run_mapping.get(run) # standardize run
+                for db in dbs:
+                    #TODO: Update analysis_run_name to match FAIRe - project_id_assay_name_seq_run_id (but problem is that we need the db in there too)
+                    analysis_run_name = f"{assay}_{std_run}_{db}"
+                    
+                    # Initialize analysis metadata dictionary
+                    analysis_metadata = {
+                        self.BEBOP_ASSAY_FIELD_NAME: assay,
+                        self.FAIRE_ANALYSIS_RUN_NAME: analysis_run_name
+                        }
+
+                    # copy non-lists/dicts values over
+                    analysis_metadata.update({k: v for k, v in self.bio_bebop.items() if not isinstance(v, (list, dict))})
+
+                    # Tackle default/source_value/source_term
+                    analysis_metadata = self.get_source_term_value_from_revamp_config(assay=assay, run=run, db=db, analysis_metadata_dict=analysis_metadata)
+              
+                    bebops_untangled.append(analysis_metadata)
+
+
+        analysis_metadata_df = pd.concat([analysis_metadata_df, pd.DataFrame(bebops_untangled)], ignore_index=True)[analysis_metadata_df.columns]
+        analysis_metadata_df['project_id'] = self.project_id
+        return analysis_metadata_df
+
+    def get_source_term_value_from_revamp_config(self, assay: str, run: str, db: str, analysis_metadata_dict: dict) -> dict:
+        """
+        Uses the revamp config to get the values for any terms that have source_term source_file listed. trim_param is 
+        a special case. Anything with | in the source_term is special, because requerires searching more than one term in 
+        the revamp config.
+        """
+        # Tackle default/source_value/source_term
+        for faire_field, faire_value in self.bio_bebop.items():
+            if isinstance(faire_value, dict) and self.BEBOP_SOURCE_TERM in faire_value.keys() and self.BEBOP_SOURCE_FILE in faire_value.keys():
+                source_term = faire_value.get(self.BEBOP_SOURCE_TERM)
+                
+                # #TODO: trim param special add code here
+                if faire_field == self.FAIRE_TRIM_PARAM:
+                    default = faire_value.get(self.BEBOP_DEFAULT)
+                    source_terms = source_term.split(' | ')
+                    for term in source_terms:
+                        actual_faire_value = self.bioinformatics_config_df.loc[(self.bioinformatics_config_df[self.REVAMP_CONFIG_RUN_COL_NAME] == run) & (self.bioinformatics_config_df[self.REVAMP_CONFIG_ASSAY_COL_NAME] == assay), term].values[0]
+                        default = default.replace(term, actual_faire_value)
+                    default = default.replace('{', '').replace('}', '')
+                    analysis_metadata_dict[faire_field] = default
+
+                elif '|' in source_term:
+                    source_terms = source_term.split(' | ')
+                    actual_faire_values = []
+                    for term in source_terms:
+                        actual_faire_value = self.bioinformatics_config_df.loc[(self.bioinformatics_config_df[self.REVAMP_CONFIG_RUN_COL_NAME] == run) & (self.bioinformatics_config_df[self.REVAMP_CONFIG_ASSAY_COL_NAME] == assay), term].values[0]
+                        actual_faire_values.append(actual_faire_value)
+                    final_actual_faire_value = ' | '.join(actual_faire_values)
+                    analysis_metadata_dict[faire_field] = final_actual_faire_value
+                
+                else:
+                    actual_faire_value = self.bioinformatics_config_df.loc[(self.bioinformatics_config_df[self.REVAMP_CONFIG_RUN_COL_NAME] == run) & (self.bioinformatics_config_df[self.REVAMP_CONFIG_ASSAY_COL_NAME] == assay), source_term].values[0]
+                    analysis_metadata_dict[faire_field] = actual_faire_value
+
+            # Get db specific info.
+            elif isinstance(faire_value, dict) and faire_field == self.BEBOP_TAX_METHOD_OTHER_NAME and db in faire_value.keys():
+                taxa_info = faire_value.get(db)
+                # Update with just regular key/value pairs
+                analysis_metadata_dict.update({k: v for k, v in taxa_info.items() if not isinstance(v, (list, dict))})
+                for nested_faire_field, nested_faire_value in taxa_info.items():
+
+                    # Update just key/value pairs
+                    if not isinstance(nested_faire_value, (list, dict)):
+                        analysis_metadata_dict[nested_faire_value] = nested_faire_field
+
+                    elif self.BEBOP_SOURCE_TERM in nested_faire_value.keys() and self.BEBOP_SOURCE_FILE in nested_faire_value.keys():
+                        actual_faire_value = self.bioinformatics_config_df.loc[(self.bioinformatics_config_df[self.REVAMP_CONFIG_RUN_COL_NAME] == run) & (self.bioinformatics_config_df[self.REVAMP_CONFIG_ASSAY_COL_NAME] == assay), source_term].values[0]
+                        analysis_metadata_dict[nested_faire_field] = actual_faire_value
+
+                    # If just default here / TODO: not sure why default is even needed, can remove and just have the key value pair
+                    elif self.BEBOP_DEFAULT in nested_faire_value.keys() and self.BEBOP_SOURCE_TERM not in nested_faire_value.keys() and self.BEBOP_SOURCE_FILE not in nested_faire_value.keys():
+                        analysis_metadata_dict[nested_faire_field] = nested_faire_value.get(self.BEBOP_DEFAULT)
+
+        return analysis_metadata_dict
+    
 
     def load_analyis_metadata_df(self):
         df = self.load_faire_template_as_df(file_path=self.faire_template_file,sheet_name=self.faire_template_analysis_sheet_name, header=0)
@@ -38,71 +167,26 @@ class AnalysisMetadataMapper(OmeFaireMapper):
         
         return empty_analysis_metadata_df
     
-    def create_analysis_run_dict(self):
-        # creates a dictionary of all unique analysis run name (E.g. REVAMP_Parada16S_osu876) as the key and the assay name as the value
-        df = self.experiment_run_df.copy()
-        df['analysis_run_name'] = self.bioinformatics_software_name + '_' + df['lib_id'].apply(lambda x: '_'.join(x.split('_')[-2:]))
-        analysis_run_dict = df.drop_duplicates(['analysis_run_name', 'assay_name']).set_index('analysis_run_name')['assay_name'].to_dict()
-        return analysis_run_dict
 
-    def query_config_file_by_run_and_marker_for_attribute(self, marker: str, run_name: str, faire_attribute: str) -> pd.DataFrame:
-        # Searches config file by marker and run name and faire attribute to return the value
-        matching_cols = [col for col in self.bioinformatics_config_df.columns if faire_attribute in col]
-        
-        # Cast columns in lower case
-        self.bioinformatics_config_df[self.bebop_config_run_col_name] = self.bioinformatics_config_df[self.bebop_config_run_col_name].str.lower()
-        self.bioinformatics_config_df[self.bebop_config_marker_col_name] = self.bioinformatics_config_df[self.bebop_config_marker_col_name].str.lower()
-        
-        query_str = f"{self.bebop_config_run_col_name} == @run_name & {self.bebop_config_marker_col_name} == @marker"
-        filtered_df = self.bioinformatics_config_df.query(query_str)
+    def filter_df_to_desired_analyses(self, analysis_metadata_df: pd.DataFrame):
 
-        result_parts = []
-        for col in matching_cols:
-            # Get the first part of the column name (before first semicolon)
-            first_part = col.split(';')[0]
+        mask = pd.Series(False, index=analysis_metadata_df.index)
+    
+        for assay, tax_methods in self.tax_method_dict.items():
+            for tax_method in tax_methods:
+                # 2. Identify rows that match the current pair
+                match = (
+                    analysis_metadata_df[self.analysis_run_name_col].str.contains(assay, na=False) &
+                    analysis_metadata_df[self.analysis_run_name_col].str.contains(tax_method, na=False)
+                )
+                # 3. Use OR (|=) to add these matches to our mask
+                mask |= match
 
-            # Get the column value from the filtered row
-            col_value = filtered_df[col].iloc[0]
+        # 4. Now filtered_df contains ONLY the matches
+        filtered_df = analysis_metadata_df[mask]
 
-            # Format as "first_part: val"
-            result_parts.append(f"{first_part}: {col_value}")
-        
-        result = " | ".join(result_parts)
-        return result
-        
-        return value
-
-    def fill_out_analysis_metadata(self):
-
-        template_df = self.load_analyis_metadata_df()
-        rows_data = []
-
-        for analysis_run_name, assay_name in self.analysis_run_dict.items():
-            # First handle values from the BeBOP that are the same across analyses
-            row_dict = {
-                self.project_id_col: self.project_id,
-                self.assay_name_col: assay_name,
-                self.analysis_run_name_col: analysis_run_name
-            }
-            
-            # If faire_attribute from BeBOP exists as column name in df, then add value
-            for faire_attribute, value in self.bioiformatics_bebop.metadata.items():
-                if value is not None:
-                    if faire_attribute in template_df.columns and 'config file' not in str(value):
-                        row_dict[faire_attribute] = value
-                    elif faire_attribute in template_df.columns and 'config file' in value:
-                        marker = analysis_run_name.split('_')[1].lower()
-                        run_name = analysis_run_name.split('_')[2].lower()
-                        try:
-                            row_dict[faire_attribute] = self.query_config_file_by_run_and_marker_for_attribute(marker=marker, run_name=run_name, faire_attribute=faire_attribute)
-                            
-                        except:
-                            print(f"faire_attribute {faire_attribute} does not seem to exist in config file, though it says 'config file' in bebop")
-                rows_data.append(row_dict)
-       
-        final_analysis_df = pd.DataFrame(rows_data)
-        
-        return final_analysis_df
+        return filtered_df
+    
         
     def save_to_excel(self, final_analysis_metadata_df: pd.DataFrame, excel_file_to_save_to: str):
         # Save analysisMetadata df rows to their own excel file sheets
