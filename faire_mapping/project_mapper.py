@@ -76,6 +76,7 @@ class ProjectMapper(OmeFaireMapper):
         self.logging_directory = self.config_file['logging_directory']
         # If the drop_not_sequenced_samps exist in config make it whatever values is in config, otherwise default is True (will only be false for when combining all samples ever in push to google)
         self.drop_not_sequenced_samps = self.config_file.get('drop_not_sequenced_samps', True)
+        self.analysis_tax_methods = self.config_file['taxonomy_methods'] # The dbs to be used for each marker/assay (Sam said will be picked the same for each assay/marker across all runs)
 
         self.pcr_library_dict = {}
 
@@ -105,7 +106,10 @@ class ProjectMapper(OmeFaireMapper):
         print(f"Excel file saved to {self.final_faire_template_path}")
 
         # Add analysisMetadata
-        # self.process_analysis_metadata(project_id='EcoFOCI_eDNA_2020-23', final_exp_run_df=experiment_run_metadata_df)
+        analysis_creator = self.process_analysis_metadata()
+        analysis_metadata_df = analysis_creator.analysis_metadata_df
+        analysis_metadata_df.to_csv(f"{data_dir}/analysisMetadata_{self.project_id}.csv")
+        analysis_creator.save_to_excel(final_analysis_metadata_df=analysis_creator.analysis_metadata_df, excel_file_to_save_to=self.final_faire_template_path)
     
     def process_sample_run_data(self):
         # Process all csv sets defined in the config file.
@@ -181,20 +185,21 @@ class ProjectMapper(OmeFaireMapper):
         # Update pool_dna_num for extraction_negatives
         sample_df_cleaned = self.update_pool_dna_num_for_pooled_samps(df=sample_df_cleaned)
 
-        return  sample_df_cleaned, exp_df_final
+        # Analysis Metadata
+        analysis_df = self.process_analysis_metadata(final_exp_run_df=exp_df_final).analysis_metadata_df
 
-    def process_analysis_metadata(self, project_id: str, final_exp_run_df: pd.DataFrame): 
+        return  sample_df_cleaned, exp_df_final, analysis_df
+
+    def process_analysis_metadata(self, final_exp_run_df: pd.DataFrame): 
         # Process analysis metadata using AnalyisMetadata class
         analysis_creator = AnalysisMetadataMapper(config_yaml=self.config_yaml,
-                                                  bioinformatics_bebop_path=self.bioinformatics_bebop_path,
-                                                  bioinformatics_config_google_sheet_id=self.bebop_config_file_google_sheet_id,
+                                                  project_id=self.project_id,
                                                   experiment_run_metadata_df=final_exp_run_df,
-                                                  bioinformatics_software_name=self.bioinformatics_software_name,
-                                                  bebop_config_run_col_name = self.bebop_config_run_col_name,
-                                                  bebop_config_marker_col_name = self.bebop_config_marker_col_name,
-                                                  project_id=project_id,
-                                                  )  
-        analysis_creator.process_analysis_metadata()
+                                                  tax_method_dict=self.config_file.get('taxonomy_methods'),
+                                                  gh_token=self.gh_token,
+                                                  google_sheet_json_cred=self.google_sheet_json_cred)
+        
+        return analysis_creator
     
     def create_sample_metadata_df(self) -> pd.DataFrame:
    

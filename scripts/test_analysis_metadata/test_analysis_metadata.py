@@ -18,7 +18,7 @@ experiment_run_df = load_google_sheet_as_df(google_sheet_id='1askd-wDorl-YVh7jk6
 analysis_mapper = AnalysisMetadataMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/scripts/push_to_google/config.yaml',
                        experiment_run_metadata_df=experiment_run_df,
                        gh_token=args.gh_token,
-                       google_sheet_json_cred='/home/poseidon/zalmanek/FAIRe-Mapping/credentials.json'
+                       google_sheet_json_cred='/home/poseidon/zalmanek/FAIRe-Mapping/credentials.json',
                        )
 
 analysis_mapper.format_analysis_metadata_from_bebop()

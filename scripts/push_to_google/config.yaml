@@ -1,5 +1,4 @@
-project_name: ecoFoci
-project_info_google_sheet_id: 1E8fHmfnTQA1CV8GTVuFoOXlgeUwTaVy9uXao9mUzG1Q # google sheet id for where project and data management metadata are.
+project_name: combined_projects
 
 drop_not_sequenced_samps: False
 
@@ -122,17 +121,47 @@ pooled_samps:
     sample_category: negative control
     cont_type: extraction negative
 
-# # AnalysisMetadata # NONE OF THIS MATTERS FOR ALL OF THE DATA 
-# bioinformatics_bebop_github_info: 
-#   owner: 'McAllister-NOAA'
-#   repo: NOAA-PMEL-OME-Bioinformatics-Metabarcoding-ssu16sv4v5_parada-Protocol-BEBOP
-#   file_path: NOAA-PMEL-OME-Bioinformatics-Metabarcoding-Protocol-ssu16sv4v5_parada-BEBOP.md
 
-# bioinformatics_bebops:
-#   bebop_config_file_google_sheet_id: 1BCZXpU0mIpWJsi-zM0l8D9DuPBvNOWBWH0zt-9r_If0 # Google sheet ID of config file that has fields that differ in BeBOP per anlaysis
-#   bioinformatics_software_name: REVAMP # For adding to the analysis run name
-#   bebop_config_run_col_name: Run
-#   bebop_config_marker_col_name: Marker
+# Analysis Metadata - specify assays and which taxonomy method that will be used. Can specify multiple (mainly just for this intiial google script)
+taxonomy_methods:
+  COI_1835-2198_lerayfolmer:
+    - REVAMP
+    - Anacapa 
+  ITS1_sterling:
+    - REVAMP
+    - scikit-learn-ITS1
+  lsu16s_2434-2571_kelly:
+    - REVAMP
+    - Anacapa
+  ssu12sv5v6_mifish_u_sales:
+    - REVAMP
+    - Anacapa
+  ssu12sv5v6_mifish_u_sales_2xRSA:
+    - REVAMP
+    - Anacapa
+  ssu16sv4v5_parada:
+    - REVAMP
+    - SILVAngs
+    - scikit-learn-silva
+  ssu16sv4v5_parada_OSUmod:
+    - REVAMP
+    - SILVAngs
+    - scikit-learn-silva
+  ssu18sv4_stoeck:
+    - REVAMP
+    - scikit-learn-PR2
+  ssu18sv8_machida:
+    - REVAMP
+    - Anacapa
+  ssu18sv8_machida_OSUmod:
+    - REVAMP
+    - Anacapa
+  ssu18sv9_amaralzettler:
+    - REVAMP
+    - scikit-learn-PR2
+  lsu16s_2051-2438_mideca_komai:
+    - REVAMP
+    - Anacapa
 
 faire_template_file: /home/poseidon/zalmanek/FAIRe-Mapping/faire_template.xlsx
 final_faire_template_path: /home/poseidon/zalmanek/FAIRe-Mapping/scripts/push_to_google/all_faire.xlsx

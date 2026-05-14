@@ -75,7 +75,7 @@ marker_to_assay_mapping = {
     '18S Machida': ['ssu18sv8_machida', 'ssu18sv8_machida_OSUmod'],
     'Machida18S': ['ssu18sv8_machida', 'ssu18sv8_machida_OSUmod'],
     'Machida 18S':  ['ssu18sv8_machida', 'ssu18sv8_machida_OSUmod'],
-    'MiFish 12S': ['ssu12sv5v6_mifish_u_sales', 'ssu12sv5v6_mifish_u_sales_2xRSA'], ssu12sv5v6_mifish_u_sales;ssu12sv5v6_mifish_u_sales_2xRSA
+    'MiFish 12S': ['ssu12sv5v6_mifish_u_sales', 'ssu12sv5v6_mifish_u_sales_2xRSA'],
     'MiFish': ['ssu12sv5v6_mifish_u_sales', 'ssu12sv5v6_mifish_u_sales_2xRSA'],
     '16S Furhman': ['ssu16sv4v5_parada', 'ssu16sv4v5_parada_OSUmod'],
     '16S Fuhrman': ['ssu16sv4v5_parada', 'ssu16sv4v5_parada_OSUmod'],
@@ -122,6 +122,22 @@ marker_shorthand_to_pos_cont_gblcok_name = {
     'dLoop': 'Obre_pos_dLoop',
     'Kelly16S': 'Dodo_pos_16SKelly',
     'MiDeca': 'MiDeca'
+}
+
+# Run mapping (non standard (for AnalysisMetadata) to standard; non standard in REvamp Config))
+run_mapping = {
+    'OSU867': 'pmel_ome_osu867',
+    'OSU873': 'pmel_ome_osu873',
+    'OSU876': 'pmel_ome_osu876',
+    'OSU894': 'pmel_ome_osu894',
+    'OSU1034': 'pmel_ome_osu1034',
+    'OSU1037': 'pmel_ome_osu1037',
+    'OSU1089': 'pmel_ome_osu1089',
+    'Run1': 'pmel_ome_run1',
+    'Run2': 'pmel_ome_run2',
+    'Run3': 'pmel_ome_run3',
+    'Run4': 'pmel_ome_run4',
+    'Run5': 'pmel_ome_run5'
 }
 
 # Mismatched samples metadata to raw data file matching

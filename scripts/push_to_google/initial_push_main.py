@@ -1,19 +1,9 @@
 import argparse
 from .initial_google_push import GoogleSheetConcatenator
 from faire_mapping.project_mapper import ProjectMapper
+from projects.EcoFoci.main import fix_nc_dates, fix_zenodo_version
+from projects.AK_Carbon.main import fix_nc_dates_carbon, fix_zenodo_version_carbon
 
-# def main() -> None:
-
-#     parser = argparse.ArgumentParser(description='Push faire standardized metadata to google sheet')
-#     parser.add_argument('root_dir', type=str, help='The root dir with all the *_faire.csv files to concatenate')
-#     parser.add_argument('metadata_type', type=str, help='The metadata type that is being pushed: sampleMetadata or experimentRunMetadata exactly.') 
-
-#     args = parser.parse_args()
-
-#     GoogleSheetConcatenator(root_dir=args.root_dir, metadata_type=args.metadata_type)
-
-# if __name__ == "__main__":
-#     main()
 
 
 def main() -> None:
@@ -29,10 +19,18 @@ def main() -> None:
                                     google_sheet_json_cred='/home/poseidon/zalmanek/FAIRe-Mapping/credentials.json')
 
     # Calling spearatly because need to fix zenodo links
-    sample_df, exp_df = project_creator.process_sample_run_data()
+    sample_df, exp_df, analysis_df = project_creator.process_sample_run_data()
 
-    GoogleSheetConcatenator(df=sample_df, metadata_type="sampleMetadata")
+    # Fixes for EcoFoci (also in .main() for EcoFoci project) and Carbon (in Carbon's .main())
+    sample_df_zenodo_fixed = fix_zenodo_version(df=sample_df)
+    sample_df_zenodo_fixed = fix_nc_dates_carbon(df=sample_df_zenodo_fixed)
+    sample_df_nc_dates_fixed = fix_nc_dates(df=sample_df_zenodo_fixed)
+    sample_df_nc_dates_fixed = fix_zenodo_version_carbon(df=sample_df_nc_dates_fixed)
+    
+
+    GoogleSheetConcatenator(df=sample_df_nc_dates_fixed, metadata_type="sampleMetadata")
     GoogleSheetConcatenator(df=exp_df, metadata_type='experimentRunMetadata')
+    GoogleSheetConcatenator(df=analysis_df, metadata_type='analysisMetadata')
 
 if __name__ == "__main__":
     main()
