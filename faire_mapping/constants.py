@@ -180,7 +180,7 @@ project_pcr_library_prep_mapping_dict = {
         'library_bebop': {
             'owner': 'marinednadude',
             'repo': 'Jonah-Ventures-Library-Preparation',
-            'file_path': 'Jonah-Ventures-Library-NovaSeq-Preparation-BeBOP.md'
+            'file_path': 'Jonah-Ventures_Library_NovaSeq_Preparation_BeBOP.md'
         }
     },
     'lsu16s_2434-2571_kelly': {
@@ -192,7 +192,7 @@ project_pcr_library_prep_mapping_dict = {
         'library_bebop': {
             'owner': 'marinednadude',
             'repo': 'Jonah-Ventures-Library-Preparation',
-            'file_path': 'Jonah-Ventures-Library-NovaSeq-Preparation-BeBOP.md'
+            'file_path': 'Jonah-Ventures_Library_NovaSeq_Preparation_BeBOP.md'
         }
     },
     'COI_1835-2198_lerayfolmer': {
@@ -204,7 +204,7 @@ project_pcr_library_prep_mapping_dict = {
         'library_bebop': {
             'owner': 'marinednadude',
             'repo': 'Jonah-Ventures-Library-Preparation',
-            'file_path': 'Jonah-Ventures-Library-NovaSeq-Preparation-BeBOP.md'
+            'file_path': 'Jonah-Ventures_Library_NovaSeq_Preparation_BeBOP.md'
         }
     },
     'ssu18sv8_machida': {
@@ -216,7 +216,7 @@ project_pcr_library_prep_mapping_dict = {
         'library_bebop': {
             'owner': 'marinednadude',
             'repo': 'Jonah-Ventures-Library-Preparation',
-            'file_path': 'Jonah-Ventures-Library-NovaSeq-Preparation-BeBOP.md'
+            'file_path': 'Jonah-Ventures_Library_NovaSeq_Preparation_BeBOP.md'
         }
     },
     'ssu18sv8_machida_OSUmod': {
@@ -240,7 +240,7 @@ project_pcr_library_prep_mapping_dict = {
         'library_bebop': {
             'owner': 'marinednadude',
             'repo': 'Jonah-Ventures-Library-Preparation',
-            'file_path': 'Jonah-Ventures-Library-NovaSeq-Preparation-BeBOP.md'
+            'file_path': 'Jonah-Ventures_Library_NovaSeq_Preparation_BeBOP.md'
         }
     },
     'ssu16sv4v5_parada': {
@@ -252,7 +252,7 @@ project_pcr_library_prep_mapping_dict = {
         'library_bebop': {
             'owner': 'marinednadude',
             'repo': 'Jonah-Ventures-Library-Preparation',
-            'file_path': 'Jonah-Ventures-Library-NovaSeq-Preparation-BeBOP.md'
+            'file_path': 'Jonah-Ventures_Library_NovaSeq_Preparation_BeBOP.md'
         }
     },
     'ssu16sv4v5_parada_OSUmod': {
@@ -276,7 +276,7 @@ project_pcr_library_prep_mapping_dict = {
         'library_bebop': {
             'owner': 'marinednadude',
             'repo': 'Jonah-Ventures-Library-Preparation',
-            'file_path': 'Jonah-Ventures-Library-NovaSeq-Preparation-BeBOP.md'
+            'file_path': 'Jonah-Ventures_Library_NovaSeq_Preparation_BeBOP.md'
         }
     },
     'ITS1_sterling': {
@@ -288,7 +288,7 @@ project_pcr_library_prep_mapping_dict = {
         'library_bebop': {
             'owner': 'marinednadude',
             'repo': 'Jonah-Ventures-Library-Preparation',
-            'file_path': 'Jonah-Ventures-Library-NovaSeq-Preparation-BeBOP.md'
+            'file_path': 'Jonah-Ventures_Library_NovaSeq_Preparation_BeBOP.md'
         }
     },
     'lsu16s_2051-2438_mideca_komai': {
@@ -300,7 +300,7 @@ project_pcr_library_prep_mapping_dict = {
         'library_bebop': {
             'owner': 'marinednadude',
             'repo': 'Jonah-Ventures-Library-Preparation',
-            'file_path': 'Jonah-Ventures-Library-NovaSeq-Preparation-BeBOP.md'
+            'file_path': 'Jonah-Ventures_Library_NovaSeq_Preparation_BeBOP.md'
         }
     }
 }

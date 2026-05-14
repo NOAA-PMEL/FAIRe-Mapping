@@ -106,7 +106,7 @@ class ProjectMapper(OmeFaireMapper):
         print(f"Excel file saved to {self.final_faire_template_path}")
 
         # Add analysisMetadata
-        analysis_creator = self.process_analysis_metadata()
+        analysis_creator = self.process_analysis_metadata(final_exp_run_df=experiment_run_metadata_df)
         analysis_metadata_df = analysis_creator.analysis_metadata_df
         analysis_metadata_df.to_csv(f"{data_dir}/analysisMetadata_{self.project_id}.csv")
         analysis_creator.save_to_excel(final_analysis_metadata_df=analysis_creator.analysis_metadata_df, excel_file_to_save_to=self.final_faire_template_path)
