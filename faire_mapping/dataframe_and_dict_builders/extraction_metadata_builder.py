@@ -249,6 +249,7 @@ class ExtractionMetadataBuilder:
                     try:
                         # get list of samples associated with blanks and put into dict for rel_cont_id
                         valid_samples = group_df[self.EXTRACT_SAMP_NAME_COL].tolist()
+                        
                         for sample in valid_samples:
                             if 'blank' in sample.lower() or 'Larson NC' in sample:
                                 other_samples = [samp for samp in valid_samples if samp != sample]
@@ -268,6 +269,10 @@ class ExtractionMetadataBuilder:
         except:
             raise ValueError(
                 "Warning: Extraction samples are not grouped, double check this")
+        
+        # Filter the dataframe: keep only blanks that have entries in our dictionary
+        valid_blank_names = self.extraction_blank_rel_cont_dict.keys()
+        blank_df = blank_df[blank_df[self.EXTRACT_SAMP_NAME_COL].isin(valid_blank_names)]
         
         return blank_df
     

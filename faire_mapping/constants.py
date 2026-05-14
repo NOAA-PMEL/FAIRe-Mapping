@@ -69,10 +69,12 @@ marker_to_assay_mapping = {
     '16S Kelley': 'lsu16s_2434-2571_kelly',
     'Kelly16S': 'lsu16s_2434-2571_kelly',
     'Kelly 16S': 'lsu16s_2434-2571_kelly',
+    '16S Kelly':  'lsu16s_2434-2571_kelly',
     'Leray CO1': 'COI_1835-2198_lerayfolmer', #geller and folmer is same region
     'COI': 'COI_1835-2198_lerayfolmer',
     '18S Machida': ['ssu18sv8_machida', 'ssu18sv8_machida_OSUmod'],
     'Machida18S': ['ssu18sv8_machida', 'ssu18sv8_machida_OSUmod'],
+    'Machida 18S':  ['ssu18sv8_machida', 'ssu18sv8_machida_OSUmod'],
     'MiFish 12S': ['ssu12sv5v6_mifish_u_sales', 'ssu12sv5v6_mifish_u_sales_2xRSA'],
     'MiFish': ['ssu12sv5v6_mifish_u_sales', 'ssu12sv5v6_mifish_u_sales_2xRSA'],
     '16S Furhman': ['ssu16sv4v5_parada', 'ssu16sv4v5_parada_OSUmod'],
@@ -83,6 +85,8 @@ marker_to_assay_mapping = {
     '18Sv4': 'ssu18sv4_stoeck',
     'ITS': 'ITS1_sterling',
     'ITS1': 'ITS1_sterling', 
+    'ITS Marker': 'ITS1_sterling',
+    'MiDeca': 'lsu16s_2051-2438_mideca_komai'
 }
 
 # Dictionary that maps the JV metabarcoding marker in the run sample metadata to the actual directory names on Poseidon
@@ -96,10 +100,14 @@ marker_to_shorthand_mapping = {
     '16S Fuhrman': 'Parada16S',
     '16S Furhman/Parada': 'Parada16S',
     '18S Machida': 'Machida18S',
+    'Machida 18S': 'Machida18S',
     'ITS': 'ITS1',
+    'ITS Marker': 'ITS1',
     'dLoop': 'dLoop',
     '16S Kelley': 'Kelly16S',
-    'Kelly 16S': 'Kelly16S'
+    'Kelly 16S': 'Kelly16S',
+    '16S Kelly': 'Kelly16S',
+    'MiDeca': 'MiDeca',
 }
 
 # marker shorthand to gblock name - based on this spreadsheet: https://docs.google.com/spreadsheets/d/1sdShcSBPvAcIWXBXJpCfjirv57FNjJFOfOYFd5_I3gM/edit?gid=0#gid=0
@@ -112,7 +120,24 @@ marker_shorthand_to_pos_cont_gblcok_name = {
     'Machida18S': 'Halo_pos_18Sv89',
     'ITS1': 'LuV_pos_ITS1',
     'dLoop': 'Obre_pos_dLoop',
-    'Kelly16S': 'Dodo_pos_16SKelly'
+    'Kelly16S': 'Dodo_pos_16SKelly',
+    'MiDeca': 'MiDeca'
+}
+
+# Run mapping (non standard (for AnalysisMetadata) to standard; non standard in REvamp Config))
+run_mapping = {
+    'OSU867': 'pmel_ome_osu867',
+    'OSU873': 'pmel_ome_osu873',
+    'OSU876': 'pmel_ome_osu876',
+    'OSU894': 'pmel_ome_osu894',
+    'OSU1034': 'pmel_ome_osu1034',
+    'OSU1037': 'pmel_ome_osu1037',
+    'OSU1089': 'pmel_ome_osu1089',
+    'Run1': 'pmel_ome_run1',
+    'Run2': 'pmel_ome_run2',
+    'Run3': 'pmel_ome_run3',
+    'Run4': 'pmel_ome_run4',
+    'Run5': 'pmel_ome_run5'
 }
 
 # Mismatched samples metadata to raw data file matching
@@ -133,6 +158,17 @@ mismatch_sample_names_metadata_to_raw_data_files_dict = {
     'E2030.NC.SKQ23-12S': 'E2030.NC'
 }
 
+bioinformatics_bebop = {
+    'bebop_config_file_google_sheet_id': '1BCZXpU0mIpWJsi-zM0l8D9DuPBvNOWBWH0zt-9r_If0', # Google sheet ID of config file that has fields that differ in BeBOP per anlaysis
+    'bebop': 
+        {
+            'owner': 'McAllister-NOAA',
+            'repo': 'NOAA-PMEL-OME-Bioinformatics-Metabarcoding-ssu16sv4v5_parada-Protocol-BEBOP',
+            'file_path': 'NOAA-PMEL-OME-Bioinformatics-Metabarcoding-Protocol-ssu16sv4v5_parada-BEBOP.md',
+            'branch': 'test_multiassay' # Remove when its merged into main
+        },
+} 
+    
 # Dictionary with assay_name as keys and links to associated pcr library preparation bebops
 project_pcr_library_prep_mapping_dict = {
     'ssu18sv9_amaralzettler': {
@@ -144,7 +180,7 @@ project_pcr_library_prep_mapping_dict = {
         'library_bebop': {
             'owner': 'marinednadude',
             'repo': 'Jonah-Ventures-Library-Preparation',
-            'file_path': 'Jonah-Ventures-Library-NovaSeq-Preparation-BeBOP.md'
+            'file_path': 'Jonah-Ventures_Library_NovaSeq_Preparation_BeBOP.md'
         }
     },
     'lsu16s_2434-2571_kelly': {
@@ -156,7 +192,7 @@ project_pcr_library_prep_mapping_dict = {
         'library_bebop': {
             'owner': 'marinednadude',
             'repo': 'Jonah-Ventures-Library-Preparation',
-            'file_path': 'Jonah-Ventures-Library-NovaSeq-Preparation-BeBOP.md'
+            'file_path': 'Jonah-Ventures_Library_NovaSeq_Preparation_BeBOP.md'
         }
     },
     'COI_1835-2198_lerayfolmer': {
@@ -168,7 +204,7 @@ project_pcr_library_prep_mapping_dict = {
         'library_bebop': {
             'owner': 'marinednadude',
             'repo': 'Jonah-Ventures-Library-Preparation',
-            'file_path': 'Jonah-Ventures-Library-NovaSeq-Preparation-BeBOP.md'
+            'file_path': 'Jonah-Ventures_Library_NovaSeq_Preparation_BeBOP.md'
         }
     },
     'ssu18sv8_machida': {
@@ -180,7 +216,7 @@ project_pcr_library_prep_mapping_dict = {
         'library_bebop': {
             'owner': 'marinednadude',
             'repo': 'Jonah-Ventures-Library-Preparation',
-            'file_path': 'Jonah-Ventures-Library-NovaSeq-Preparation-BeBOP.md'
+            'file_path': 'Jonah-Ventures_Library_NovaSeq_Preparation_BeBOP.md'
         }
     },
     'ssu18sv8_machida_OSUmod': {
@@ -204,7 +240,7 @@ project_pcr_library_prep_mapping_dict = {
         'library_bebop': {
             'owner': 'marinednadude',
             'repo': 'Jonah-Ventures-Library-Preparation',
-            'file_path': 'Jonah-Ventures-Library-NovaSeq-Preparation-BeBOP.md'
+            'file_path': 'Jonah-Ventures_Library_NovaSeq_Preparation_BeBOP.md'
         }
     },
     'ssu16sv4v5_parada': {
@@ -216,7 +252,7 @@ project_pcr_library_prep_mapping_dict = {
         'library_bebop': {
             'owner': 'marinednadude',
             'repo': 'Jonah-Ventures-Library-Preparation',
-            'file_path': 'Jonah-Ventures-Library-NovaSeq-Preparation-BeBOP.md'
+            'file_path': 'Jonah-Ventures_Library_NovaSeq_Preparation_BeBOP.md'
         }
     },
     'ssu16sv4v5_parada_OSUmod': {
@@ -240,7 +276,7 @@ project_pcr_library_prep_mapping_dict = {
         'library_bebop': {
             'owner': 'marinednadude',
             'repo': 'Jonah-Ventures-Library-Preparation',
-            'file_path': 'Jonah-Ventures-Library-NovaSeq-Preparation-BeBOP.md'
+            'file_path': 'Jonah-Ventures_Library_NovaSeq_Preparation_BeBOP.md'
         }
     },
     'ITS1_sterling': {
@@ -252,7 +288,19 @@ project_pcr_library_prep_mapping_dict = {
         'library_bebop': {
             'owner': 'marinednadude',
             'repo': 'Jonah-Ventures-Library-Preparation',
-            'file_path': 'Jonah-Ventures-Library-NovaSeq-Preparation-BeBOP.md'
+            'file_path': 'Jonah-Ventures_Library_NovaSeq_Preparation_BeBOP.md'
+        }
+    },
+    'lsu16s_2051-2438_mideca_komai': {
+        'pcr_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'NOAA-PMEL-OME_Komai_MiDeca_mt16S_PCR-Protocol_BeBOP',
+            'file_path': 'NOAA-PMEL-OME_Komai_MiDeca_mt16S_PCR-Protocol_BeBOP.md'
+        },
+        'library_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'Jonah-Ventures-Library-Preparation',
+            'file_path': 'Jonah-Ventures_Library_NovaSeq_Preparation_BeBOP.md'
         }
     }
 }

@@ -293,7 +293,7 @@ def main() -> None:
                         ]
     
     sample_mapper = FaireSampleMetadataMapper(config_yaml='/home/poseidon/zalmanek/FAIRe-Mapping/projects/EcoFoci/skq21_15S/config.yaml',
-                                              additiona_rules=additional_rules,
+                                              additional_rules=additional_rules,
                                               ome_auto_setup=True)
     
     sample_mapper.sample_metadata_df_builder.sample_metadata_df = fix_stations(df=sample_mapper.sample_metadata_df_builder.sample_metadata_df)

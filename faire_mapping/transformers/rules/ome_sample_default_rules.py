@@ -58,6 +58,32 @@ def get_biological_rep_relation_rule(mapper: FaireSampleMetadataMapper):
             .build()
         )
 
+def get_replicte_num_from_ome_sample_name(mapper: FaireSampleMetadataMapper):
+    """
+    Rule for getting the replicate number from OME's sample name.
+    Note: specific to OME
+    Expects metadata_col to be 'sample_name_col'.
+    """
+    def apply_rep_num_deduction(df, faire_col, metadata_col):
+        """
+        Apply replicate_number deduction using the mapper's et_replicate_number_from_samp_name.
+        """
+        # Apply the calculation to each row
+        return df[metadata_col].apply(mapper.get_replicate_number_from_samp_name)
+    return (
+            TransformationBuilder('replicate_number_from_ome_sampe_name')
+            .when(lambda f, m, mt: (
+                f == 'replicate_number' and
+                mt == 'related'
+            ))
+            .apply(
+                apply_rep_num_deduction,
+                mode='direct'
+            )
+            .for_mapping_type('related')
+            .build()
+        )
+
 def get_all_ome_default_rules(mapper: FaireSampleMetadataMapper) -> List:
     """
     Get all OME default transformation rules in execution order
@@ -67,6 +93,7 @@ def get_all_ome_default_rules(mapper: FaireSampleMetadataMapper) -> List:
         get_constant_mappings_rule(mapper),
         get_samp_category_rule(mapper),
         get_biological_rep_relation_rule(mapper),
+        get_replicte_num_from_ome_sample_name(mapper)
     ]
     logger.info(f"Created {len(rules)} OME default rules")
     return rules

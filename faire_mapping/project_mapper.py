@@ -1,18 +1,15 @@
 from faire_mapping.faire_mapper import OmeFaireMapper
 from faire_mapping.analysis_metadata_mapper import AnalysisMetadataMapper
 from faire_mapping.constants import marker_shorthand_to_pos_cont_gblcok_name, project_pcr_library_prep_mapping_dict
-from faire_mapping.utils import load_google_sheet_as_df, load_csv_as_df
+from faire_mapping.utils import load_google_sheet_as_df, load_csv_as_df, retrive_github_bebop
 from datetime import date, datetime
 import pandas as pd
-import requests
-import base64
-import tempfile
 import openpyxl
 import os
-import hashlib
 from astral import LocationInfo
 from astral.sun import sun
 import pytz
+import logging
 
 
 # TODO: add project_id to process_whole_project_and_save_to_excel when calling process_analysis_metadata when extracted from projectMetadata input
@@ -20,6 +17,12 @@ import pytz
 # TODO: Find what happend to the Mid.NC.SKQ21 sample (in SampleMetadataMapper)
 # TODO: Check 'Arctic Ocean' geo_loc for E1082.SKQ2021, E1083.SKQ2021, E1084.SKQ2021 and maybe other values
 # TODO: Add assay1, assay2, etc. to column headers in projectMetadata
+
+logging.basicConfig(
+    filename='data_discrepancies.log',
+    level=logging.ERROR,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
 class ProjectMapper(OmeFaireMapper):
     
@@ -73,6 +76,7 @@ class ProjectMapper(OmeFaireMapper):
         self.logging_directory = self.config_file['logging_directory']
         # If the drop_not_sequenced_samps exist in config make it whatever values is in config, otherwise default is True (will only be false for when combining all samples ever in push to google)
         self.drop_not_sequenced_samps = self.config_file.get('drop_not_sequenced_samps', True)
+        self.analysis_tax_methods = self.config_file['taxonomy_methods'] # The dbs to be used for each marker/assay (Sam said will be picked the same for each assay/marker across all runs)
 
         self.pcr_library_dict = {}
 
@@ -102,7 +106,11 @@ class ProjectMapper(OmeFaireMapper):
         print(f"Excel file saved to {self.final_faire_template_path}")
 
         # Add analysisMetadata
-        # self.process_analysis_metadata(project_id='EcoFOCI_eDNA_2020-23', final_exp_run_df=experiment_run_metadata_df)
+        analysis_creator = self.process_analysis_metadata(final_exp_run_df=experiment_run_metadata_df)
+        analysis_metadata_df = analysis_creator.analysis_metadata_df
+        analysis_metadata_df.to_csv(f"{data_dir}/analysisMetadata_{self.project_id}.csv")
+        # TODO: save to excel - need to shorten sheet name - butnot sure how to make it shorter (emailed Bayden and Katherine on 5/14/2026)
+        # analysis_creator.save_to_excel(final_analysis_metadata_df=analysis_creator.analysis_metadata_df, excel_file_to_save_to=self.final_faire_template_path)
     
     def process_sample_run_data(self):
         # Process all csv sets defined in the config file.
@@ -172,25 +180,27 @@ class ProjectMapper(OmeFaireMapper):
         # If there are still duplicates (can happen when PPS is split apart from cruise, and values are annotated differently), throw an error
         duplicates = sample_df_cleaned[sample_df_cleaned[self.faire_sample_name_col].duplicated(keep=False)][self.faire_sample_name_col].unique()
         if len(duplicates) > 0:
+            self.log_duplicate_samps(df=sample_df_cleaned)
             raise ValueError(f"Duplicate samples in the sample df: {duplicates}. Please check how these differ and fix!")
         
         # Update pool_dna_num for extraction_negatives
         sample_df_cleaned = self.update_pool_dna_num_for_pooled_samps(df=sample_df_cleaned)
 
-        return  sample_df_cleaned, exp_df_final
+        # Analysis Metadata
+        analysis_df = self.process_analysis_metadata(final_exp_run_df=exp_df_final).analysis_metadata_df
 
-    def process_analysis_metadata(self, project_id: str, final_exp_run_df: pd.DataFrame): 
+        return  sample_df_cleaned, exp_df_final, analysis_df
+
+    def process_analysis_metadata(self, final_exp_run_df: pd.DataFrame): 
         # Process analysis metadata using AnalyisMetadata class
         analysis_creator = AnalysisMetadataMapper(config_yaml=self.config_yaml,
-                                                  bioinformatics_bebop_path=self.bioinformatics_bebop_path,
-                                                  bioinformatics_config_google_sheet_id=self.bebop_config_file_google_sheet_id,
+                                                  project_id=self.project_id,
                                                   experiment_run_metadata_df=final_exp_run_df,
-                                                  bioinformatics_software_name=self.bioinformatics_software_name,
-                                                  bebop_config_run_col_name = self.bebop_config_run_col_name,
-                                                  bebop_config_marker_col_name = self.bebop_config_marker_col_name,
-                                                  project_id=project_id,
-                                                  )  
-        analysis_creator.process_analysis_metadata()
+                                                  tax_method_dict=self.config_file.get('taxonomy_methods'),
+                                                  gh_token=self.gh_token,
+                                                  google_sheet_json_cred=self.google_sheet_json_cred)
+        
+        return analysis_creator
     
     def create_sample_metadata_df(self) -> pd.DataFrame:
    
@@ -234,6 +244,35 @@ class ProjectMapper(OmeFaireMapper):
         cleaned_df = exp_run_df_with_merged_counts.map(lambda x: x.strip() if isinstance(x, str) else x)
 
         return cleaned_df
+
+    def log_duplicate_samps(self, df: pd.DataFrame):
+
+        # 1. Identify rows with duplicate sample names
+        duplicate_mask = df.duplicated(subset=[self.faire_sample_name_col], keep=False)
+        if duplicate_mask.any():
+            dup_groups = df[duplicate_mask].groupby(self.faire_sample_name_col)
+            
+            error_details = []
+
+            for name, group in dup_groups:
+                # Find columns where values are not all the same
+                # .nunique() handles NaNs differently, so we use .duplicated() logic or compare to first
+                diff_cols = []
+                for col in group.columns:
+                    if group[col].nunique(dropna=False) > 1:
+                        diff_cols.append(col)
+                
+                if diff_cols:
+                    msg = f"Sample '{name}' has mismatches in columns: {diff_cols}"
+                    logging.error(f"{msg}\nValues:\n{group[diff_cols]}\n")
+                    error_details.append(msg)
+
+            # 2. Raise the error after logging all issues
+            if error_details:
+                raise ValueError(
+                    f"Found {len(error_details)} samples with conflicting data. "
+                    "Check 'data_discrepancies.log' for the specific column mismatches."
+                )
     
     def update_output_input_counts_for_merged_runs(self, exp_df: pd.DataFrame) -> pd.DataFrame:
         # For OSU/Run3 where there will be the same sample_name and assay_name (part of assay name since different for runs)
@@ -497,7 +536,11 @@ class ProjectMapper(OmeFaireMapper):
                         transformed_rows.append(new_row)
 
                         # These samples were part of the .MiFishMod crowd but also had tech reps for other assays, so we still want to add their regular samp rows since they did not have tech reps
-                        mifishmod_samps_with_pcr_reps = ['E450.1B.WCOA21', 'E450.2B.WCOA21', 'E450.3B.WCOA21', 'E447.1B.WCOA21', 'E447.2B.WCOA21', 'E447.3B.WCOA21']
+                        # And some were just part of other runs.
+                        mifishmod_samps_with_pcr_reps = ['E450.1B.WCOA21', 'E450.2B.WCOA21', 'E450.3B.WCOA21', 'E447.1B.WCOA21', 'E447.2B.WCOA21', 'E447.3B.WCOA21', 'E448.1B.WCOA21',
+                                                         'E448.2B.WCOA21', 'E448.3B.WCOA21', 'E496.1T.WCOA21', 'E496.2T.WCOA21', 'E496.3T.WCOA21', 'E498.1B.WCOA21', 'E498.2B.WCOA21',
+                                                         'E498.3B.WCOA21', 'E575.1B.WCOA21', 'E575.2B.WCOA21', 'E575.3B.WCOA21', 'E600.1B.WCOA21', 'E600.2B.WCOA21', 'E600.3B.WCOA21',
+                                                         'E496.3B.WCOA21']
                         if base_name in mifishmod_samps_with_pcr_reps:
                             transformed_rows.append(r)
                 else:
@@ -594,34 +637,6 @@ class ProjectMapper(OmeFaireMapper):
         
         return exp_run_df_filtered, dropped_samples
     
-    def retrive_github_bebop(self, owner: str, repo: str, file_path: str):
-        url = f"https://api.github.com/repos/{owner}/{repo}/contents/{file_path}"
-
-        headers = {
-            'Authorization': f"token {self.gh_token}",
-            'Accept': 'application/vnd.github.v3+json'
-        }
-
-        try:
-            response = requests.get(url, headers=headers)
-            response.raise_for_status()
-            data = response.json()
-
-            if 'content' in data:
-                # Decode base64 to get the raw markdown file
-                base64_content = data['content'].replace('\n', '').replace(' ', '')
-                markdown_content = base64.b64decode(base64_content).decode('utf-8')
-                
-                with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=True, encoding='utf-8') as temp_file:
-                    temp_file.write(markdown_content)
-                    temp_file_path = temp_file.name
-                    post = self.load_beBop_yaml_terms(path_to_bebop=temp_file_path)
-                    return post.metadata
-        
-        except requests.exceptions.RequestException as e:
-            print(f"Error fetching bebop: {e}")
-            return None
-    
     def load_assay_level_metadata_to_excel(self, final_exp_run_df: pd.DataFrame) -> None:
 
         # create list of assays from experiment_run_metadata so only grabbing assays that are actually in the project
@@ -634,13 +649,13 @@ class ProjectMapper(OmeFaireMapper):
                 pcr_owner = bebops['pcr_bebop']['owner']
                 pcr_repo = bebops['pcr_bebop']['repo']
                 pcr_file_path = bebops['pcr_bebop']['file_path']
-                pcr_bebop = self.retrive_github_bebop(owner=pcr_owner, repo=pcr_repo, file_path=pcr_file_path)
+                pcr_bebop = retrive_github_bebop(owner=pcr_owner, repo=pcr_repo, file_path=pcr_file_path, gh_token=self.gh_token)
             
                 # Get library preparation bebop dict
                 lib_owner = bebops['library_bebop']['owner']
                 lib_repo = bebops['library_bebop']['repo']
                 lib_file_path = bebops['library_bebop']['file_path']
-                lib_bebop = self.retrive_github_bebop(owner=lib_owner, repo=lib_repo, file_path=lib_file_path)
+                lib_bebop = retrive_github_bebop(owner=lib_owner, repo=lib_repo, file_path=lib_file_path, gh_token=self.gh_token)
                 
                 assay_col_num = self.project_sheet_assay_start_col_num + col_index
                 self.map_pcr_library_prep_to_excel(pcr_bebop, lib_bebop, assay_col_num)

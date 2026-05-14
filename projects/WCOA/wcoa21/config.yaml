@@ -1,6 +1,6 @@
 ## 33RO20210613 Sample Metadata config.yaml ##
 # Metadata file related 
-sample_metadata_file: /home/poseidon/zalmanek/WCOA21/wcoa21_data_management/FinalOME_Merge_nc_samp_added.csv
+sample_metadata_file: /home/poseidon/zalmanek/WCOA21/wcoa21_data_management/brynn_rep_chem_bottle/FinalOME_Merge_with_rep_chem_bottles.csv
 sample_metadata_sample_name_column: Sample_Name # The name of the column in the metadata spreadsheet that lists the sample names
 sample_metadata_file_neg_control_col_name: 'Negative_control' # Name of the column in the metadata spreadsheet for the boolean Negative Control
 sample_metadata_cast_no_col_name: 'btl_Cast_number'

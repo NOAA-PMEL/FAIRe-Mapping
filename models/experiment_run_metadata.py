@@ -12,7 +12,8 @@ class ExperimentRunMetadata(BaseModel):
     assay_name: Literal['ssu18sv9_amaralzettler', 'dloopv1.5v4_baker', 'lsu16s_2434-2571_kelly', 
                         'COI_1835-2198_lerayfolmer', 'ssu18sv8_machida', 'ssu18sv8_machida_OSUmod', 
                         'ssu16sv4v5_parada', 'ssu16sv4v5_parada_OSUmod', 'ssu18sv4_stoeck', 
-                        'ITS1_sterling', 'ssu12sv5v6_mifish_u_sales', 'ssu12sv5v6_mifish_u_sales_2xRSA']
+                        'ITS1_sterling', 'ssu12sv5v6_mifish_u_sales', 'ssu12sv5v6_mifish_u_sales_2xRSA',
+                        'lsu16s_2051-2438_mideca_komai']
     pcr_plate_id: str
     lib_id: str
     seq_run_id: str
