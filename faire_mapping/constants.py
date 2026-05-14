@@ -75,7 +75,7 @@ marker_to_assay_mapping = {
     '18S Machida': ['ssu18sv8_machida', 'ssu18sv8_machida_OSUmod'],
     'Machida18S': ['ssu18sv8_machida', 'ssu18sv8_machida_OSUmod'],
     'Machida 18S':  ['ssu18sv8_machida', 'ssu18sv8_machida_OSUmod'],
-    'MiFish 12S': ['ssu12sv5v6_mifish_u_sales', 'ssu12sv5v6_mifish_u_sales_2xRSA'],
+    'MiFish 12S': ['ssu12sv5v6_mifish_u_sales', 'ssu12sv5v6_mifish_u_sales_2xRSA'], ssu12sv5v6_mifish_u_sales;ssu12sv5v6_mifish_u_sales_2xRSA
     'MiFish': ['ssu12sv5v6_mifish_u_sales', 'ssu12sv5v6_mifish_u_sales_2xRSA'],
     '16S Furhman': ['ssu16sv4v5_parada', 'ssu16sv4v5_parada_OSUmod'],
     '16S Fuhrman': ['ssu16sv4v5_parada', 'ssu16sv4v5_parada_OSUmod'],
@@ -268,6 +268,18 @@ project_pcr_library_prep_mapping_dict = {
             'owner': 'marinednadude',
             'repo': 'NOAA-PMEL-OME-WhiteSterling-phytoplankton-ITS1-PCR-Protocol-BeBOP',
             'file_path': 'NOAA-PMEL-OME-WhiteSterling-phytoplankton-ITS1-PCR-Protocol-BeBOP.md'
+        },
+        'library_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'Jonah-Ventures-Library-Preparation',
+            'file_path': 'Jonah-Ventures-Library-NovaSeq-Preparation-BeBOP.md'
+        }
+    },
+    'lsu16s_2051-2438_mideca_komai': {
+        'pcr_bebop': {
+            'owner': 'marinednadude',
+            'repo': 'NOAA-PMEL-OME_Komai_MiDeca_mt16S_PCR-Protocol_BeBOP',
+            'file_path': 'NOAA-PMEL-OME_Komai_MiDeca_mt16S_PCR-Protocol_BeBOP.md'
         },
         'library_bebop': {
             'owner': 'marinednadude',
